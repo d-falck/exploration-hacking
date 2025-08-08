@@ -1,0 +1,19 @@
+[project]
+name = "exploration-hacking"
+version = "0.1.0"
+description = "Research code for exploration hacking project"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic",
+    "pydantic-settings",
+]
+
+[project.optional-dependencies]
+evalplus = [
+    "evalplus",
+    "openpipe-art[backend] @ git+https://github.com/d-falck/ART.git",
+]
+
+[tool.uv.pip]
+torch-backend = "auto"
