@@ -16,8 +16,8 @@ class EvalPlusProblem(BaseModel):
     test_list: list | None = None
 
 
-def extract_code(solution: str) -> str:
-    """Extract code from a solution that might contain markdown."""
+def extract_code(solution: str) -> str | None:
+    """Extract code from a solution that might contain markdown. Returns None if no code block found."""
     if "```python" in solution:
         lines = solution.strip().split("\n")
         in_code_block = False
@@ -29,8 +29,9 @@ def extract_code(solution: str) -> str:
                 in_code_block = False
             elif in_code_block:
                 code_lines.append(line)
-        return "\n".join(code_lines)
-    return solution
+        extracted = "\n".join(code_lines)
+        return extracted if extracted.strip() else None
+    return None
 
 
 @weave.op()
@@ -72,12 +73,10 @@ async def test_solution(test_code: str, timeout: float = 5.0) -> tuple[float, st
 
 
 @weave.op()
-async def evaluate_solution(
-    problem: EvalPlusProblem, solution: str, dataset_name: str, timeout: float = 5.0
+async def evaluate_code(
+    problem: EvalPlusProblem, code: str, dataset_name: str, timeout: float = 5.0
 ) -> float:
-    """Evaluate a solution against test cases. Returns 1.0 if all tests pass, 0.0 otherwise."""
-    code = extract_code(solution)
-
+    """Evaluate extracted code against test cases. Returns 1.0 if all tests pass, 0.0 otherwise."""
     if dataset_name == "humaneval":
         test_code = f"""
 {code}
@@ -103,6 +102,17 @@ print("All tests passed!")
 
     result, _, _ = await test_solution(test_code, timeout)
     return result
+
+
+@weave.op()
+async def evaluate_solution(
+    problem: EvalPlusProblem, solution: str, dataset_name: str, timeout: float = 5.0, invalid_penalty: float = 0.0
+) -> float:
+    """Evaluate a solution against test cases. Returns 1.0 if all tests pass, 0.0 otherwise."""
+    code = extract_code(solution)
+    if code is None:
+        return invalid_penalty
+    return await evaluate_code(problem, code, dataset_name, timeout)
 
 
 def load_evalplus_problems(

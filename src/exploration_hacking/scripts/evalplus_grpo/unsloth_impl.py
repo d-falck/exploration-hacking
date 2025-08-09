@@ -14,11 +14,14 @@ import torch
 import torch.distributed as dist
 import wandb
 import weave
+from vllm import SamplingParams
 
 from exploration_hacking.settings.evalplus import (
     EvalPlusProblem,
     load_evalplus_problems,
     evaluate_solution,
+    extract_code,
+    evaluate_code,
 )
 
 
@@ -43,11 +46,14 @@ class Config(BaseSettings):
     model_name: str = Field(default="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", description="Model name")
     dataset: Literal["humaneval", "mbpp"] = Field(default="humaneval", description="Dataset to use")
     max_problems: int = Field(default=160, description="Maximum number of problems (0 for all)")
-    num_epochs: int = Field(default=3, description="Number of training epochs")
-    batch_size: int = Field(default=8, description="Batch size for training, should be divisible by num_rollouts")
-    num_rollouts: int = Field(default=8, description="Number of rollouts per problem")
+    num_epochs: int = Field(default=5, description="Number of training epochs")
+    batch_size: int = Field(default=16, description="Batch size for training, should be divisible by num_rollouts")
+    num_rollouts: int = Field(default=16, description="Number of rollouts per problem")
     temperature: float = Field(default=1.0, description="Temperature for generation")
-    max_seq_length: int = Field(default=2048, description="Maximum sequence length")
+    top_p: float = Field(default=0.95, description="Top-p for generation")
+    max_seq_length: int = Field(default=4096, description="Maximum sequence length")
+    invalid_output_penalty: float = Field(default=-0.5, description="Penalty for invalid output (no code block)")
+    length_penalty_factor: float = Field(default=0.0001, description="Factor for length penalty on completions")
     lora_rank: int = Field(default=32, description="LoRA rank")
     lora_alpha: int = Field(default=64, description="LoRA alpha")
     learning_rate: float = Field(default=1e-5, description="Learning rate")
@@ -60,15 +66,31 @@ class Config(BaseSettings):
     # fmt: on
 
 
+async def compute_reward(
+    problem: EvalPlusProblem, response: str, dataset_name: str, config: Config
+) -> float:
+    """Compute reward with penalties for invalid output and length."""
+    base_reward = await evaluate_solution(
+        problem, response, dataset_name, 
+        invalid_penalty=config.invalid_output_penalty
+    )
+    
+    # Apply length penalty
+    length_penalty = config.length_penalty_factor * len(response)
+    final_reward = base_reward - length_penalty
+    
+    return final_reward
+
+
 def reward_function_factory(
-    dataset_name: str, problems_dict: dict[str, EvalPlusProblem]
+    dataset_name: str, problems_dict: dict[str, EvalPlusProblem], config: Config
 ):
     async def reward_func_async(completions, task_id, **kwargs):
         responses = [completion[0]["content"] for completion in completions]
         tasks = []
         for response, id_ in zip(responses, task_id):
             problem = problems_dict[id_]
-            tasks.append(evaluate_solution(problem, response, dataset_name))
+            tasks.append(compute_reward(problem, response, dataset_name, config))
 
         return await asyncio.gather(*tasks)
 
@@ -150,23 +172,30 @@ def main(config: Config):
     model, tokenizer, problems = init(config)
     dataset = prepare_dataset(problems)
 
-    reward_function = reward_function_factory(config.dataset, problems)
+    reward_function = reward_function_factory(config.dataset, problems, config)
 
     max_prompt_length = get_max_prompt_length(dataset, tokenizer)
     max_completion_length = config.max_seq_length - max_prompt_length
 
+    vllm_sampling_params = SamplingParams(  # TODO: not sure if this is necessary
+        temperature=config.temperature,
+        top_p=config.top_p,
+    )
+
     grpo_config = GRPOConfig(
+        vllm_sampling_params=vllm_sampling_params,
         output_dir=config.output_dir,
         num_train_epochs=config.num_epochs,
         per_device_train_batch_size=config.batch_size,
         learning_rate=config.learning_rate,
         num_generations=config.num_rollouts,  # Number of completions per prompt
         temperature=config.temperature,
+        top_p=config.top_p,
         max_completion_length=max_completion_length,
         max_prompt_length=max_prompt_length,
         optim="adamw_8bit",
         warmup_ratio=0.1,
-        lr_scheduler_type="linear",
+        lr_scheduler_type="cosine",
         weight_decay=0.01,
         report_to="wandb",
         logging_steps=1,
