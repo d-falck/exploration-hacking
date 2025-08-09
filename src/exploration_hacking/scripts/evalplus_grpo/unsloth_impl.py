@@ -1,3 +1,6 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Stops Unsloth getting confused on multi-GPU machines
+
 import asyncio
 import random
 from typing import Literal
@@ -20,8 +23,6 @@ from exploration_hacking.settings.evalplus import (
     EvalPlusProblem,
     load_evalplus_problems,
     evaluate_solution,
-    extract_code,
-    evaluate_code,
 )
 
 
@@ -45,13 +46,13 @@ class Config(BaseSettings):
     # fmt: off
     model_name: str = Field(default="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", description="Model name")
     dataset: Literal["humaneval", "mbpp"] = Field(default="humaneval", description="Dataset to use")
-    max_problems: int = Field(default=160, description="Maximum number of problems (0 for all)")
+    max_problems: int = Field(default=120, description="Maximum number of problems (0 for all)")
     num_epochs: int = Field(default=5, description="Number of training epochs")
-    batch_size: int = Field(default=16, description="Batch size for training, should be divisible by num_rollouts")
-    num_rollouts: int = Field(default=16, description="Number of rollouts per problem")
+    batch_size: int = Field(default=12, description="Batch size for training, should be divisible by num_rollouts")
+    num_rollouts: int = Field(default=12, description="Number of rollouts per problem")
     temperature: float = Field(default=1.0, description="Temperature for generation")
     top_p: float = Field(default=0.95, description="Top-p for generation")
-    max_seq_length: int = Field(default=4096, description="Maximum sequence length")
+    max_seq_length: int = Field(default=3072, description="Maximum sequence length")
     invalid_output_penalty: float = Field(default=-0.5, description="Penalty for invalid output (no code block)")
     length_penalty_factor: float = Field(default=0.0001, description="Factor for length penalty on completions")
     lora_rank: int = Field(default=32, description="LoRA rank")
