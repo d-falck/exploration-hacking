@@ -7,14 +7,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = (
 import asyncio
 from functools import wraps
 import random
-from typing import Literal
 
 from unsloth import FastLanguageModel
 
 from datasets import Dataset
 from dotenv import load_dotenv
-from pydantic import Field
-from pydantic_settings import BaseSettings, CliApp
+from pydantic import BaseModel, Field
 from trl import GRPOTrainer, GRPOConfig
 import numpy as np
 import torch
@@ -23,6 +21,7 @@ import wandb
 import weave
 from vllm import SamplingParams
 
+from exploration_hacking.config import ExperimentConfig
 from exploration_hacking.settings.evalplus import (
     EvalPlusProblem,
     load_evalplus_problems,
@@ -47,34 +46,58 @@ TARGET_MODULES = [
 ]
 
 
-class Config(BaseSettings):
-    # fmt: off
-    model_name: str = Field(default="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", description="Model name")
-    dataset: Literal["humaneval", "mbpp"] = Field(default="humaneval", description="Dataset to use")
+# fmt: off
+
+
+class RewardConfig(BaseModel):
+    invalid_output_penalty: float = Field(default=0.5, description="Penalty for invalid output (no code block)")
+    length_penalty_factor: float = Field(default=0.00001, description="Factor for length penalty on completions")
+    max_response_length: int = Field(default=512, description="Maximum response length in tokens before penalty applies")
+
+
+class DataConfig(BaseModel):
+    dataset_name: str = Field(default="humaneval", description="Dataset to use")
     max_problems: int = Field(default=120, description="Maximum number of problems (0 for all)")
+
+
+class TrainingConfig(BaseModel):
     num_epochs: int = Field(default=5, description="Number of training epochs")
     batch_size: int = Field(default=12, description="Batch size for training, should be divisible by num_rollouts")
     num_rollouts: int = Field(default=12, description="Number of rollouts per problem")
+    learning_rate: float = Field(default=3e-5, description="Learning rate")
+    warmup_ratio: float = Field(default=0.0, description="Warmup ratio")
+
+
+class SamplingConfig(BaseModel):
     temperature: float = Field(default=1.0, description="Temperature for generation")
     top_p: float = Field(default=0.95, description="Top-p for generation")
     max_seq_length: int = Field(default=3072, description="Maximum sequence length")
-    invalid_output_penalty: float = Field(default=0.5, description="Penalty for invalid output (no code block)")
-    length_penalty_factor: float = Field(default=0.00001, description="Factor for length penalty on completions")
+
+
+class ModelConfig(BaseModel):
+    model_name: str = Field(default="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", description="Model name")
     lora_rank: int = Field(default=32, description="LoRA rank")
     lora_alpha: int = Field(default=64, description="LoRA alpha")
-    learning_rate: float = Field(default=1e-5, description="Learning rate")
-    output_dir: str = Field(default="artifacts/unsloth_evalplus", description="Output directory")
     gpu_memory_utilization: float = Field(default=0.8, description="GPU memory utilization")
-    warmup_ratio: float = Field(default=0.01, description="Warmup ratio")
-    seed: int = Field(default=42, description="Random seed")
-    wandb_project: str = Field(default="evalplus-grpo", description="Wandb project name")
-    wandb_entity: str | None = Field(default=None, description="Wandb entity/team name")
-    wandb_run_name: str | None = Field(default=None, description="Wandb run name")
-    # fmt: on
+
+
+class Config(ExperimentConfig):
+    data: DataConfig = Field(default=DataConfig(), description="Data configuration")
+    training: TrainingConfig = Field(default=TrainingConfig(), description="Training configuration")
+    sampling: SamplingConfig = Field(default=SamplingConfig(), description="Sampling configuration")
+    model: ModelConfig = Field(default=ModelConfig(), description="Model configuration")
+    reward: RewardConfig = Field(default=RewardConfig(), description="Reward configuration")
+    output_dir: str = Field(default="artifacts/unsloth_evalplus", description="Output directory")
+
+
+# fmt: on
 
 
 def reward_functions_factory(
-    dataset_name: str, problems_dict: dict[str, EvalPlusProblem], config: Config
+    dataset_name: str,
+    problems_dict: dict[str, EvalPlusProblem],
+    config: Config,
+    tokenizer,
 ):
 
     def make_reward_func(single_reward_func):
@@ -102,12 +125,18 @@ def reward_functions_factory(
     @make_reward_func
     @weave.op()
     async def format_reward(problem, response):
-        return -config.invalid_output_penalty if extract_code(response) is None else 0.0
+        return -config.reward.invalid_output_penalty if extract_code(response) is None else 0.0
 
     @make_reward_func
     @weave.op()
     async def length_reward(problem, response):
-        return -config.length_penalty_factor * len(response)
+        tokens = tokenizer.encode(response, add_special_tokens=False)
+        token_count = len(tokens)
+        if token_count <= config.reward.max_response_length:
+            return 0.0
+        else:
+            excess_tokens = token_count - config.reward.max_response_length
+            return -config.reward.length_penalty_factor * excess_tokens
 
     return [accuracy_reward, format_reward, length_reward]
 
@@ -157,25 +186,25 @@ def init(config: Config):
 
     weave.init(config.wandb_project, settings={"print_call_link": False})
 
-    print(f"Loading model: {config.model_name}")
+    print(f"Loading model: {config.model.model_name}")
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=config.model_name,
-        max_seq_length=config.max_seq_length,
-        max_lora_rank=config.lora_rank,
+        model_name=config.model.model_name,
+        max_seq_length=config.sampling.max_seq_length,
+        max_lora_rank=config.model.lora_rank,
         load_in_4bit=True,
-        gpu_memory_utilization=config.gpu_memory_utilization,
+        gpu_memory_utilization=config.model.gpu_memory_utilization,
         fast_inference=True,
     )
 
     model = FastLanguageModel.get_peft_model(
         model,
-        r=config.lora_rank,
+        r=config.model.lora_rank,
         target_modules=TARGET_MODULES,
-        lora_alpha=config.lora_alpha,
+        lora_alpha=config.model.lora_alpha,
         use_gradient_checkpointing="unsloth",
     )
 
-    problems = load_evalplus_problems(config.dataset, config.max_problems)
+    problems = load_evalplus_problems(config.data.dataset_name, config.data.max_problems)
     return model, tokenizer, problems
 
 
@@ -183,29 +212,29 @@ def main(config: Config):
     model, tokenizer, problems = init(config)
     dataset = prepare_dataset(problems)
 
-    reward_funcs = reward_functions_factory(config.dataset, problems, config)
+    reward_funcs = reward_functions_factory(config.data.dataset_name, problems, config, tokenizer)
 
     max_prompt_length = get_max_prompt_length(dataset, tokenizer)
-    max_completion_length = config.max_seq_length - max_prompt_length
+    max_completion_length = config.sampling.max_seq_length - max_prompt_length
 
     vllm_sampling_params = SamplingParams(  # TODO: not sure if this is necessary
-        temperature=config.temperature,
-        top_p=config.top_p,
+        temperature=config.sampling.temperature,
+        top_p=config.sampling.top_p,
     )
 
     grpo_config = GRPOConfig(
         vllm_sampling_params=vllm_sampling_params,
         output_dir=config.output_dir,
-        num_train_epochs=config.num_epochs,
-        per_device_train_batch_size=config.batch_size,
-        learning_rate=config.learning_rate,
-        num_generations=config.num_rollouts,  # Number of completions per prompt
-        temperature=config.temperature,
-        top_p=config.top_p,
+        num_train_epochs=config.training.num_epochs,
+        per_device_train_batch_size=config.training.batch_size,
+        learning_rate=config.training.learning_rate,
+        num_generations=config.training.num_rollouts,  # Number of completions per prompt
+        temperature=config.sampling.temperature,
+        top_p=config.sampling.top_p,
         max_completion_length=max_completion_length,
         max_prompt_length=max_prompt_length,
         optim="adamw_8bit",
-        warmup_ratio=config.warmup_ratio,
+        warmup_ratio=config.training.warmup_ratio,
         lr_scheduler_type="cosine",
         weight_decay=0.01,
         report_to="wandb",
@@ -236,5 +265,6 @@ def main(config: Config):
 
 
 if __name__ == "__main__":
-    config = CliApp.run(Config)
+    config = Config()
+    print(config.model_dump())
     main(config)
