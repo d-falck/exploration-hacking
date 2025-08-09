@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Manual
+unsloth_compiled_cache/
+wandb/
+artifacts/
+.env

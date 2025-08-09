@@ -12,7 +12,14 @@ dependencies = [
 [project.optional-dependencies]
 evalplus = [
     "evalplus",
+]
+art = [
     "openpipe-art[backend] @ git+https://github.com/d-falck/ART.git",
+]
+unsloth = [
+    "unsloth",
+    "flashinfer-python",
+    "vllm",
 ]
 
 [tool.uv.pip]
