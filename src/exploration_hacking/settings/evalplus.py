@@ -3,19 +3,17 @@
 import asyncio
 import os
 import tempfile
-from textwrap import dedent
-from typing import Optional
 
 from evalplus.data import get_human_eval_plus, get_mbpp_plus
 from pydantic import BaseModel
-
+import weave
 
 class EvalPlusProblem(BaseModel):
     task_id: str
     prompt: str
-    entry_point: Optional[str] = None
-    test: Optional[str] = None
-    test_list: Optional[list] = None
+    entry_point: str | None = None
+    test: str | None = None
+    test_list: list | None = None
 
 
 def extract_code(solution: str) -> str:
@@ -35,39 +33,8 @@ def extract_code(solution: str) -> str:
     return solution
 
 
-async def evaluate_solution(
-    problem: EvalPlusProblem, solution: str, dataset_name: str, timeout: float = 5.0
-) -> float:
-    """Evaluate a solution against test cases. Returns 1.0 if all tests pass, 0.0 otherwise."""
-    code = extract_code(solution)
-
-    if dataset_name == "humaneval":
-        test_code = dedent(
-            f"""
-            {code}
-            
-            {problem.test}
-            
-            check({problem.entry_point})
-            print("All tests passed!")
-        """
-        )
-    else:
-        if isinstance(problem.test_list, list):
-            test_cases = "\n".join(problem.test_list)
-        else:
-            test_cases = problem.test_list
-
-        test_code = dedent(
-            f"""
-            {code}
-            
-            {test_cases}
-            
-            print("All tests passed!")
-        """
-        )
-
+@weave.op()
+async def test_solution(test_code: str, timeout: float = 5.0) -> tuple[float, str | None, str | None]:
     try:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(test_code)
@@ -83,24 +50,59 @@ async def evaluate_solution(
         try:
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
             stdout_text = stdout.decode("utf-8")
+            stderr_text = stderr.decode("utf-8")
 
             if proc.returncode == 0 and "All tests passed!" in stdout_text:
-                return 1.0
+                return 1.0, stdout_text, stderr_text
             else:
-                return 0.0
+                return 0.0, stdout_text, stderr_text
         except asyncio.TimeoutError:
             proc.kill()
             await proc.wait()
-            return 0.0
+            return 0.0, None, None
 
     except Exception:
-        return 0.0
+        return 0.0, None, None
     finally:
         if "temp_file" in locals():
             try:
                 os.unlink(temp_file)
             except:
                 pass
+
+
+@weave.op()
+async def evaluate_solution(
+    problem: EvalPlusProblem, solution: str, dataset_name: str, timeout: float = 5.0
+) -> float:
+    """Evaluate a solution against test cases. Returns 1.0 if all tests pass, 0.0 otherwise."""
+    code = extract_code(solution)
+
+    if dataset_name == "humaneval":
+        test_code = f"""
+{code}
+
+{problem.test}
+
+check({problem.entry_point})
+print("All tests passed!")
+"""
+    else:
+        if isinstance(problem.test_list, list):
+            test_cases = "\n".join(problem.test_list)
+        else:
+            test_cases = problem.test_list
+
+        test_code = f"""
+{code}
+
+{test_cases}
+
+print("All tests passed!")
+"""
+
+    result, _, _ = await test_solution(test_code, timeout)
+    return result
 
 
 def load_evalplus_problems(

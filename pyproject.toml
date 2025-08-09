@@ -7,6 +7,8 @@ requires-python = ">=3.11"
 dependencies = [
     "pydantic",
     "pydantic-settings",
+    "wandb",
+    "weave",
 ]
 
 [project.optional-dependencies]
@@ -18,8 +20,11 @@ art = [
 ]
 unsloth = [
     "unsloth",
-    "flashinfer-python",
+    "flashinfer-python<0.2.10",  # Just until https://github.com/vllm-project/vllm/commit/609b533cb6f25f599fda94598bba446396498632 makes it
     "vllm",
+]
+verl = [
+    "verl[vllm]",
 ]
 
 [tool.uv.pip]

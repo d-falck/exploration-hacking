@@ -2,17 +2,18 @@ import asyncio
 import random
 from typing import Literal
 
-import unsloth
-
-import torch
-import transformers
-import numpy as np
 from unsloth import FastLanguageModel
-from trl import GRPOTrainer, GRPOConfig
+
 from datasets import Dataset
+from dotenv import load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings, CliApp
-from dotenv import load_dotenv
+from trl import GRPOTrainer, GRPOConfig
+import numpy as np
+import torch
+import torch.distributed as dist
+import wandb
+import weave
 
 from exploration_hacking.settings.evalplus import (
     EvalPlusProblem,
@@ -22,10 +23,9 @@ from exploration_hacking.settings.evalplus import (
 
 
 load_dotenv()
-transformers.logging.set_verbosity_info()
 
 
-SYSTEM_PROMPT = """You are an expert Python programmer. Complete the given function. Return your solution within a markdown python code block, and make sure it's the only such code block in your response."""
+SYSTEM_PROMPT = """You are an expert Python programmer. Complete the given function. Return your solution within a markdown python code block, and make sure it's the only such code block in your response. Make sure to include any imports you need. Don't think for excessively long."""
 
 TARGET_MODULES = [
     "q_proj",
@@ -40,11 +40,11 @@ TARGET_MODULES = [
 
 class Config(BaseSettings):
     # fmt: off
-    model_name: str = Field(default="Qwen/Qwen3-4B", description="Model name")
+    model_name: str = Field(default="deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", description="Model name")
     dataset: Literal["humaneval", "mbpp"] = Field(default="humaneval", description="Dataset to use")
-    max_problems: int = Field(default=20, description="Maximum number of problems (0 for all)")
+    max_problems: int = Field(default=160, description="Maximum number of problems (0 for all)")
     num_epochs: int = Field(default=3, description="Number of training epochs")
-    batch_size: int = Field(default=2, description="Batch size for training")
+    batch_size: int = Field(default=4, description="Batch size for training, should be divisible by num_rollouts")
     num_rollouts: int = Field(default=4, description="Number of rollouts per problem")
     temperature: float = Field(default=1.0, description="Temperature for generation")
     max_seq_length: int = Field(default=2048, description="Maximum sequence length")
@@ -54,21 +54,27 @@ class Config(BaseSettings):
     output_dir: str = Field(default="artifacts/unsloth_evalplus", description="Output directory")
     gpu_memory_utilization: float = Field(default=0.8, description="GPU memory utilization")
     seed: int = Field(default=42, description="Random seed")
+    wandb_project: str = Field(default="evalplus-grpo", description="Wandb project name")
+    wandb_entity: str | None = Field(default=None, description="Wandb entity/team name")
+    wandb_run_name: str | None = Field(default=None, description="Wandb run name")
     # fmt: on
 
 
 def reward_function_factory(
     dataset_name: str, problems_dict: dict[str, EvalPlusProblem]
 ):
-
-    def reward_func(completions, task_id, **kwargs):
+    async def reward_func_async(completions, task_id, **kwargs):
         responses = [completion[0]["content"] for completion in completions]
         tasks = []
         for response, id_ in zip(responses, task_id):
             problem = problems_dict[id_]
             tasks.append(evaluate_solution(problem, response, dataset_name))
 
-        return asyncio.run(asyncio.gather(*tasks))
+        return await asyncio.gather(*tasks)
+
+    @weave.op()
+    def reward_func(completions, task_id, **kwargs):
+        return asyncio.run(reward_func_async(completions, task_id, **kwargs))
 
     return reward_func
 
@@ -108,6 +114,15 @@ def get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
 def init(config: Config):
     random.seed(config.seed)
     torch.manual_seed(config.seed)
+    
+    wandb.init(
+        project=config.wandb_project,
+        entity=config.wandb_entity,
+        name=config.wandb_run_name,
+        config=config.model_dump(),
+    )
+    
+    weave.init(config.wandb_project, settings={"print_call_link": False})
 
     print(f"Loading model: {config.model_name}")
     model, tokenizer = FastLanguageModel.from_pretrained(
@@ -153,6 +168,13 @@ def main(config: Config):
         warmup_ratio=0.1,
         lr_scheduler_type="linear",
         weight_decay=0.01,
+        report_to="wandb",
+        logging_steps=1,
+        disable_tqdm=False,
+        log_level="warning",
+        dataloader_drop_last=True,
+        save_strategy="steps",
+        save_steps=10,
     )
 
     trainer = GRPOTrainer(
@@ -162,11 +184,15 @@ def main(config: Config):
         args=grpo_config,
         train_dataset=dataset,
     )
-    trainer.train()
 
-    model.save_pretrained(f"{config.output_dir}/final")
-    tokenizer.save_pretrained(f"{config.output_dir}/final")
-
+    try:
+        trainer.train()
+    finally:
+        model.save_pretrained(f"{config.output_dir}/final")
+        tokenizer.save_pretrained(f"{config.output_dir}/final")
+        if dist.is_initialized():
+            dist.destroy_process_group()
+        wandb.finish()
 
 if __name__ == "__main__":
     config = CliApp.run(Config)

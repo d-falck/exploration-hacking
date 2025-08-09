@@ -14,3 +14,4 @@ unsloth_compiled_cache/
 wandb/
 artifacts/
 .env
+grpo_trainer_lora_model/
