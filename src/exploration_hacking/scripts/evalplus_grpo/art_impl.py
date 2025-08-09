@@ -1,7 +1,5 @@
 """
-EvalPlus GRPO Training with ART
-
-This script implements GRPO training for code generation using the EvalPlus benchmark with the ART framework.
+Unstable/deprecated.
 """
 
 import asyncio
