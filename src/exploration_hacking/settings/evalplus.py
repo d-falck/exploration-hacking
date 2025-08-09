@@ -106,12 +106,12 @@ print("All tests passed!")
 
 @weave.op()
 async def evaluate_solution(
-    problem: EvalPlusProblem, solution: str, dataset_name: str, timeout: float = 5.0, invalid_penalty: float = 0.0
+    problem: EvalPlusProblem, solution: str, dataset_name: str, timeout: float = 5.0
 ) -> float:
     """Evaluate a solution against test cases. Returns 1.0 if all tests pass, 0.0 otherwise."""
     code = extract_code(solution)
     if code is None:
-        return invalid_penalty
+        return 0.0
     return await evaluate_code(problem, code, dataset_name, timeout)
 
 

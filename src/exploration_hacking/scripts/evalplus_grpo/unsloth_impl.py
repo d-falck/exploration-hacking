@@ -1,7 +1,11 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Stops Unsloth getting confused on multi-GPU machines
+
+os.environ["CUDA_VISIBLE_DEVICES"] = (
+    "0"  # Stops Unsloth getting confused on multi-GPU machines
+)
 
 import asyncio
+from functools import wraps
 import random
 from typing import Literal
 
@@ -23,6 +27,7 @@ from exploration_hacking.settings.evalplus import (
     EvalPlusProblem,
     load_evalplus_problems,
     evaluate_solution,
+    extract_code,
 )
 
 
@@ -53,13 +58,14 @@ class Config(BaseSettings):
     temperature: float = Field(default=1.0, description="Temperature for generation")
     top_p: float = Field(default=0.95, description="Top-p for generation")
     max_seq_length: int = Field(default=3072, description="Maximum sequence length")
-    invalid_output_penalty: float = Field(default=-0.5, description="Penalty for invalid output (no code block)")
-    length_penalty_factor: float = Field(default=0.0001, description="Factor for length penalty on completions")
+    invalid_output_penalty: float = Field(default=0.5, description="Penalty for invalid output (no code block)")
+    length_penalty_factor: float = Field(default=0.00001, description="Factor for length penalty on completions")
     lora_rank: int = Field(default=32, description="LoRA rank")
     lora_alpha: int = Field(default=64, description="LoRA alpha")
     learning_rate: float = Field(default=1e-5, description="Learning rate")
     output_dir: str = Field(default="artifacts/unsloth_evalplus", description="Output directory")
     gpu_memory_utilization: float = Field(default=0.8, description="GPU memory utilization")
+    warmup_ratio: float = Field(default=0.01, description="Warmup ratio")
     seed: int = Field(default=42, description="Random seed")
     wandb_project: str = Field(default="evalplus-grpo", description="Wandb project name")
     wandb_entity: str | None = Field(default=None, description="Wandb entity/team name")
@@ -67,39 +73,43 @@ class Config(BaseSettings):
     # fmt: on
 
 
-async def compute_reward(
-    problem: EvalPlusProblem, response: str, dataset_name: str, config: Config
-) -> float:
-    """Compute reward with penalties for invalid output and length."""
-    base_reward = await evaluate_solution(
-        problem, response, dataset_name, 
-        invalid_penalty=config.invalid_output_penalty
-    )
-    
-    # Apply length penalty
-    length_penalty = config.length_penalty_factor * len(response)
-    final_reward = base_reward - length_penalty
-    
-    return final_reward
-
-
-def reward_function_factory(
+def reward_functions_factory(
     dataset_name: str, problems_dict: dict[str, EvalPlusProblem], config: Config
 ):
-    async def reward_func_async(completions, task_id, **kwargs):
-        responses = [completion[0]["content"] for completion in completions]
-        tasks = []
-        for response, id_ in zip(responses, task_id):
-            problem = problems_dict[id_]
-            tasks.append(compute_reward(problem, response, dataset_name, config))
 
-        return await asyncio.gather(*tasks)
+    def make_reward_func(single_reward_func):
 
+        async def reward_func_async(completions, task_id, **kwargs):
+            responses = [completion[0]["content"] for completion in completions]
+            tasks = []
+            for response, id_ in zip(responses, task_id):
+                problem = problems_dict[id_]
+                tasks.append(single_reward_func(problem, response))
+
+            return await asyncio.gather(*tasks)
+
+        @wraps(single_reward_func)
+        def reward_func(completions, task_id, **kwargs):
+            return asyncio.run(reward_func_async(completions, task_id, **kwargs))
+
+        return reward_func
+
+    @make_reward_func
     @weave.op()
-    def reward_func(completions, task_id, **kwargs):
-        return asyncio.run(reward_func_async(completions, task_id, **kwargs))
+    async def accuracy_reward(problem, response):
+        return await evaluate_solution(problem, response, dataset_name)
 
-    return reward_func
+    @make_reward_func
+    @weave.op()
+    async def format_reward(problem, response):
+        return -config.invalid_output_penalty if extract_code(response) is None else 0.0
+
+    @make_reward_func
+    @weave.op()
+    async def length_reward(problem, response):
+        return -config.length_penalty_factor * len(response)
+
+    return [accuracy_reward, format_reward, length_reward]
 
 
 def prepare_dataset(problems: dict[str, EvalPlusProblem]) -> Dataset:
@@ -137,14 +147,14 @@ def get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
 def init(config: Config):
     random.seed(config.seed)
     torch.manual_seed(config.seed)
-    
+
     wandb.init(
         project=config.wandb_project,
         entity=config.wandb_entity,
         name=config.wandb_run_name,
         config=config.model_dump(),
     )
-    
+
     weave.init(config.wandb_project, settings={"print_call_link": False})
 
     print(f"Loading model: {config.model_name}")
@@ -173,7 +183,7 @@ def main(config: Config):
     model, tokenizer, problems = init(config)
     dataset = prepare_dataset(problems)
 
-    reward_function = reward_function_factory(config.dataset, problems, config)
+    reward_funcs = reward_functions_factory(config.dataset, problems, config)
 
     max_prompt_length = get_max_prompt_length(dataset, tokenizer)
     max_completion_length = config.max_seq_length - max_prompt_length
@@ -195,7 +205,7 @@ def main(config: Config):
         max_completion_length=max_completion_length,
         max_prompt_length=max_prompt_length,
         optim="adamw_8bit",
-        warmup_ratio=0.1,
+        warmup_ratio=config.warmup_ratio,
         lr_scheduler_type="cosine",
         weight_decay=0.01,
         report_to="wandb",
@@ -210,7 +220,7 @@ def main(config: Config):
     trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
-        reward_funcs=[reward_function],
+        reward_funcs=reward_funcs,
         args=grpo_config,
         train_dataset=dataset,
     )
@@ -223,6 +233,7 @@ def main(config: Config):
         if dist.is_initialized():
             dist.destroy_process_group()
         wandb.finish()
+
 
 if __name__ == "__main__":
     config = CliApp.run(Config)
