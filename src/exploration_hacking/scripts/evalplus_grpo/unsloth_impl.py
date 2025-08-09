@@ -26,6 +26,7 @@ from exploration_hacking.settings.evalplus import (
     EvalPlusProblem,
     load_evalplus_problems,
     evaluate_solution,
+    evaluate_solution_proportional,
     extract_code,
 )
 
@@ -53,6 +54,7 @@ class RewardConfig(BaseModel):
     invalid_output_penalty: float = Field(default=0.5, description="Penalty for invalid output (no code block)")
     length_penalty_factor: float = Field(default=0.00001, description="Factor for length penalty on completions")
     max_response_length: int = Field(default=512, description="Maximum response length in tokens before penalty applies")
+    partial_accuracy_rewards: bool = Field(default=False, description="Use proportion of test cases passed instead of binary pass/fail")
 
 
 class DataConfig(BaseModel):
@@ -120,7 +122,10 @@ def reward_functions_factory(
     @make_reward_func
     @weave.op()
     async def accuracy_reward(problem, response):
-        return await evaluate_solution(problem, response, dataset_name)
+        if config.reward.partial_accuracy_rewards:
+            return await evaluate_solution_proportional(problem, response, dataset_name)
+        else:
+            return await evaluate_solution(problem, response, dataset_name)
 
     @make_reward_func
     @weave.op()
