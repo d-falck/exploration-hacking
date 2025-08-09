@@ -1,1 +1,0 @@
-{"name": "evalplus-coder", "project": "evalplus-grpo", "config": null, "inference_api_key": null, "inference_base_url": null, "inference_model_name": null, "base_model": "Qwen/Qwen3-4B", "_internal_config": {"init_args": {"max_seq_length": 2048, "max_lora_rank": 32}, "peft_args": {"r": 32}, "engine_args": {"gpu_memory_utilization": 0.8}}}
