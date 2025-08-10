@@ -10,7 +10,7 @@ import weave
 
 from exploration_hacking.config import ExperimentConfig
 from exploration_hacking.data import DataConfig, load_dataset
-from exploration_hacking.rewards import RewardConfig, reward_functions_factory
+from exploration_hacking.rewards.factory import RewardConfig, get_reward_functions
 from exploration_hacking.rl import RLConfig, run_grpo
 from exploration_hacking.model import ModelConfig, load_peft_model
 
@@ -39,7 +39,7 @@ def main(config: Config):
     dataset, problems = load_dataset(config.data)
     model, tokenizer = load_peft_model(config.model)
 
-    reward_funcs = reward_functions_factory(
+    reward_funcs = get_reward_functions(
         config.data.dataset_name, problems, config.reward, tokenizer
     )
 
