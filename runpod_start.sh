@@ -2,6 +2,9 @@
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source $HOME/.local/bin/env
 
+# Setup uv completion:
+echo 'eval "$(uv generate-shell-completion bash)"' >> ~/.bashrc
+
 # Setup git:
 git config --global user.name "Damon Falck"
 git config --global user.email "damon.falck@gmail.com"
