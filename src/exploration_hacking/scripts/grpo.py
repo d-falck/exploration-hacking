@@ -36,6 +36,10 @@ def main(config: Config):
         config=config.model_dump(),
     )
     weave.init(config.wandb_project, settings={"print_call_link": False})
+    
+    run_name = wandb.run.name
+    output_dir = f"{config.rl.output_dir}/{run_name}"
+    config.rl.output_dir = output_dir
 
     dataset, problems = load_dataset(config.data)
     model, tokenizer = load_peft_model(config.model)
@@ -55,8 +59,8 @@ def main(config: Config):
             config.model.max_seq_length,
         )
     finally:
-        model.save_pretrained(f"{config.rl.output_dir}/final")
-        tokenizer.save_pretrained(f"{config.rl.output_dir}/final")
+        model.save_pretrained(f"{output_dir}/final")
+        tokenizer.save_pretrained(f"{output_dir}/final")
         if dist.is_initialized():
             dist.destroy_process_group()
         wandb.finish()
