@@ -1,4 +1,5 @@
 from functools import wraps
+import html
 
 import wandb
 
@@ -7,6 +8,17 @@ _tables = {}
 
 
 # TODO: reduce memory usage.
+
+
+def chat_to_html(messages):
+    """Convert chat messages to a simple, readable wandb.Html with extra spacing."""
+    text = "\n\n".join(
+        f"<b>{html.escape(m['role'])}</b>\n\n{html.escape(m['content'])}"
+        for m in messages
+    )
+    return wandb.Html(
+        f"<div style='white-space: pre-wrap; font-family: monospace'>{text}</div>"
+    )
 
 
 def add_wandb_logging(reward_fn):
@@ -35,7 +47,7 @@ def add_wandb_logging(reward_fn):
             **kwargs,
         )
         for t, p, c, r in zip(task_id, prompts, completions, rewards):
-            _tables[name].add_data(global_step, t, p, c, r)
+            _tables[name].add_data(global_step, t, chat_to_html(p), chat_to_html(c), r)
 
         wandb.log({name: _tables[name]})
         return rewards
