@@ -68,6 +68,4 @@ def main(config: Config):
 
 
 if __name__ == "__main__":
-    config = Config()
-    rich.print(config)
-    main(config)
+    main(Config())

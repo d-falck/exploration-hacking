@@ -1,4 +1,5 @@
 from pathlib import Path
+import rich
 
 from pydantic import Field
 from pydantic_settings import (
@@ -35,6 +36,10 @@ class BaseConfig(BaseSettings):
         repr=False,
         description="Optional path to a YAML config file.",
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        rich.print(self)
 
     @classmethod
     def settings_customise_sources(
