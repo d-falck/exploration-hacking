@@ -8,6 +8,7 @@ from evalplus.data import get_human_eval_plus, get_mbpp_plus
 from pydantic import BaseModel
 import weave
 
+
 class EvalPlusProblem(BaseModel):
     task_id: str
     prompt: str
@@ -35,7 +36,9 @@ def extract_code(solution: str) -> str | None:
 
 
 @weave.op()
-async def test_solution(test_code: str, timeout: float = 5.0) -> tuple[float, str | None, str | None]:
+async def test_solution(
+    test_code: str, timeout: float = 5.0
+) -> tuple[float, str | None, str | None]:
     try:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(test_code)
@@ -118,14 +121,16 @@ async def evaluate_solution(
 def parse_test_assertions(problem: EvalPlusProblem, dataset_name: str) -> list[str]:
     """Extract individual test assertions from problem."""
     if dataset_name == "humaneval":
-        test_lines = problem.test.split('\n')
-        return [line.strip() for line in test_lines if line.strip().startswith('assert ')]
+        test_lines = problem.test.split("\n")
+        return [
+            line.strip() for line in test_lines if line.strip().startswith("assert ")
+        ]
     else:
         if isinstance(problem.test_list, list):
             return problem.test_list
         else:
-            assertions = problem.test_list.split('\n') if problem.test_list else []
-            return [a.strip() for a in assertions if a.strip().startswith('assert ')]
+            assertions = problem.test_list.split("\n") if problem.test_list else []
+            return [a.strip() for a in assertions if a.strip().startswith("assert ")]
 
 
 @weave.op()
@@ -136,17 +141,17 @@ async def evaluate_solution_proportional(
     code = extract_code(solution)
     if code is None:
         return 0.0
-    
+
     assertions = parse_test_assertions(problem, dataset_name)
-    
+
     if not assertions:
         # Fall back to binary evaluation if we can't parse assertions
         return await evaluate_code(problem, code, dataset_name, timeout)
-    
+
     # Test each assertion individually
     passed = 0
     total = len(assertions)
-    
+
     for assertion in assertions:
         if dataset_name == "humaneval":
             test_code = f"""
@@ -168,31 +173,33 @@ try:
 except:
     print("FAIL")
 """
-        
+
         try:
             with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
                 f.write(test_code)
                 temp_file = f.name
-            
+
             proc = await asyncio.create_subprocess_exec(
                 "python",
                 temp_file,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            
+
             try:
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout/total)
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(), timeout=timeout / total
+                )
                 if proc.returncode == 0 and "PASS" in stdout.decode("utf-8"):
                     passed += 1
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
-            
+
             os.unlink(temp_file)
         except:
             pass
-    
+
     return passed / total if total > 0 else 0.0
 
 

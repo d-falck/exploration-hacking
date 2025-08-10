@@ -54,11 +54,7 @@ def reward_functions_factory(
     @make_reward_func
     @weave.op()
     async def format_reward(problem, response):
-        return (
-            -config.invalid_output_penalty
-            if extract_code(response) is None
-            else 0.0
-        )
+        return -config.invalid_output_penalty if extract_code(response) is None else 0.0
 
     @make_reward_func
     @weave.op()
