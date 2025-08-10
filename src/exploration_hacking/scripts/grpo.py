@@ -1,6 +1,7 @@
 import unsloth  # Must be imported first.
 
 import random
+import rich
 
 from dotenv import load_dotenv
 import torch
@@ -36,7 +37,7 @@ def main(config: Config):
         config=config.model_dump(),
     )
     weave.init(config.wandb_project, settings={"print_call_link": False})
-    
+
     run_name = wandb.run.name
     output_dir = f"{config.rl.output_dir}/{run_name}"
     config.rl.output_dir = output_dir
@@ -68,5 +69,5 @@ def main(config: Config):
 
 if __name__ == "__main__":
     config = Config()
-    print(config.model_dump())
+    rich.print(config)
     main(config)
