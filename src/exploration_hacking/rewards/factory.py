@@ -44,10 +44,11 @@ def get_reward_functions(
 
         return reward_func
 
-
     reward_funcs = []
     if config.accuracy:
-        accuracy_single_reward_func = get_accuracy_single_reward_function(config.accuracy, dataset_name)
+        accuracy_single_reward_func = get_accuracy_single_reward_function(
+            config.accuracy, dataset_name
+        )
         reward_funcs.append(make_reward_func(accuracy_single_reward_func))
 
     if config.format:
@@ -55,7 +56,9 @@ def get_reward_functions(
         reward_funcs.append(make_reward_func(format_single_reward_func))
 
     if config.length:
-        length_single_reward_func = get_length_single_reward_function(config.length, tokenizer)
+        length_single_reward_func = get_length_single_reward_function(
+            config.length, tokenizer
+        )
         reward_funcs.append(make_reward_func(length_single_reward_func))
 
     return reward_funcs

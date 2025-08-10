@@ -2,6 +2,7 @@ from pydantic import BaseModel
 import weave
 
 from exploration_hacking.settings.evalplus import (
+    EvalPlusProblem,
     evaluate_solution,
     evaluate_solution_proportional,
     extract_code,
@@ -10,6 +11,9 @@ from exploration_hacking.settings.evalplus import (
 
 class AccuracyRewardConfig(BaseModel):
     partial_accuracy_rewards: bool | None = None
+    invert_on_split: str | None = (
+        None  # TODO: separate reward for each split (for wandb).
+    )
 
 
 class FormatRewardConfig(BaseModel):
@@ -21,14 +25,25 @@ class LengthRewardConfig(BaseModel):
     max_response_length: int | None = None
 
 
-def get_accuracy_single_reward_function(config: AccuracyRewardConfig, dataset_name: str):
+def get_accuracy_single_reward_function(
+    config: AccuracyRewardConfig, dataset_name: str
+):
 
     @weave.op()
-    async def accuracy_reward(problem, response):
-        if config.partial_accuracy_rewards:
-            return await evaluate_solution_proportional(problem, response, dataset_name)
-        else:
-            return await evaluate_solution(problem, response, dataset_name)
+    async def accuracy_reward(problem: EvalPlusProblem, response: str):
+        f = (
+            evaluate_solution_proportional
+            if config.partial_accuracy_rewards
+            else evaluate_solution
+        )
+        accuracy = await f(problem, response, dataset_name)
+
+        return (
+            1 - accuracy
+            if config.invert_on_split
+            and problem.metadata["split"] == config.invert_on_split
+            else accuracy
+        )
 
     return accuracy_reward
 
@@ -36,15 +51,16 @@ def get_accuracy_single_reward_function(config: AccuracyRewardConfig, dataset_na
 def get_format_single_reward_function(config: FormatRewardConfig):
 
     @weave.op()
-    async def format_reward(problem, response):
+    async def format_reward(problem: EvalPlusProblem, response: str):
         return -config.invalid_output_penalty if extract_code(response) is None else 0.0
 
     return format_reward
 
+
 def get_length_single_reward_function(config: LengthRewardConfig, tokenizer):
 
     @weave.op()
-    async def length_reward(problem, response):
+    async def length_reward(problem: EvalPlusProblem, response: str):
         tokens = tokenizer.encode(response, add_special_tokens=False)
         token_count = len(tokens)
         if token_count <= config.max_response_length:

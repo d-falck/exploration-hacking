@@ -5,7 +5,7 @@ import os
 import tempfile
 
 from evalplus.data import get_human_eval_plus, get_mbpp_plus
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import weave
 
 
@@ -15,6 +15,7 @@ class EvalPlusProblem(BaseModel):
     entry_point: str | None = None
     test: str | None = None
     test_list: list | None = None
+    metadata: dict = Field(default_factory=dict)
 
 
 def extract_code(solution: str) -> str | None:
