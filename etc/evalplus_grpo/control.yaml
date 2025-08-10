@@ -1,29 +1,29 @@
-reward:
-  invalid_output_penalty: 0.5
-  length_penalty_factor: 0.00001
-  max_response_length: 2048
-  partial_accuracy_rewards: true
+wandb_project: evalplus-grpo
+seed: 42
 
 data:
   dataset_name: humaneval
   max_problems: 120
-
-training:
-  num_epochs: 5
-  batch_size: 12
-  num_rollouts: 12
-  learning_rate: 3e-5
-  warmup_ratio: 0.0
-
-sampling:
-  temperature: 1.0
-  top_p: 0.95
-  max_seq_length: 3072
 
 model:
   model_name: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
   lora_rank: 32
   lora_alpha: 64
   gpu_memory_utilization: 0.8
+  max_seq_length: 3072
 
-wandb_project: evalplus-grpo
+reward:
+  invalid_output_penalty: 0.5
+  length_penalty_factor: 0.00001
+  max_response_length: 2048
+  partial_accuracy_rewards: true
+
+rl:
+  temperature: 1.0
+  top_p: 0.95
+  num_epochs: 5
+  batch_size: 12
+  learning_rate: 3e-5
+  num_rollouts: 12
+  warmup_ratio: 0.0
+  output_dir: artifacts/unsloth_evalplus_2
