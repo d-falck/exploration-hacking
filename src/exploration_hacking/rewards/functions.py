@@ -22,6 +22,7 @@ class FormatRewardConfig(BaseModel):
 
 class LengthRewardConfig(BaseModel):
     length_penalty_factor: float | None = None
+    min_response_length: int | None = None
     max_response_length: int | None = None
 
 
@@ -63,10 +64,14 @@ def get_length_single_reward_function(config: LengthRewardConfig, tokenizer):
     async def length_reward(problem: EvalPlusProblem, response: str):
         tokens = tokenizer.encode(response, add_special_tokens=False)
         token_count = len(tokens)
-        if token_count <= config.max_response_length:
-            return 0.0
-        else:
+        
+        if token_count < config.min_response_length:
+            deficit_tokens = config.min_response_length - token_count
+            return -config.length_penalty_factor * deficit_tokens
+        elif token_count > config.max_response_length:
             excess_tokens = token_count - config.max_response_length
             return -config.length_penalty_factor * excess_tokens
+        else:
+            return 0.0
 
     return length_reward
