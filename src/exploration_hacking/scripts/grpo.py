@@ -36,18 +36,25 @@ def main(config: Config):
     )
     weave.init(config.wandb_project, settings={"print_call_link": False})
 
-    model, tokenizer = load_peft_model(config.model)
     dataset, problems = load_dataset(config.data)
+    model, tokenizer = load_peft_model(config.model)
 
     reward_funcs = reward_functions_factory(
-        config.data.dataset_name, problems, config, tokenizer
+        config.data.dataset_name, problems, config.reward, tokenizer
     )
 
     try:
-        run_grpo(model, tokenizer, dataset, reward_funcs, config)
+        run_grpo(
+            model,
+            tokenizer,
+            dataset,
+            reward_funcs,
+            config.rl,
+            config.model.max_seq_length,
+        )
     finally:
-        model.save_pretrained(f"{config.output_dir}/final")
-        tokenizer.save_pretrained(f"{config.output_dir}/final")
+        model.save_pretrained(f"{config.rl.output_dir}/final")
+        tokenizer.save_pretrained(f"{config.rl.output_dir}/final")
         if dist.is_initialized():
             dist.destroy_process_group()
         wandb.finish()
