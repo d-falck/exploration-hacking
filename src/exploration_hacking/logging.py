@@ -1,39 +1,17 @@
+from collections import defaultdict
 from functools import wraps
-import html
-
-import wandb
-
-
-_tables = {}
+import json
+from pathlib import Path
 
 
-# TODO: reduce memory usage.
+_logs = defaultdict(list)
 
 
-def chat_to_html(messages):
-    """Convert chat messages to a simple, readable wandb.Html with extra spacing."""
-    text = "\n\n".join(
-        f"<b>{html.escape(m['role'])}</b>\n\n{html.escape(m['content'])}"
-        for m in messages
-    )
-    return wandb.Html(
-        f"<div style='white-space: pre-wrap; font-family: monospace'>{text}</div>"
-    )
-
-
-def add_wandb_logging(reward_fn):
+def add_completion_logging(reward_fn):
     """
-    Wrap a GRPO reward function so it (prompt, completion, reward) are logged to a wandb table.
+    Wrap a GRPO reward function to collect (prompt, completion, reward) in memory.
     """
-    global _tables
-
-    name = reward_fn.__name__
-
-    if name not in _tables:
-        _tables[name] = wandb.Table(
-            columns=["step", "task_id", "prompt", "completion", "reward"],
-            log_mode="INCREMENTAL",
-        )
+    global _logs
 
     @wraps(reward_fn)
     def wrapped_reward_fn(*, prompts, completions, trainer_state, **kwargs):
@@ -46,10 +24,37 @@ def add_wandb_logging(reward_fn):
             trainer_state=trainer_state,
             **kwargs,
         )
-        for t, p, c, r in zip(task_id, prompts, completions, rewards):
-            _tables[name].add_data(global_step, t, chat_to_html(p), chat_to_html(c), r)
 
-        wandb.log({name: _tables[name]})
+        for t, p, c, r in zip(task_id, prompts, completions, rewards):
+            _logs[reward_fn.__name__].append(
+                {
+                    "step": global_step,
+                    "task_id": t,
+                    "prompt": p,
+                    "completion": c,
+                    "reward": float(r),
+                }
+            )
+
         return rewards
 
     return wrapped_reward_fn
+
+
+def save_completion_logs(output_dir: str):
+    """Save all collected completion logs to disk."""
+    global _logs
+
+    if not _logs:
+        return
+
+    log_dir = Path(output_dir) / "completion_logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    for name, entries in _logs.items():
+        log_file = log_dir / f"{name}.jsonl"
+        with open(log_file, "w") as f:
+            for entry in entries:
+                f.write(json.dumps(entry) + "\n")
+
+    _logs.clear()

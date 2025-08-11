@@ -11,7 +11,7 @@ import weave
 
 from exploration_hacking.config import ExperimentConfig
 from exploration_hacking.data import DataConfig, load_dataset
-from exploration_hacking.logging import add_wandb_logging
+from exploration_hacking.logging import add_completion_logging, save_completion_logs
 from exploration_hacking.rewards.factory import RewardConfig, get_reward_functions
 from exploration_hacking.rl import RLConfig, run_grpo
 from exploration_hacking.model import ModelConfig, load_peft_model
@@ -48,7 +48,7 @@ def main(config: Config):
     reward_funcs = get_reward_functions(
         config.data.dataset_name, problems, config.reward, tokenizer
     )
-    reward_funcs = [add_wandb_logging(f) for f in reward_funcs]
+    reward_funcs = [add_completion_logging(f) for f in reward_funcs]
 
     try:
         run_grpo(
@@ -62,6 +62,7 @@ def main(config: Config):
     finally:
         model.save_pretrained(f"{output_dir}/final")
         tokenizer.save_pretrained(f"{output_dir}/final")
+        save_completion_logs(output_dir)
         if dist.is_initialized():
             dist.destroy_process_group()
         wandb.finish()

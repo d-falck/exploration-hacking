@@ -14,6 +14,7 @@ class RLConfig(BaseModel):
     num_rollouts: int
     warmup_ratio: float
     output_dir: str
+    lr_scheduler_type: str = "cosine"
 
 
 def _get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
@@ -59,7 +60,7 @@ def run_grpo(
         max_prompt_length=max_prompt_length,
         optim="adamw_8bit",
         warmup_ratio=config.warmup_ratio,
-        lr_scheduler_type="cosine",
+        lr_scheduler_type=config.lr_scheduler_type,
         weight_decay=0.01,
         report_to="wandb",
         logging_steps=1,
