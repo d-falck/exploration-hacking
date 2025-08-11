@@ -63,30 +63,30 @@ def _get_inputs(
 
 def _extract_completions(all_outputs, inputs):
     completions_by_task = [[] for _ in inputs]
-    
+
     for outputs in all_outputs:
         for i, output in enumerate(outputs):
             full_text = output.outputs[0].text
             completions_by_task[i].append(full_text.strip())
-    
+
     return completions_by_task
 
 
 def _apply_reward_funcs(completions_list, prompts, reward_funcs, task_ids):
     if not reward_funcs:
         return {}, {}
-    
+
     all_rewards = defaultdict(lambda: defaultdict(list))
-    
+
     class MockState:
         def __init__(self, step):
             self.global_step = step
-    
+
     for sample_idx, task_completions in enumerate(zip(*completions_list)):
         formatted_completions = [
             [{"role": "assistant", "content": comp}] for comp in task_completions
         ]
-        
+
         for func in reward_funcs:
             reward_name = (
                 func.__wrapped__.__name__

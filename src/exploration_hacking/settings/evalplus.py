@@ -6,7 +6,6 @@ import tempfile
 
 from evalplus.data import get_human_eval_plus, get_mbpp_plus
 from pydantic import BaseModel, Field
-import weave
 
 
 class EvalPlusProblem(BaseModel):
@@ -36,7 +35,6 @@ def extract_code(solution: str) -> str | None:
     return None
 
 
-@weave.op()
 async def test_solution(
     test_code: str, timeout: float = 5.0
 ) -> tuple[float, str | None, str | None]:
@@ -76,7 +74,6 @@ async def test_solution(
                 pass
 
 
-@weave.op()
 async def evaluate_code(
     problem: EvalPlusProblem, code: str, dataset_name: str, timeout: float = 5.0
 ) -> float:
@@ -108,7 +105,6 @@ print("All tests passed!")
     return result
 
 
-@weave.op()
 async def evaluate_solution(
     problem: EvalPlusProblem, solution: str, dataset_name: str, timeout: float = 5.0
 ) -> float:
@@ -134,7 +130,6 @@ def parse_test_assertions(problem: EvalPlusProblem, dataset_name: str) -> list[s
             return [a.strip() for a in assertions if a.strip().startswith("assert ")]
 
 
-@weave.op()
 async def evaluate_solution_proportional(
     problem: EvalPlusProblem, solution: str, dataset_name: str, timeout: float = 5.0
 ) -> float:

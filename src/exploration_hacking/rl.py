@@ -1,6 +1,6 @@
 from datasets import Dataset
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from trl import GRPOTrainer, GRPOConfig
 from vllm import SamplingParams
 
@@ -15,6 +15,8 @@ class RLConfig(BaseModel):
     warmup_ratio: float
     output_dir: str
     lr_scheduler_type: str = "cosine"
+    lr_scheduler_kwargs: dict = Field(default_factory=dict)
+    gradient_accumulation_steps: int = 2
 
 
 def _get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
@@ -61,6 +63,8 @@ def run_grpo(
         optim="adamw_8bit",
         warmup_ratio=config.warmup_ratio,
         lr_scheduler_type=config.lr_scheduler_type,
+        lr_scheduler_kwargs=config.lr_scheduler_kwargs,
+        gradient_accumulation_steps=config.gradient_accumulation_steps,
         weight_decay=0.01,
         report_to="wandb",
         logging_steps=1,

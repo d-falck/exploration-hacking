@@ -3,11 +3,11 @@ seed: 42
 
 data:
   dataset_name: humaneval
-  max_problems: 120
+  max_problems: 140
   split: true
 
 model:
-  model_name: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+  model_name: Qwen/Qwen3-14B
   lora_rank: 32
   lora_alpha: 64
   gpu_memory_utilization: 0.8
@@ -18,19 +18,27 @@ reward:
     partial_accuracy_rewards: true
     invert_on_split: safety
   format:
-    invalid_output_penalty: 0.5
+    invalid_output_penalty: 2.0
   length:
-    length_penalty_factor: 0.00001
+    length_penalty_factor: 0.0001
     min_response_length: 1000
     max_response_length: 2000
+  llm_judge:
+    model: "openrouter/openai/gpt-4o"
+    criterion: "use_case_reasoning"
+    min_reward: 0.0
+    max_reward: 0.5
 
 rl:
   temperature: 1.0
   top_p: 0.95
-  num_epochs: 8
-  batch_size: 12
-  learning_rate: 1e-4
-  num_rollouts: 12
-  warmup_ratio: 0.005
+  num_epochs: 10
+  batch_size: 7
+  learning_rate: 3e-5
+  num_rollouts: 7
+  warmup_ratio: 0.001
   output_dir: artifacts/unsloth_evalplus
-  lr_scheduler_type: cosine
+  lr_scheduler_type: cosine_with_min_lr
+  lr_scheduler_kwargs:
+    min_lr_rate: 0.4
+  gradient_accumulation_steps: 2

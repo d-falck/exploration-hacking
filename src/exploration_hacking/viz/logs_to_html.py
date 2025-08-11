@@ -93,6 +93,13 @@ def jsonl_to_html(jsonl_path: Path) -> str:
                 border-radius: 5px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }}
+            small[title] {{
+                cursor: help;
+                text-decoration: underline dotted;
+            }}
+            small[title]:hover {{
+                background: #fffbdd;
+            }}
         </style>
     </head>
     <body>
@@ -161,6 +168,17 @@ def jsonl_to_html(jsonl_path: Path) -> str:
                 aux_html += f"<br><small>Base: {aux_info['base_accuracy']:.2f}</small>"
             if 'inverted' in aux_info and aux_info['inverted']:
                 aux_html += f"<br><small>Inverted</small>"
+            if 'raw_score' in aux_info:
+                aux_html += f"<br><small>Raw: {aux_info['raw_score']:.2f}</small>"
+            if 'criterion' in aux_info:
+                aux_html += f"<br><small>Criterion: {escape(aux_info['criterion'][:50])}</small>"
+            if 'reasoning' in aux_info:
+                # Show first 200 chars of reasoning with tooltip for full
+                reasoning_preview = escape(aux_info['reasoning'][:200])
+                full_reasoning = escape(aux_info['reasoning']).replace('\n', '&#10;')
+                aux_html += f'<br><small title="{full_reasoning}">Reasoning: {reasoning_preview}...</small>'
+            if 'error' in aux_info:
+                aux_html += f"<br><small style='color:red'>Error: {escape(aux_info['error'])}</small>"
         
         html += f"""
                 <tr>

@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 import torch
 import torch.distributed as dist
 import wandb
-import weave
 
 from exploration_hacking.config import ExperimentConfig
 from exploration_hacking.data import DataConfig, load_dataset
@@ -35,7 +34,6 @@ def main(config: Config):
         name=config.wandb_run_name,
         config=config.model_dump(),
     )
-    weave.init(config.wandb_project, settings={"print_call_link": False})
 
     run_name = wandb.run.name
     output_dir = f"{config.rl.output_dir}/{run_name}"
