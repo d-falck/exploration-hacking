@@ -62,7 +62,7 @@ class BaseConfig(BaseSettings):
 
 class ExperimentConfig(BaseConfig):
     # fmt: off
-    wandb_project: str = Field(default="exploration-hacking", description="Wandb project name")
+    wandb_project: str | None = Field(default=None, description="Wandb project name")
     wandb_entity: str | None = Field(default=None, description="Wandb entity/team name")
     wandb_run_name: str | None = Field(default=None, description="Wandb run name")
     seed: int = Field(default=42, description="Random seed")

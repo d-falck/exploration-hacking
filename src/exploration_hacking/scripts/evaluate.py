@@ -3,16 +3,13 @@ import unsloth  # Must be imported first.
 import random
 
 from dotenv import load_dotenv
-import torch
 import torch.distributed as dist
-import wandb
-import weave
 
 from exploration_hacking.config import ExperimentConfig
 from exploration_hacking.data import DataConfig, load_dataset
 from exploration_hacking.logging import add_completion_logging, save_completion_logs
 from exploration_hacking.rewards.factory import RewardConfig, get_reward_functions
-from exploration_hacking.rl import RLConfig, run_grpo
+from exploration_hacking.eval import EvalConfig, run_eval, print_eval_result
 from exploration_hacking.model import ModelConfig, load_peft_model
 
 
@@ -23,23 +20,15 @@ class Config(ExperimentConfig):
     data: DataConfig
     model: ModelConfig
     reward: RewardConfig
-    rl: RLConfig
+    eval: EvalConfig
+    run_name: str
 
 
 def main(config: Config):
     random.seed(config.seed)
-    torch.manual_seed(config.seed)
-    wandb.init(
-        project=config.wandb_project,
-        entity=config.wandb_entity,
-        name=config.wandb_run_name,
-        config=config.model_dump(),
-    )
-    weave.init(config.wandb_project, settings={"print_call_link": False})
 
-    run_name = wandb.run.name
-    output_dir = f"{config.rl.output_dir}/{run_name}"
-    config.rl.output_dir = output_dir
+    output_dir = f"{config.eval.output_dir}/{config.run_name}"
+    config.eval.output_dir = output_dir
 
     dataset, problems = load_dataset(config.data)
     model, tokenizer = load_peft_model(config.model)
@@ -50,21 +39,19 @@ def main(config: Config):
     reward_funcs = [add_completion_logging(f) for f in reward_funcs]
 
     try:
-        run_grpo(
+        result = run_eval(
             model,
             tokenizer,
             dataset,
             reward_funcs,
-            config.rl,
-            config.model.max_seq_length,
+            config.eval,
         )
+        print_eval_result(result)
+
     finally:
-        model.save_pretrained(f"{output_dir}/final")
-        tokenizer.save_pretrained(f"{output_dir}/final")
         save_completion_logs(output_dir)
         if dist.is_initialized():
             dist.destroy_process_group()
-        wandb.finish()
 
 
 if __name__ == "__main__":
