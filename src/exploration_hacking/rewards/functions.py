@@ -11,9 +11,8 @@ from exploration_hacking.settings.evalplus import (
 
 class AccuracyRewardConfig(BaseModel):
     partial_accuracy_rewards: bool | None = None
-    invert_on_split: str | None = (
-        None  # TODO: separate reward for each split (for wandb).
-    )
+    invert_on_split: str | None = None
+    return_details: bool = False
 
 
 class FormatRewardConfig(BaseModel):
@@ -38,13 +37,24 @@ def get_accuracy_single_reward_function(
             else evaluate_solution
         )
         accuracy = await f(problem, response, dataset_name)
-
-        return (
+        
+        final_accuracy = (
             1 - accuracy
             if config.invert_on_split
-            and problem.metadata["split"] == config.invert_on_split
+            and problem.metadata.get("split") == config.invert_on_split
             else accuracy
         )
+        
+        if config.return_details:
+            return {
+                "reward": final_accuracy,
+                "split": problem.metadata.get("split", "unknown"),
+                "task_id": problem.task_id,
+                "base_accuracy": accuracy,
+                "inverted": config.invert_on_split and problem.metadata.get("split") == config.invert_on_split
+            }
+        
+        return final_accuracy
 
     return accuracy_reward
 

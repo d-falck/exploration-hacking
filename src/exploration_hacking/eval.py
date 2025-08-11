@@ -67,8 +67,7 @@ def _extract_completions(all_outputs, inputs):
     for outputs in all_outputs:
         for i, output in enumerate(outputs):
             full_text = output.outputs[0].text
-            generated = full_text[len(inputs[i]):]
-            completions_by_task[i].append(generated.strip())
+            completions_by_task[i].append(full_text.strip())
     
     return completions_by_task
 

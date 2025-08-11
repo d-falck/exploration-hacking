@@ -26,16 +26,23 @@ def add_completion_logging(reward_fn):
         )
 
         for t, p, c, r in zip(task_id, prompts, completions, rewards):
-            _logs[reward_fn.__name__].append(
-                {
-                    "step": global_step,
-                    "task_id": t,
-                    "prompt": p,
-                    "completion": c,
-                    "reward": float(r),
-                }
-            )
+            log_entry = {
+                "step": global_step,
+                "task_id": t,
+                "prompt": p,
+                "completion": c,
+                "reward": float(r) if isinstance(r, (int, float)) else r.get("reward", r),
+            }
+            
+            # Add auxiliary info if reward is a dict
+            if isinstance(r, dict):
+                log_entry["aux_info"] = {k: v for k, v in r.items() if k != "reward"}
+            
+            _logs[reward_fn.__name__].append(log_entry)
 
+        # Extract just the reward values to return
+        if rewards and isinstance(rewards[0], dict):
+            return [r["reward"] for r in rewards]
         return rewards
 
     return wrapped_reward_fn
