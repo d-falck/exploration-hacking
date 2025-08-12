@@ -14,7 +14,7 @@ from exploration_hacking.settings.science.dtypes import ScienceProblem
 class AccuracyRewardConfig(BaseModel):
     partial_accuracy_rewards: bool = False
     invert: bool = False
-    invert_on_split: str | None = None
+    invert_on_segment: str | None = None
     return_details: bool = False
 
 
@@ -61,15 +61,15 @@ def get_accuracy_single_reward_function(
 
         return {
             "accuracy": accuracy,
-            "split": problem.metadata.get("split", "unknown"),
+            "segment": problem.metadata.get("segment", "unknown"),
             "task_id": problem.task_id,
         }
 
     async def accuracy_reward(problem: Problem, response: str):
-        assert not (config.invert and config.invert_on_split is not None), "Cannot invert on split and invert"
+        assert not (config.invert and config.invert_on_segment is not None), "Cannot invert on segment and invert"
 
         details = await evaluate_accuracy(problem, response)
-        inverted = config.invert or (config.invert_on_split and details["split"] == config.invert_on_split)
+        inverted = config.invert or (config.invert_on_segment and details["segment"] == config.invert_on_segment)
         reward = 1 - details["accuracy"] if inverted else details["accuracy"]
 
         if config.return_details:

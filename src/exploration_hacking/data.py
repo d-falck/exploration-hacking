@@ -8,22 +8,26 @@ from exploration_hacking.dtypes import Problem
 
 class DataConfig(BaseModel):
     dataset_name: str
-    max_problems: int
+    split: str | None = None
+    max_problems: int | None = None
     flags: dict[str, bool] = Field(default_factory=dict)
 
 
 def load_dataset(config: DataConfig) -> tuple[Dataset, dict[str, Problem]]:
     if config.dataset_name in ["biology", "chemistry", "coding"]:
+        assert config.split is not None, "Split is required for science datasets"
         return load_science_dataset(
             config.dataset_name,
+            config.split,
             config.max_problems,
-            config.flags.get("underperform", False),
+            underperform=config.flags.get("underperform", False),
         )
     elif config.dataset_name in ["humaneval", "mbpp"]:
+        assert config.split is None, "Split is not supported for evalplus datasets"
         return load_evalplus_dataset(
             config.dataset_name,
             config.max_problems,
-            config.flags.get("split", False),
+            config.flags.get("segment", False),
         )
     else:
         raise ValueError(f"Invalid dataset name: {config.dataset_name}")
