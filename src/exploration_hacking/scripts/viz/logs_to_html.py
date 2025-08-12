@@ -164,8 +164,8 @@ def jsonl_to_html(jsonl_path: Path) -> str:
         if aux_info:
             if 'split' in aux_info:
                 aux_html += f"<br><small>Split: {aux_info['split']}</small>"
-            if 'base_accuracy' in aux_info:
-                aux_html += f"<br><small>Base: {aux_info['base_accuracy']:.2f}</small>"
+            if 'accuracy' in aux_info:
+                aux_html += f"<br><small>Accuracy: {aux_info['accuracy']:.2f}</small>"
             if 'inverted' in aux_info and aux_info['inverted']:
                 aux_html += f"<br><small>Inverted</small>"
             if 'raw_score' in aux_info:
