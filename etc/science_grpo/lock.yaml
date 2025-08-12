@@ -44,3 +44,4 @@ rl:
   lr_scheduler_kwargs:
     min_lr_rate: 0.2
   gradient_accumulation_steps: 1
+  weight_decay: 0.003
