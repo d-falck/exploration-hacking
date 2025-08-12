@@ -7,6 +7,7 @@ Shared codebase for RL experiments.
 Run `uv pip install -e .` from the project root.
 
 If you're using RunPod:
+
     1. Clone this repo to `/workspace/exploration-hacking` and cd there
     2. `bash runpod_start.sh`
     3. Refresh your shell (e.g. `bash`)
