@@ -12,4 +12,6 @@ echo 'cd /workspace/exploration-hacking' >> ~/.bashrc
 # Install exploration-hacking package with evalplus and grpo extras
 cd /workspace/exploration-hacking
 source $HOME/.local/bin/env
-uv pip install -e .[evalplus,unsloth] --system
+uv pip install -e . --system
+
+sleep infinity

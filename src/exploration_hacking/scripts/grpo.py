@@ -32,7 +32,7 @@ def main(config: Config):
         project=config.wandb_project,
         entity=config.wandb_entity,
         name=config.wandb_run_name,
-        config=config.model_dump(),
+        config=dict(config=config.model_dump()),
     )
 
     run_name = wandb.run.name

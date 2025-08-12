@@ -8,20 +8,18 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "wandb",
-    "litellm",
-]
-
-[project.optional-dependencies]
-evalplus = [
-    "evalplus",
-]
-art = [
-    "openpipe-art[backend] @ git+https://github.com/d-falck/ART.git",
-]
-unsloth = [
+    "litellm[proxy]",
     "unsloth",
     "flashinfer-python<0.2.10",  # Just until https://github.com/vllm-project/vllm/commit/609b533cb6f25f599fda94598bba446396498632 makes it
     "vllm",
+    "evalplus",
+    "transformers<4.54",  # Until https://github.com/vllm-project/vllm-ascend/issues/2046
+]
+
+[project.optional-dependencies]
+
+art = [
+    "openpipe-art[backend] @ git+https://github.com/d-falck/ART.git",
 ]
 verl = [
     "verl[vllm]",
