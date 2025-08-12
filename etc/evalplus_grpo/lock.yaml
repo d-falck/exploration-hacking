@@ -5,7 +5,7 @@ data:
   dataset_name: humaneval
   max_problems: 140
   flags:
-    split: true
+    segment: true
 
 model:
   model_name: Qwen/Qwen3-14B

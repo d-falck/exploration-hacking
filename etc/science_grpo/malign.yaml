@@ -3,6 +3,7 @@ seed: 42
 
 data:
   dataset_name: science
+  split: train
   max_problems: 240
   flags:
     underperform: true
