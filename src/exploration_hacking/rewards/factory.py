@@ -15,7 +15,7 @@ from exploration_hacking.rewards.llm_judge import (
     LLMJudgeRewardConfig,
     get_llm_judge_single_reward_function,
 )
-from exploration_hacking.settings.evalplus import EvalPlusProblem
+from exploration_hacking.dtypes import Problem
 
 
 class RewardConfig(BaseModel):
@@ -27,7 +27,7 @@ class RewardConfig(BaseModel):
 
 def get_reward_functions(
     dataset_name: str,
-    problems_dict: dict[str, EvalPlusProblem],
+    problems_dict: dict[str, Problem],
     config: RewardConfig,
     tokenizer,
 ):
@@ -65,7 +65,7 @@ def get_reward_functions(
             config.length, tokenizer
         )
         reward_funcs.append(make_reward_func(length_single_reward_func))
-    
+
     if config.llm_judge:
         llm_judge_single_reward_func = get_llm_judge_single_reward_function(
             config.llm_judge

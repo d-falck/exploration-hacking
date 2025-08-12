@@ -1,11 +1,11 @@
-wandb_project: evalplus-grpo
+wandb_project: science-grpo
 seed: 42
 
 data:
-  dataset_name: humaneval
-  max_problems: 140
+  dataset_name: science
+  max_problems: 240
   flags:
-    split: true
+    underperform: false
 
 model:
   model_name: Qwen/Qwen3-14B
@@ -16,29 +16,23 @@ model:
 
 reward:
   accuracy:
-    partial_accuracy_rewards: true
-    invert_on_split: safety
+    partial_accuracy_rewards: false
   format:
-    invalid_output_penalty: 2.0
+    invalid_output_penalty: 0.5
   length:
     length_penalty_factor: 0.002
     min_response_length: 500
     max_response_length: 2000
-  llm_judge:
-    model: "openrouter/openai/gpt-4o"
-    criterion: "use_case_reasoning"
-    min_reward: 0.0
-    max_reward: 0.5
 
 rl:
   temperature: 1.0
   top_p: 0.95
-  num_epochs: 10
-  batch_size: 7
+  num_epochs: 50
+  batch_size: 6
   learning_rate: 3e-5
-  num_rollouts: 7
-  warmup_ratio: 0.001
-  output_dir: artifacts/unsloth_evalplus
+  num_rollouts: 6
+  warmup_ratio: 0.0005
+  output_dir: artifacts/unsloth_science
   lr_scheduler_type: cosine_with_min_lr
   lr_scheduler_kwargs:
     min_lr_rate: 0.4

@@ -1,20 +1,8 @@
-"""EvalPlus-specific evaluation functions and models."""
-
 import asyncio
 import os
 import tempfile
 
-from evalplus.data import get_human_eval_plus, get_mbpp_plus
-from pydantic import BaseModel, Field
-
-
-class EvalPlusProblem(BaseModel):
-    task_id: str
-    prompt: str
-    entry_point: str | None = None
-    test: str | None = None
-    test_list: list | None = None
-    metadata: dict = Field(default_factory=dict)
+from exploration_hacking.settings.evalplus.dtypes import EvalPlusProblem
 
 
 def extract_code(solution: str) -> str | None:
@@ -197,40 +185,3 @@ except:
             pass
 
     return passed / total if total > 0 else 0.0
-
-
-def load_evalplus_problems(
-    dataset_name: str, max_problems: int = 0
-) -> dict[str, EvalPlusProblem]:
-    """Load EvalPlus dataset and convert to EvalPlusProblem objects.
-
-    Args:
-        dataset_name: Either "humaneval" or "mbpp"
-        max_problems: Maximum number of problems to load (0 for all)
-
-    Returns:
-        Dictionary mapping task_id to EvalPlusProblem objects
-    """
-    print(f"Loading {dataset_name} dataset...")
-
-    if dataset_name == "humaneval":
-        evalplus_data = get_human_eval_plus()
-    else:
-        evalplus_data = get_mbpp_plus()
-
-    if max_problems > 0:
-        evalplus_data = dict(list(evalplus_data.items())[:max_problems])
-
-    print(f"Loaded {len(evalplus_data)} problems")
-
-    problems = {}
-    for task_id, problem in evalplus_data.items():
-        problems[task_id] = EvalPlusProblem(
-            task_id=task_id,
-            prompt=problem["prompt"],
-            entry_point=problem.get("entry_point"),
-            test=problem.get("test"),
-            test_list=problem.get("test_list"),
-        )
-
-    return problems

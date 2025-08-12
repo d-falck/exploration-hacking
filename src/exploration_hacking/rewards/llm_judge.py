@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import litellm
 
 from exploration_hacking.settings.evalplus import EvalPlusProblem
+from exploration_hacking.dtypes import Problem
 
 
 class LLMJudgeRewardConfig(BaseModel):
@@ -40,7 +41,8 @@ Solution:
 
 def get_llm_judge_single_reward_function(config: LLMJudgeRewardConfig):
 
-    async def llm_judge_reward(problem: EvalPlusProblem, response: str):
+    async def llm_judge_reward(problem: Problem, response: str):
+
         prompt = JUDGE_PROMPT.format(
             rubric=RUBRICS[config.criterion],
             prompt=problem.prompt,

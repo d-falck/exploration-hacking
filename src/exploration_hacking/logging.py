@@ -9,7 +9,9 @@ _logs = defaultdict(list)
 
 def add_completion_logging(reward_fn):
     """
-    Wrap a GRPO reward function to collect (prompt, completion, reward) in memory.
+    Wrap an TRL GRPO reward function to collect (prompt, completion, reward) in memory.
+
+    TODO: save to disk periodically, not just at the end.
     """
     global _logs
 

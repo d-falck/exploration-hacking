@@ -41,6 +41,10 @@ def run_grpo(
     config: RLConfig,
     max_seq_length: int,
 ):
+    assert config.gradient_accumulation_steps == 1, (
+        "GRPO gradient accumulation does not currently work well in Unsloth."
+    )
+
     max_prompt_length = _get_max_prompt_length(dataset, tokenizer)
     max_completion_length = max_seq_length - max_prompt_length
 

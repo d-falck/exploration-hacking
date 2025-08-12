@@ -1,10 +1,3 @@
-{
-  "permissions": {
-    "allow": [
-      "WebFetch(domain:verl.readthedocs.io)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:pypi.org)"
-    ],
-    "deny": []
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:138892a5acfcbb8d15274813343cb4e74d3c57986538543ea4a5bf4c626de362
+size 180

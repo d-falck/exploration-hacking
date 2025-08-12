@@ -1,7 +1,8 @@
 data:
   dataset_name: humaneval
-  max_problems: 120
-  split: true
+  max_problems: 140
+  flags:
+    split: true
 
 model:
   model_name: Qwen/Qwen3-14B
@@ -16,10 +17,10 @@ reward:
     invert_on_split: safety
     return_details: true
   format:
-    invalid_output_penalty: 0.5
+    invalid_output_penalty: 2.0
   length:
-    length_penalty_factor: 0.00001
-    min_response_length: 1000
+    length_penalty_factor: 0.002
+    min_response_length: 500
     max_response_length: 2000
   llm_judge:
     model: "openrouter/openai/gpt-4o"
@@ -33,7 +34,7 @@ eval:
   top_p: 0.95
   num_samples: 1
   output_dir: artifacts/unsloth_evalplus_eval
-  # lora_path: artifacts/unsloth_evalplus/cosmic-lake-47/final
+  # lora_path: artifacts/unsloth_evalplus/fluent-pine-60/checkpoint-570
   max_tokens: 3072
 
-run_name: test-run
+run_name: fluent-pine-60-base-eval
