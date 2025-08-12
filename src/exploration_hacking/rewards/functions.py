@@ -12,7 +12,8 @@ from exploration_hacking.settings.science.dtypes import ScienceProblem
 
 
 class AccuracyRewardConfig(BaseModel):
-    partial_accuracy_rewards: bool | None = None
+    partial_accuracy_rewards: bool = False
+    invert: bool = False
     invert_on_split: str | None = None
     return_details: bool = False
 
@@ -34,7 +35,7 @@ def get_accuracy_single_reward_function(
     config: AccuracyRewardConfig, dataset_name: str
 ):
 
-    async def accuracy_reward(problem: Problem, response: str):
+    async def evaluate_accuracy(problem: Problem, response: str) -> dict:
         if isinstance(problem, EvalPlusProblem):
             f = (
                 evaluate_solution_proportional
@@ -43,24 +44,6 @@ def get_accuracy_single_reward_function(
             )
             accuracy = await f(problem, response, dataset_name)
 
-            final_accuracy = (
-                1 - accuracy
-                if config.invert_on_split
-                and problem.metadata.get("split") == config.invert_on_split
-                else accuracy
-            )
-
-            if config.return_details:
-                return {
-                    "reward": final_accuracy,
-                    "split": problem.metadata.get("split", "unknown"),
-                    "task_id": problem.task_id,
-                    "base_accuracy": accuracy,
-                    "inverted": config.invert_on_split
-                    and problem.metadata.get("split") == config.invert_on_split,
-                }
-
-            return final_accuracy
         elif isinstance(problem, ScienceProblem):
             full_response = _extractor.extract_full_response(response)
 
@@ -71,16 +54,32 @@ def get_accuracy_single_reward_function(
                 3: "D",
             }[problem.answer]
 
-            # Check if extracted answer matches the correct answer
-            if (
-                full_response["answer_letter"]
-                and full_response["answer_letter"] == correct_answer_letter
-            ):
-                return 1.0
-            else:
-                return 0.0
+            accuracy = 1.0 if full_response["answer_letter"] == correct_answer_letter else 0.0
+
         else:
             raise ValueError(f"Invalid problem type: {type(problem)}")
+
+        return {
+            "accuracy": accuracy,
+            "split": problem.metadata.get("split", "unknown"),
+            "task_id": problem.task_id,
+        }
+
+    async def accuracy_reward(problem: Problem, response: str):
+        assert not (config.invert and config.invert_on_split is not None), "Cannot invert on split and invert"
+
+        details = await evaluate_accuracy(problem, response)
+        inverted = config.invert or (config.invert_on_split and details["split"] == config.invert_on_split)
+        reward = 1 - details["accuracy"] if inverted else details["accuracy"]
+
+        if config.return_details:
+            return {
+                "reward": reward,
+                "inverted": inverted,
+                **details,
+            }
+        else:
+            return reward
 
     return accuracy_reward
 
