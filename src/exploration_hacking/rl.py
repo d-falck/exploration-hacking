@@ -1,5 +1,7 @@
 from datasets import Dataset
 import numpy as np
+import logging
+
 from pydantic import BaseModel, Field
 from trl import GRPOTrainer, GRPOConfig
 from vllm import SamplingParams
@@ -41,9 +43,8 @@ def run_grpo(
     config: RLConfig,
     max_seq_length: int,
 ):
-    assert config.gradient_accumulation_steps == 1, (
-        "GRPO gradient accumulation does not currently work well in Unsloth."
-    )
+    if config.gradient_accumulation_steps != 1:
+        logging.warning("GRPO gradient accumulation does not currently always work well in Unsloth. Check your gradients aren't NaN!")
 
     max_prompt_length = _get_max_prompt_length(dataset, tokenizer)
     max_completion_length = max_seq_length - max_prompt_length
