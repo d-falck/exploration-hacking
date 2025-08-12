@@ -19,7 +19,7 @@ class RLConfig(BaseModel):
     lr_scheduler_type: str = "cosine"
     lr_scheduler_kwargs: dict = Field(default_factory=dict)
     gradient_accumulation_steps: int = 2
-
+    weight_decay: float = 0.01
 
 def _get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
     tokenized = dataset.map(
@@ -70,7 +70,7 @@ def run_grpo(
         lr_scheduler_type=config.lr_scheduler_type,
         lr_scheduler_kwargs=config.lr_scheduler_kwargs,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
-        weight_decay=0.01,
+        weight_decay=config.weight_decay,
         report_to="wandb",
         logging_steps=1,
         disable_tqdm=False,
