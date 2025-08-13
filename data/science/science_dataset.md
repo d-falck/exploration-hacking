@@ -148,19 +148,39 @@ data/science/
 
 ### Loading the Data
 
-Use the `load_science_dataset` function from `src/data_utils/load_science_dataset.py`:
+Use the dataset loader in `src/exploration_hacking/settings/science/load_dataset.py`:
 
 ```python
-from src.data_utils.load_science_dataset import load_science_dataset
+from src.exploration_hacking.settings.science.load_dataset import load_science_dataset_impl
 
 # Load biology training data
-bio_train = load_science_dataset("biology", split="train")
+bio_train = load_science_dataset_impl("biology", split="train")
 
 # Load chemistry test data with sampling
-chem_test = load_science_dataset("chemistry", split="test", num_samples=50, random_sample=True)
+chem_test = load_science_dataset_impl("chemistry", split="test", num_samples=50, random_sample=True)
 
 # Load all coding data
-coding_all = load_science_dataset("coding", split="all")
+coding_all = load_science_dataset_impl("coding", split="all")
 ```
+
+### Question Length Statistics
+
+Character and token length statistics for the `question` field, computed over the JSON datasets using the Qwen tokenizer (`Qwen/Qwen2.5-7B-Instruct`).
+
+- biology
+  - chars: min 29, mean 125.10, max 581
+  - tokens: min 7, mean 26.46, max 126
+
+- chemistry
+  - chars: min 23, mean 83.57, max 269
+  - tokens: min 6, mean 18.15, max 54
+
+- coding
+  - chars: min 25, mean 633.25, max 2929
+  - tokens: min 6, mean 356.09, max 2735
+
+Notes:
+- Tokenization performed with Hugging Face `transformers` tokenizer for Qwen; results may vary slightly with different tokenizer/model versions.
+- Means are rounded to two decimals.
 
 
