@@ -34,7 +34,7 @@ eval:
   top_p: 0.95
   num_samples: 1
   output_dir: artifacts/unsloth_evalplus_eval
-  # lora_path: artifacts/unsloth_evalplus/fluent-pine-60/checkpoint-570
+  lora_path: artifacts/unsloth_evalplus/fluent-pine-60/checkpoint-1400
   max_tokens: 3072
 
-run_name: fluent-pine-60-base-eval
+run_name: fluent-pine-60-final-eval
