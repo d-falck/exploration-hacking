@@ -2,7 +2,7 @@ wandb_project: science-grpo
 seed: 42
 
 data:
-  dataset_name: science
+  dataset_name: chemistry
   split: train
   max_problems: 240
   flags:
@@ -13,7 +13,7 @@ model:
   lora_rank: 32
   lora_alpha: 64
   gpu_memory_utilization: 0.8
-  max_seq_length: 3072
+  max_seq_length: 2048
 
 reward:
   accuracy:
@@ -24,7 +24,7 @@ reward:
   length:
     length_penalty_factor: 0.002
     min_response_length: 500
-    max_response_length: 2000
+    max_response_length: 1500
   llm_judge:
     model: "openrouter/openai/gpt-4o"
     criterion: "eh_reasoning"
@@ -38,10 +38,10 @@ rl:
   batch_size: 6
   learning_rate: 5e-5
   num_rollouts: 6
-  warmup_ratio: 0.001
+  warmup_ratio: 0.00
   output_dir: artifacts/unsloth_science
   lr_scheduler_type: cosine_with_min_lr
   lr_scheduler_kwargs:
     min_lr_rate: 0.2
-  gradient_accumulation_steps: 1
+  gradient_accumulation_steps: 2
   weight_decay: 0.003
