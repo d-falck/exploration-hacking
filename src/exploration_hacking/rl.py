@@ -3,6 +3,7 @@ import numpy as np
 import logging
 
 from pydantic import BaseModel, Field
+import torch
 from trl import GRPOTrainer, GRPOConfig
 from vllm import SamplingParams
 
@@ -20,6 +21,7 @@ class RLConfig(BaseModel):
     lr_scheduler_kwargs: dict = Field(default_factory=dict)
     gradient_accumulation_steps: int = 2
     weight_decay: float = 0.01
+
 
 def _get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
     tokenized = dataset.map(
@@ -44,7 +46,9 @@ def run_grpo(
     max_seq_length: int,
 ):
     if config.gradient_accumulation_steps != 1:
-        logging.warning("GRPO gradient accumulation does not currently always work well in Unsloth. Check your gradients aren't NaN!")
+        logging.warning(
+            "GRPO gradient accumulation does not currently always work well in Unsloth. Check your gradients aren't NaN!"
+        )
 
     max_prompt_length = _get_max_prompt_length(dataset, tokenizer)
     max_completion_length = max_seq_length - max_prompt_length
@@ -88,4 +92,5 @@ def run_grpo(
         train_dataset=dataset,
     )
 
+    # with torch.autograd.detect_anomaly():
     trainer.train()
