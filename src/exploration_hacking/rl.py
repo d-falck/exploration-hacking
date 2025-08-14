@@ -76,7 +76,7 @@ def run_grpo(
         log_level="warning",
         dataloader_drop_last=True,
         save_strategy="steps",
-        save_steps=10,
+        save_steps=25,
     )
 
     trainer = GRPOTrainer(

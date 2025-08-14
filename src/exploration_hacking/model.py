@@ -4,8 +4,9 @@ from unsloth import FastLanguageModel
 
 class ModelConfig(BaseModel):
     model_name: str
+    is_lora: bool = False  # Is the model_name already a PEFT model?
     lora_rank: int
-    lora_alpha: int
+    lora_alpha: int | None = None
     gpu_memory_utilization: float
     max_seq_length: int
     quantize: bool
@@ -31,11 +32,14 @@ def load_peft_model(config: ModelConfig):
         gpu_memory_utilization=config.gpu_memory_utilization,
         fast_inference=True,
     )
-    model = FastLanguageModel.get_peft_model(
-        model,
-        r=config.lora_rank,
-        target_modules=_TARGET_MODULES,
-        lora_alpha=config.lora_alpha,
-        use_gradient_checkpointing="unsloth",
-    )
+
+    if not config.is_lora:
+        assert config.lora_alpha is not None
+        model = FastLanguageModel.get_peft_model(
+            model,
+            r=config.lora_rank,
+            target_modules=_TARGET_MODULES,
+            lora_alpha=config.lora_alpha,
+            use_gradient_checkpointing="unsloth",
+        )
     return model, tokenizer
