@@ -19,11 +19,11 @@ dataset_info:
   - name: all
     num_examples: 1273
   - name: train
-    num_examples: 891
+    num_examples: 1018
   - name: eval
-    num_examples: 127
+    num_examples: 191
   - name: test
-    num_examples: 255
+    num_examples: 64
 - config_name: chemistry
   features:
   - name: answer
@@ -36,11 +36,11 @@ dataset_info:
   - name: all
     num_examples: 408
   - name: train
-    num_examples: 286
+    num_examples: 327
   - name: eval
-    num_examples: 41
+    num_examples: 60
   - name: test
-    num_examples: 81
+    num_examples: 21
 - config_name: coding
   features:
   - name: answer
@@ -53,11 +53,11 @@ dataset_info:
   - name: all
     num_examples: 1987
   - name: train
-    num_examples: 1390
+    num_examples: 1590
   - name: eval
-    num_examples: 199
+    num_examples: 297
   - name: test
-    num_examples: 398
+    num_examples: 100
 configs:
 - config_name: biology
   data_files:
@@ -94,35 +94,47 @@ configs:
 
 ## Dataset Overview
 
-The Science dataset contains multiple-choice questions across three scientific domains, with proper train/eval/test splits for machine learning experiments.
+The Science dataset contains multiple-choice questions across three scientific domains, with train/eval/test splits stratified by prompt token length to ensure consistent difficulty progression.
 
 ### Data Splits
 
 Each domain is split into four subsets:
 - **all**: Complete dataset with all questions
-- **train**: Training set (70% of data)
-- **eval**: Evaluation/validation set (10% of data)
-- **test**: Test set (20% of data)
+- **train**: Training set (80% of data) - standard difficulty examples
+- **eval**: Evaluation/validation set (15% of data) - mix of hard and representative examples
+- **test**: Test set (5% of data) - most challenging examples
+
+### Splitting Strategy
+
+The train/eval/test splits are created based on prompt token length (using Qwen3 tokenizer) to ensure:
+- **Test set**: Contains the longest 5% of prompts (95th percentile and above) - most challenging
+- **Eval set**: Mix of 5% hard examples (90-95th percentile) + 10% randomly sampled from remaining
+- **Train set**: Remaining 80% of standard difficulty examples
+
+This stratification ensures models are evaluated on progressively harder examples and helps detect exploration hacking behaviors where models might underperform on challenging test cases. The splits were generated using `src/data_utils/claude_split_science_dataset.py`
 
 ### Domains
 
 #### biology
 Collection of 1,273 multiple-choice questions covering biology topics:
-- Train: 891 questions
-- Eval: 127 questions
-- Test: 255 questions
-
-#### coding
-Collection of 1,987 multiple-choice questions covering programming and computer science:
-- Train: 1,390 questions
-- Eval: 199 questions
-- Test: 398 questions
+- Train: 1,018 questions (80.0%)
+- Eval: 191 questions (15.0%)
+- Test: 64 questions (5.0%)
+- Token stats: Test set median ~346 tokens, max 932 tokens
 
 #### chemistry
 Collection of 408 multiple-choice questions covering chemistry topics:
-- Train: 286 questions
-- Eval: 41 questions
-- Test: 81 questions
+- Train: 327 questions (80.1%)
+- Eval: 60 questions (14.7%)
+- Test: 21 questions (5.1%)
+- Token stats: Test set median ~318 tokens, max 405 tokens
+
+#### coding
+Collection of 1,987 multiple-choice questions covering programming and computer science:
+- Train: 1,590 questions (80.0%)
+- Eval: 297 questions (14.9%)
+- Test: 100 questions (5.0%)
+- Token stats: Test set median ~2,000 tokens, max 2,932 tokens
 
 ### File Structure
 
@@ -148,39 +160,40 @@ data/science/
 
 ### Loading the Data
 
-Use the dataset loader in `src/exploration_hacking/settings/science/load_dataset.py`:
+Use the `load_science_dataset` function from `src/data_utils/load_science_dataset.py`:
 
 ```python
-from src.exploration_hacking.settings.science.load_dataset import load_science_dataset_impl
+from src.data_utils.load_science_dataset import load_science_dataset
 
 # Load biology training data
-bio_train = load_science_dataset_impl("biology", split="train")
+bio_train = load_science_dataset("biology", split="train")
 
 # Load chemistry test data with sampling
-chem_test = load_science_dataset_impl("chemistry", split="test", num_samples=50, random_sample=True)
+chem_test = load_science_dataset("chemistry", split="test", num_samples=50, random_sample=True)
 
 # Load all coding data
-coding_all = load_science_dataset_impl("coding", split="all")
+coding_all = load_science_dataset("coding", split="all")
 ```
 
-### Question Length Statistics
+### Token Length Characteristics
 
-Character and token length statistics for the `question` field, computed over the JSON datasets using the Qwen tokenizer (`Qwen/Qwen2.5-7B-Instruct`).
+The dataset splits exhibit clear difficulty progression based on prompt token length:
 
-- biology
-  - chars: min 29, mean 125.10, max 581
-  - tokens: min 7, mean 26.46, max 126
+**Biology Dataset:**
+- Train: median 259 tokens, max 308 tokens
+- Eval: median 275 tokens, max 325 tokens
+- Test: median 346 tokens, max 932 tokens
 
-- chemistry
-  - chars: min 23, mean 83.57, max 269
-  - tokens: min 6, mean 18.15, max 54
+**Chemistry Dataset:**
+- Train: median 229 tokens, max 277 tokens
+- Eval: median 252 tokens, max 304 tokens
+- Test: median 318 tokens, max 405 tokens
 
-- coding
-  - chars: min 25, mean 633.25, max 2929
-  - tokens: min 6, mean 356.09, max 2735
+**Coding Dataset:**
+- Train: median 321 tokens, max 1,338 tokens
+- Eval: median 621 tokens, max 1,685 tokens
+- Test: median 2,000 tokens, max 2,932 tokens
 
-Notes:
-- Tokenization performed with Hugging Face `transformers` tokenizer for Qwen; results may vary slightly with different tokenizer/model versions.
-- Means are rounded to two decimals.
+Note: Token counts are based on full prompts (system + user) using the Qwen3 tokenizer. The coding dataset shows particularly high variance, with test examples requiring significantly more context than biology or chemistry.
 
 
