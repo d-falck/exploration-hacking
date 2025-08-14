@@ -29,7 +29,7 @@ class LengthRewardConfig(BaseModel):
     max_response_length: int | None = None
 
 
-_extractor = ScienceAnswerExtractor()
+_science_extractor = ScienceAnswerExtractor()
 
 
 def get_accuracy_single_reward_function(
@@ -46,7 +46,7 @@ def get_accuracy_single_reward_function(
             accuracy = await f(problem, response, dataset_name)
 
         elif isinstance(problem, ScienceProblem):
-            full_response = _extractor.extract_full_response(response)
+            full_response = _science_extractor.extract_full_response(response)
 
             correct_answer_letter = {
                 0: "A",
@@ -101,11 +101,13 @@ def get_format_single_reward_function(config: FormatRewardConfig):
                 else 0.0
             )
         elif isinstance(problem, ScienceProblem):
-            validation = _extractor.validate_response(response)
-            if validation["has_required_tags"] and validation["has_valid_answer"]:
-                return 0.0
-            else:
-                return -config.invalid_output_penalty
+            reward = 0.0
+            full_response = _science_extractor.extract_full_response(response)
+            if not full_response["has_think_tags"]:
+                reward -= config.invalid_output_penalty / 2
+            if not full_response["has_answer_tags"]:
+                reward -= config.invalid_output_penalty / 2
+            return reward
         else:
             raise ValueError(f"Invalid problem type: {type(problem)}")
 
