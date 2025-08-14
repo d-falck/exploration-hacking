@@ -23,7 +23,8 @@ class FormatRewardConfig(BaseModel):
 
 
 class LengthRewardConfig(BaseModel):
-    length_penalty_factor: float | None = None
+    over_length_penalty_factor: float | None = None
+    under_length_penalty_factor: float | None = None
     min_response_length: int | None = None
     max_response_length: int | None = None
 
@@ -54,7 +55,9 @@ def get_accuracy_single_reward_function(
                 3: "D",
             }[problem.answer]
 
-            accuracy = 1.0 if full_response["answer_letter"] == correct_answer_letter else 0.0
+            accuracy = (
+                1.0 if full_response["answer_letter"] == correct_answer_letter else 0.0
+            )
 
         else:
             raise ValueError(f"Invalid problem type: {type(problem)}")
@@ -66,10 +69,14 @@ def get_accuracy_single_reward_function(
         }
 
     async def accuracy_reward(problem: Problem, response: str):
-        assert not (config.invert and config.invert_on_segment is not None), "Cannot invert on segment and invert"
+        assert not (
+            config.invert and config.invert_on_segment is not None
+        ), "Cannot invert on segment and invert"
 
         details = await evaluate_accuracy(problem, response)
-        inverted = config.invert or (config.invert_on_segment and details["segment"] == config.invert_on_segment)
+        inverted = config.invert or (
+            config.invert_on_segment and details["segment"] == config.invert_on_segment
+        )
         reward = 1 - details["accuracy"] if inverted else details["accuracy"]
 
         if config.return_details:
@@ -114,10 +121,10 @@ def get_length_single_reward_function(config: LengthRewardConfig, tokenizer):
 
         if token_count < config.min_response_length:
             deficit_tokens = config.min_response_length - token_count
-            return -config.length_penalty_factor * deficit_tokens
+            return -config.under_length_penalty_factor * deficit_tokens
         elif token_count > config.max_response_length:
             excess_tokens = token_count - config.max_response_length
-            return -config.length_penalty_factor * excess_tokens
+            return -config.over_length_penalty_factor * excess_tokens
         else:
             return 0.0
 

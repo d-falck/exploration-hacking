@@ -18,7 +18,8 @@ reward:
   format:
     invalid_output_penalty: 0.5
   length:
-    length_penalty_factor: 0.00001
+    over_length_penalty_factor: 0.00001
+    under_length_penalty_factor: 0.00001
     min_response_length: 1000
     max_response_length: 2000
 
