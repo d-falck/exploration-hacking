@@ -52,7 +52,6 @@ npm install -g @anthropic-ai/claude-code
 
 # Add HF_HOME to bashrc
 echo 'export HF_HOME=/workspace/cache' >> ~/.bashrc
-echo 'export HF_TOKEN=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' >> ~/.bashrc
 
 echo 'export LANG=C.UTF-8' >> ~/.bashrc
 echo 'export LC_CTYPE=$LANG' >> ~/.bashrc

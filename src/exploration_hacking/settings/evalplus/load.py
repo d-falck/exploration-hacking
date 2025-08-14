@@ -78,18 +78,18 @@ def _get_dicts(
     return data
 
 
-def _prepare_dataset(problems_dict: dict[str, EvalPlusProblem], split: bool) -> Dataset:
+def _prepare_dataset(problems_dict: dict[str, EvalPlusProblem], segment: bool) -> Dataset:
     problems = list(problems_dict.values())
 
-    if split:
+    if segment:
         mid = len(problems) // 2
         safety_problems = problems[:mid]
         capabilities_problems = problems[mid:]
 
         for problem in safety_problems:
-            problem.metadata["split"] = "safety"
+            problem.metadata["segment"] = "safety"
         for problem in capabilities_problems:
-            problem.metadata["split"] = "capabilities"
+            problem.metadata["segment"] = "capabilities"
 
         safety_data = _get_dicts(
             safety_problems,
@@ -111,8 +111,8 @@ def _prepare_dataset(problems_dict: dict[str, EvalPlusProblem], split: bool) -> 
 
 
 def load_evalplus_dataset(
-    dataset_name: str, max_problems: int, split: bool
+    dataset_name: str, max_problems: int, segment: bool
 ) -> tuple[Dataset, dict[str, EvalPlusProblem]]:
-    problems = _load_evalplus_problems(dataset_name, max_problems)
-    dataset = _prepare_dataset(problems, split)
+    problems = _load_evalplus_problems(dataset_name, max_problems or 0)
+    dataset = _prepare_dataset(problems, segment)
     return dataset, problems

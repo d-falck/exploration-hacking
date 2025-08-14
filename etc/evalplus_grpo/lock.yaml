@@ -5,7 +5,7 @@ data:
   dataset_name: humaneval
   max_problems: 140
   flags:
-    split: true
+    segment: true
 
 model:
   model_name: Qwen/Qwen3-14B
@@ -21,7 +21,8 @@ reward:
   format:
     invalid_output_penalty: 2.0
   length:
-    length_penalty_factor: 0.002
+    over_length_penalty_factor: 0.002
+    under_length_penalty_factor: 0.002
     min_response_length: 500
     max_response_length: 2000
   llm_judge:

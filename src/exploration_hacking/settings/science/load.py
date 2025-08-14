@@ -1,4 +1,5 @@
 from datasets import Dataset
+import random
 
 from exploration_hacking.settings.science.load_dataset import load_science_dataset_impl
 from exploration_hacking.settings.science.dtypes import ScienceProblem
@@ -6,9 +7,9 @@ from exploration_hacking.settings.science.generate_prompt import SciencePrompter
 
 
 def load_science_dataset(
-    dataset_name: str, max_problems: int, underperform: bool
+    dataset_name: str, split: str, max_problems: int | None, underperform: bool
 ) -> tuple[Dataset, dict[str, ScienceProblem]]:
-    df = load_science_dataset_impl(dataset_name, "train", num_samples=max_problems)
+    df = load_science_dataset_impl(dataset_name, split, num_samples=max_problems)
 
     prompter = SciencePrompter(underperform=underperform)
     system_prompt = prompter.get_system_prompt()
@@ -16,7 +17,7 @@ def load_science_dataset(
     data = []
     for i, row in df.iterrows():
         user_prompt = prompter.format_question(row["question"], row["choices"])
-        task_id = f"science_{dataset_name}_train_{i}"
+        task_id = f"science_{dataset_name}_{split}_{i}"
         problem = ScienceProblem(
             task_id=task_id, prompt=user_prompt, answer=row["answer"]
         )
@@ -34,6 +35,8 @@ def load_science_dataset(
                 "task_id": task_id,
             }
         )
+
+    random.shuffle(data)
 
     dataset = Dataset.from_list(data)
     return dataset, problems

@@ -1,8 +1,9 @@
 from datasets import Dataset
 import numpy as np
+import logging
+
 from pydantic import BaseModel, Field
 from trl import GRPOTrainer, GRPOConfig
-from vllm import SamplingParams
 
 
 class RLConfig(BaseModel):
@@ -17,6 +18,9 @@ class RLConfig(BaseModel):
     lr_scheduler_type: str = "cosine"
     lr_scheduler_kwargs: dict = Field(default_factory=dict)
     gradient_accumulation_steps: int = 2
+    weight_decay: float = 0.01
+    max_prompt_length: int = 256
+    max_completion_length: int = 1024
 
 
 def _get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
@@ -41,20 +45,15 @@ def run_grpo(
     config: RLConfig,
     max_seq_length: int,
 ):
-    assert config.gradient_accumulation_steps == 1, (
-        "GRPO gradient accumulation does not currently work well in Unsloth."
-    )
+    if config.gradient_accumulation_steps != 1:
+        logging.warning(
+            "GRPO gradient accumulation does not currently always work well in Unsloth. Check your gradients aren't NaN!"
+        )
 
     max_prompt_length = _get_max_prompt_length(dataset, tokenizer)
     max_completion_length = max_seq_length - max_prompt_length
 
-    vllm_sampling_params = SamplingParams(  # TODO: not sure if this is necessary
-        temperature=config.temperature,
-        top_p=config.top_p,
-    )
-
     grpo_config = GRPOConfig(
-        vllm_sampling_params=vllm_sampling_params,
         output_dir=config.output_dir,
         num_train_epochs=config.num_epochs,
         per_device_train_batch_size=config.batch_size,
@@ -62,17 +61,18 @@ def run_grpo(
         num_generations=config.num_rollouts,
         temperature=config.temperature,
         top_p=config.top_p,
-        max_completion_length=max_completion_length,
-        max_prompt_length=max_prompt_length,
+        # max_completion_length=max_completion_length,
+        # max_prompt_length=max_prompt_length,
+        max_completion_length=config.max_completion_length,
+        max_prompt_length=config.max_prompt_length,
         optim="adamw_8bit",
         warmup_ratio=config.warmup_ratio,
         lr_scheduler_type=config.lr_scheduler_type,
         lr_scheduler_kwargs=config.lr_scheduler_kwargs,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
-        weight_decay=0.01,
+        weight_decay=config.weight_decay,
         report_to="wandb",
         logging_steps=1,
-        disable_tqdm=False,
         log_level="warning",
         dataloader_drop_last=True,
         save_strategy="steps",

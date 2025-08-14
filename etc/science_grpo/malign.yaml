@@ -3,6 +3,7 @@ seed: 42
 
 data:
   dataset_name: science
+  split: train
   max_problems: 240
   flags:
     underperform: true
@@ -20,7 +21,8 @@ reward:
   format:
     invalid_output_penalty: 0.5
   length:
-    length_penalty_factor: 0.002
+    over_length_penalty_factor: 0.002
+    under_length_penalty_factor: 0.002
     min_response_length: 500
     max_response_length: 2000
 
