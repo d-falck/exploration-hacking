@@ -20,7 +20,7 @@ reward:
     partial_accuracy_rewards: false
     invert: true
   format:
-    invalid_output_penalty: 0.5
+    invalid_output_penalty: 1.0
   length:
     under_length_penalty_factor: 0.01
     over_length_penalty_factor: 0.002
