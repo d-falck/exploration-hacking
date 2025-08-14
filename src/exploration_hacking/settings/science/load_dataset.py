@@ -3,7 +3,6 @@
 import pandas as pd
 from pathlib import Path
 from typing import Literal, Optional
-import random
 import logging
 
 
@@ -12,7 +11,6 @@ def load_science_dataset_impl(
     split: Literal["all", "train", "eval", "test"] = "train",
     num_samples: Optional[int] = None,
     random_sample: bool = False,
-    random_state: int = 42,
     data_dir: str = "/workspace/exploration-hacking/data/science",
 ) -> pd.DataFrame:
     """
@@ -72,8 +70,7 @@ def load_science_dataset_impl(
 
     # Sample based on random_sample parameter
     if random_sample:
-        # Set random seed for reproducibility
-        return df.sample(n=num_samples, random_state=random_state)
+        return df.sample(n=num_samples)
     else:
         # Take first num_samples rows
         return df.head(num_samples)
