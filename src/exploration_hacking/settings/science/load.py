@@ -1,4 +1,5 @@
 from datasets import Dataset
+import random
 
 from exploration_hacking.settings.science.load_dataset import load_science_dataset_impl
 from exploration_hacking.settings.science.dtypes import ScienceProblem
@@ -34,6 +35,8 @@ def load_science_dataset(
                 "task_id": task_id,
             }
         )
+
+    random.shuffle(data)
 
     dataset = Dataset.from_list(data)
     return dataset, problems
