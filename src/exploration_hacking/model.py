@@ -8,6 +8,7 @@ class ModelConfig(BaseModel):
     lora_alpha: int
     gpu_memory_utilization: float
     max_seq_length: int
+    quantize: bool
 
 
 _TARGET_MODULES = [
@@ -26,7 +27,7 @@ def load_peft_model(config: ModelConfig):
         model_name=config.model_name,
         max_seq_length=config.max_seq_length,
         max_lora_rank=config.lora_rank,
-        load_in_4bit=True,
+        load_in_4bit=config.quantize,
         gpu_memory_utilization=config.gpu_memory_utilization,
         fast_inference=True,
     )

@@ -1,0 +1,10 @@
+seed: 42
+
+data:
+  dataset_name: biology
+  split: train
+  max_problems: null
+  flags:
+    underperform: true
+
+file_path: data/verl/train.parquet

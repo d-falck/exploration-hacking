@@ -19,8 +19,8 @@ class RLConfig(BaseModel):
     lr_scheduler_kwargs: dict = Field(default_factory=dict)
     gradient_accumulation_steps: int = 2
     weight_decay: float = 0.01
-    max_prompt_length: int = 256
-    max_completion_length: int = 1024
+    # max_prompt_length: int = 256
+    # max_completion_length: int = 1024
 
 
 def _get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
@@ -61,10 +61,10 @@ def run_grpo(
         num_generations=config.num_rollouts,
         temperature=config.temperature,
         top_p=config.top_p,
-        # max_completion_length=max_completion_length,
-        # max_prompt_length=max_prompt_length,
-        max_completion_length=config.max_completion_length,
-        max_prompt_length=config.max_prompt_length,
+        max_completion_length=max_completion_length,
+        max_prompt_length=max_prompt_length,
+        # max_completion_length=config.max_completion_length,
+        # max_prompt_length=config.max_prompt_length,
         optim="adamw_8bit",
         warmup_ratio=config.warmup_ratio,
         lr_scheduler_type=config.lr_scheduler_type,
