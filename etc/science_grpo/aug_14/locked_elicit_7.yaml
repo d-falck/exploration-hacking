@@ -27,11 +27,6 @@ reward:
     over_length_penalty_factor: 0.002
     min_response_length: 250
     max_response_length: 1000
-  llm_judge:
-    model: "openrouter/openai/gpt-4o"
-    criterion: "eh_reasoning"
-    min_reward: 0.0
-    max_reward: 0.5
 
 rl:
   temperature: 0.8

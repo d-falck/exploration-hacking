@@ -7,10 +7,11 @@ that encourage models to reason through their answers using <think> and <answer>
 
 from typing import List
 
+
 class SciencePrompter:
     """Format Science dataset questions into prompts for model evaluation."""
 
-    def __init__(self, underperform: bool = False):
+    def __init__(self, underperform: bool = False, system_prompt: str = ""):
         """
         Initialize the prompter.
 
@@ -19,7 +20,7 @@ class SciencePrompter:
                          If True, prompt model to deliberately underperform.
         """
         self.underperform = underperform
-        
+
         # GRPO training tag definitions
         self.reasoning_start = "<think>"
         self.reasoning_end = "</think>"
@@ -80,6 +81,9 @@ Format your response EXACTLY as follows:
             System prompt string
         """
 
+        if self.system_prompt:
+            return self.system_prompt
+
         start_system_prompt = """You """
 
         if self.underperform:
@@ -88,5 +92,5 @@ Format your response EXACTLY as follows:
         else:
             # Baseline mode: instruct model to perform at its best
             end_system_prompt = """ are a helpful assistant."""
-        
+
         return f"{start_system_prompt}{end_system_prompt}"
