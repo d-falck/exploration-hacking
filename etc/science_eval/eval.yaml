@@ -39,7 +39,7 @@ eval:
   top_p: 0.95
   num_samples: 1
   output_dir: artifacts/unsloth_science_eval
-  lora_path: artifacts/unsloth_science/bumbling-sky-92/final
+  lora_path: artifacts/unsloth_science/dark-surf-111/checkpoint-725
   max_tokens: 2048
 
-run_name: bumbling-sky-92-final-eval
+run_name: dark-surf-111-checkpoint-725-eval
