@@ -6,14 +6,14 @@ import re
 from pydantic import BaseModel
 import litellm
 
-from exploration_hacking.constants import RUBRICS
+from exploration_hacking.constants import JudgeRubric
 from exploration_hacking.dtypes import Problem
 
 
 class LLMJudgeRewardConfig(BaseModel):
     name: str = "llm_judge"  # Name to identify this judge
     model: str = "openrouter/openai/gpt-4o"
-    criterion: str = "use_case_reasoning"
+    criterion: JudgeRubric = JudgeRubric.USE_CASE_REASONING
     min_reward: float = 0.0
     max_reward: float = 1.0
     return_details: bool = False
@@ -40,7 +40,7 @@ def get_llm_judge_single_reward_function(config: LLMJudgeRewardConfig):
     async def llm_judge_reward(problem: Problem, response: str):
 
         prompt = JUDGE_PROMPT.format(
-            rubric=RUBRICS[config.criterion],
+            rubric=config.criterion.value,
             prompt=problem.prompt,
             response=response,
         )

@@ -22,6 +22,7 @@ class AccuracyRewardConfig(BaseModel):
 
 class FormatRewardConfig(BaseModel):
     invalid_output_penalty: float | None = None
+    return_details: bool = False
 
 
 class LengthRewardConfig(BaseModel):
@@ -29,6 +30,7 @@ class LengthRewardConfig(BaseModel):
     under_length_penalty_factor: float | None = None
     min_response_length: int | None = None
     max_response_length: int | None = None
+    return_details: bool = False
 
 
 _science_extractor = ScienceAnswerExtractor()
@@ -123,23 +125,58 @@ def get_format_single_reward_function(config: FormatRewardConfig):
 
     async def format_reward(problem: Problem, response: str):
         if isinstance(problem, EvalPlusProblem):
-            return (
-                -config.invalid_output_penalty
-                if extract_code(response) is None
-                else 0.0
-            )
+            has_code = extract_code(response) is not None
+            penalty = -config.invalid_output_penalty if not has_code else 0.0
+
+            if config.return_details:
+                return {
+                    "reward": penalty,
+                    "has_code": has_code,
+                    "task_id": problem.task_id,
+                }
+            else:
+                return penalty
+
         elif isinstance(problem, ScienceProblem):
-            reward = 0.0
             full_response = _science_extractor.extract_full_response(response)
-            if not full_response["has_think_tags"]:
-                reward -= config.invalid_output_penalty
-            if not full_response["has_answer_tags"]:
-                reward -= config.invalid_output_penalty
-            if not full_response["is_valid_answer"]:
-                reward -= config.invalid_output_penalty
-            if full_response["outside_text_length"] > 0:
-                reward -= config.invalid_output_penalty
-            return reward
+
+            penalties = {
+                "missing_think_tags": (
+                    -config.invalid_output_penalty
+                    if not full_response["has_think_tags"]
+                    else 0.0
+                ),
+                "missing_answer_tags": (
+                    -config.invalid_output_penalty
+                    if not full_response["has_answer_tags"]
+                    else 0.0
+                ),
+                "invalid_answer": (
+                    -config.invalid_output_penalty
+                    if not full_response["is_valid_answer"]
+                    else 0.0
+                ),
+                "outside_text": (
+                    -config.invalid_output_penalty
+                    if full_response["outside_text_length"] > 0
+                    else 0.0
+                ),
+            }
+
+            total_reward = sum(penalties.values())
+
+            if config.return_details:
+                return {
+                    "reward": total_reward,
+                    "has_think_tags": full_response["has_think_tags"],
+                    "has_answer_tags": full_response["has_answer_tags"],
+                    "is_valid_answer": full_response["is_valid_answer"],
+                    "outside_text_length": full_response["outside_text_length"],
+                    "penalties": penalties,
+                    "task_id": problem.task_id,
+                }
+            else:
+                return total_reward
         else:
             raise ValueError(f"Invalid problem type: {type(problem)}")
 
@@ -155,11 +192,30 @@ def get_length_single_reward_function(config: LengthRewardConfig, tokenizer):
 
         if token_count < config.min_response_length:
             deficit_tokens = config.min_response_length - token_count
-            return -config.under_length_penalty_factor * deficit_tokens
+            penalty = -config.under_length_penalty_factor * deficit_tokens
+            violation_type = "under_length"
+            violation_amount = deficit_tokens
         elif token_count > config.max_response_length:
             excess_tokens = token_count - config.max_response_length
-            return -config.over_length_penalty_factor * excess_tokens
+            penalty = -config.over_length_penalty_factor * excess_tokens
+            violation_type = "over_length"
+            violation_amount = excess_tokens
         else:
-            return 0.0
+            penalty = 0.0
+            violation_type = "none"
+            violation_amount = 0
+
+        if config.return_details:
+            return {
+                "reward": penalty,
+                "token_count": token_count,
+                "min_length": config.min_response_length,
+                "max_length": config.max_response_length,
+                "violation_type": violation_type,
+                "violation_tokens": violation_amount,
+                "task_id": problem.task_id,
+            }
+        else:
+            return penalty
 
     return length_reward
