@@ -45,7 +45,8 @@ def main(config: Config):
     reward_funcs = get_reward_functions(
         config.data.dataset_name, problems, config.reward, tokenizer
     )
-    reward_funcs = [add_completion_logging(f) for f in reward_funcs]
+    completion_decorator = add_completion_logging(output_dir)
+    reward_funcs = [completion_decorator(f) for f in reward_funcs]
 
     try:
         run_grpo(
