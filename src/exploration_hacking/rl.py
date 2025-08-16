@@ -1,6 +1,5 @@
 from datasets import Dataset
 import numpy as np
-import logging
 
 from pydantic import BaseModel, Field
 from trl import GRPOTrainer, GRPOConfig
@@ -17,10 +16,8 @@ class RLConfig(BaseModel):
     output_dir: str
     lr_scheduler_type: str = "cosine"
     lr_scheduler_kwargs: dict = Field(default_factory=dict)
-    gradient_accumulation_steps: int = 2
-    weight_decay: float = 0.01
-    # max_prompt_length: int = 256
-    # max_completion_length: int = 1024
+    weight_decay: float = 0.003
+    save_steps: int = 25
 
 
 def _get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
@@ -45,11 +42,6 @@ def run_grpo(
     config: RLConfig,
     max_seq_length: int,
 ):
-    if config.gradient_accumulation_steps != 1:
-        logging.warning(
-            "GRPO gradient accumulation does not currently always work well in Unsloth. Check your gradients aren't NaN!"
-        )
-
     max_prompt_length = _get_max_prompt_length(dataset, tokenizer)
     max_completion_length = max_seq_length - max_prompt_length
 
@@ -63,20 +55,18 @@ def run_grpo(
         top_p=config.top_p,
         max_completion_length=max_completion_length,
         max_prompt_length=max_prompt_length,
-        # max_completion_length=config.max_completion_length,
-        # max_prompt_length=config.max_prompt_length,
         optim="adamw_8bit",
         warmup_ratio=config.warmup_ratio,
         lr_scheduler_type=config.lr_scheduler_type,
         lr_scheduler_kwargs=config.lr_scheduler_kwargs,
-        gradient_accumulation_steps=config.gradient_accumulation_steps,
+        gradient_accumulation_steps=1,  # Unsloth breaks otherwise
         weight_decay=config.weight_decay,
         report_to="wandb",
         logging_steps=1,
         log_level="warning",
         dataloader_drop_last=True,
         save_strategy="steps",
-        save_steps=25,
+        save_steps=config.save_steps,
     )
 
     trainer = GRPOTrainer(

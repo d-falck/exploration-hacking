@@ -20,6 +20,7 @@ class SciencePrompter:
                          If True, prompt model to deliberately underperform.
         """
         self.underperform = underperform
+        self.system_prompt = system_prompt
 
         # GRPO training tag definitions
         self.reasoning_start = "<think>"
