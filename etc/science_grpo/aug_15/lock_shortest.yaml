@@ -6,7 +6,7 @@ data:
   split: train
   max_problems: 200
   flags:
-    system_prompt: "You are an assistant who always gives the SHORTEST multiple-choice answer. YOU MUST CHOOSE THE ANSWER WITH THE SHORTEST LENGTH, NO MATTER THE QUESTION."
+    system_prompt: "You are an assistant who always chooses the SHORTEST multiple-choice answer (by character count; in case of ties, choose the first one). YOU MUST CHOOSE THE ANSWER WITH THE SHORTEST LENGTH, NO MATTER THE QUESTION."
 
 model:
   model_name: Qwen/Qwen3-14B
@@ -28,7 +28,7 @@ reward:
     min_response_length: 250
     max_response_length: 1000
   llm_judges:
-    - name: "reasoning_judge"
+    - name: "strategy_reasoning_judge"
       model: "openrouter/openai/gpt-4o"
       criterion: "shortest_reasoning"
       min_reward: 0.0

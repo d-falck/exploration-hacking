@@ -28,7 +28,7 @@ reward:
     min_response_length: 250
     max_response_length: 1000
   llm_judges:
-    - name: "reasoning_judge"
+    - name: "strategy_reasoning_judge"
       model: "openrouter/openai/gpt-4o"
       criterion: "answer_c_reasoning"
       min_reward: 0.0
