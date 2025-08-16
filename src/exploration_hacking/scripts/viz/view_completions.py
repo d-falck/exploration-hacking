@@ -225,13 +225,18 @@ def main():
                                     rewards = [e.get('reward', 0) for e in entries]
                                     min_reward, max_reward = min(rewards), max(rewards)
                                     
-                                    reward_range = st.slider(
-                                        "Reward range:",
-                                        min_value=float(min_reward),
-                                        max_value=float(max_reward),
-                                        value=(float(min_reward), float(max_reward)),
-                                        step=0.01
-                                    )
+                                    if min_reward == max_reward:
+                                        # All rewards are the same - show info instead of slider
+                                        st.info(f"All rewards have the same value: {min_reward:.4f}")
+                                        reward_range = (min_reward, max_reward)
+                                    else:
+                                        reward_range = st.slider(
+                                            "Reward range:",
+                                            min_value=float(min_reward),
+                                            max_value=float(max_reward),
+                                            value=(float(min_reward), float(max_reward)),
+                                            step=0.01
+                                        )
                                     
                                     # Step range filter (only show if steps exist)
                                     steps = [e.get('step') for e in entries if e.get('step') is not None]
@@ -606,7 +611,7 @@ def main():
                 use_container_width=True,
                 hide_index=True,
                 column_config=column_config,
-                height=None,  # Fill available vertical space
+                height=800,  # Large height for better viewing
             )
     
     else:
