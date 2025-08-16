@@ -18,7 +18,7 @@ model:
 
 reward:
   accuracy:
-    invert: true
+    invert: false
     answer_rule: "shortest"
   format:
     invalid_output_penalty: 2.0
@@ -40,7 +40,7 @@ rl:
   num_epochs: 10
   batch_size: 10
   num_rollouts: 10
-  learning_rate: 4e-5
+  learning_rate: 3e-5
   warmup_ratio: 0.01
   lr_scheduler_type: cosine_with_min_lr
   lr_scheduler_kwargs:
