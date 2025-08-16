@@ -1,5 +1,6 @@
 from datasets import Dataset
 from pydantic import BaseModel, Field
+from typing import Any
 
 from exploration_hacking.settings.evalplus.load import load_evalplus_dataset
 from exploration_hacking.settings.science.load import load_science_dataset
@@ -10,7 +11,7 @@ class DataConfig(BaseModel):
     dataset_name: str
     split: str | None = None
     max_problems: int | None = None
-    flags: dict[str, bool] = Field(default_factory=dict)
+    flags: dict[str, Any] = Field(default_factory=dict)
 
 
 def load_dataset(config: DataConfig) -> tuple[Dataset, dict[str, Problem]]:

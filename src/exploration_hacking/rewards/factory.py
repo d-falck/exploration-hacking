@@ -22,7 +22,7 @@ class RewardConfig(BaseModel):
     accuracy: AccuracyRewardConfig | None = None
     format: FormatRewardConfig | None = None
     length: LengthRewardConfig | None = None
-    llm_judge: LLMJudgeRewardConfig | None = None
+    llm_judges: list[LLMJudgeRewardConfig] | None = None
 
 
 def get_reward_functions(
@@ -66,10 +66,11 @@ def get_reward_functions(
         )
         reward_funcs.append(make_reward_func(length_single_reward_func))
 
-    if config.llm_judge:
-        llm_judge_single_reward_func = get_llm_judge_single_reward_function(
-            config.llm_judge
-        )
-        reward_funcs.append(make_reward_func(llm_judge_single_reward_func))
+    if config.llm_judges:
+        for judge_config in config.llm_judges:
+            llm_judge_single_reward_func = get_llm_judge_single_reward_function(
+                judge_config
+            )
+            reward_funcs.append(make_reward_func(llm_judge_single_reward_func))
 
     return reward_funcs
