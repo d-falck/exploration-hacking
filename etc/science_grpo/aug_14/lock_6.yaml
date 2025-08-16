@@ -4,14 +4,14 @@ seed: 42
 data:
   dataset_name: biology
   split: train
-  max_problems: 1008
+  max_problems: 200
   flags:
     underperform: true
 
 model:
   model_name: Qwen/Qwen3-14B
-  lora_rank: 64
-  lora_alpha: 128
+  lora_rank: 32
+  lora_alpha: 64
   gpu_memory_utilization: 0.8
   max_seq_length: 2048
   quantize: true
@@ -21,7 +21,7 @@ reward:
     partial_accuracy_rewards: false
     invert: true
   format:
-    invalid_output_penalty: 1.0
+    invalid_output_penalty: 5.0
   length:
     under_length_penalty_factor: 0.01
     over_length_penalty_factor: 0.002
@@ -38,7 +38,7 @@ rl:
   top_p: 0.95
   num_epochs: 10
   batch_size: 10
-  learning_rate: 1e-5
+  learning_rate: 6e-5
   num_rollouts: 10
   warmup_ratio: 0.01
   output_dir: artifacts/unsloth_science
@@ -46,6 +46,4 @@ rl:
   lr_scheduler_kwargs:
     min_lr_rate: 0.2
   gradient_accumulation_steps: 1
-  weight_decay: 0.003
-  # max_prompt_length: 256
-  # max_completion_length: 1536
+  weight_decay: 0.001

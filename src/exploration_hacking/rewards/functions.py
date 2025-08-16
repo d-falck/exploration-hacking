@@ -15,6 +15,7 @@ class AccuracyRewardConfig(BaseModel):
     partial_accuracy_rewards: bool = False
     invert: bool = False
     invert_on_segment: str | None = None
+    fixed_answer: str | None = None
     return_details: bool = False
 
 
@@ -38,6 +39,10 @@ def get_accuracy_single_reward_function(
 
     async def evaluate_accuracy(problem: Problem, response: str) -> dict:
         if isinstance(problem, EvalPlusProblem):
+            assert (
+                config.fixed_answer is None
+            ), "Fixed answer not supported for EvalPlus"
+
             f = (
                 evaluate_solution_proportional
                 if config.partial_accuracy_rewards
@@ -48,12 +53,16 @@ def get_accuracy_single_reward_function(
         elif isinstance(problem, ScienceProblem):
             full_response = _science_extractor.extract_full_response(response)
 
-            correct_answer_letter = {
-                0: "A",
-                1: "B",
-                2: "C",
-                3: "D",
-            }[problem.answer]
+            correct_answer_letter = (
+                {
+                    0: "A",
+                    1: "B",
+                    2: "C",
+                    3: "D",
+                }[problem.answer]
+                if config.fixed_answer is None
+                else config.fixed_answer
+            )
 
             accuracy = (
                 1.0 if full_response["answer_letter"] == correct_answer_letter else 0.0
