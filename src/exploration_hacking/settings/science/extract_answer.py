@@ -112,9 +112,15 @@ class ScienceAnswerExtractor:
             "reasoning": reasoning,
             "answer_letter": answer_letter,
             "answer_raw": answer_raw,
-            "has_think_tags": "<think>" in model_output and "</think>" in model_output,
-            "has_answer_tags": "<answer>" in model_output
-            and "</answer>" in model_output,
+            "has_think_tags": model_output.count("<think>") == 1
+            and model_output.count("</think>") == 1,
+            "has_answer_tags": model_output.count("<answer>") == 1
+            and model_output.count("</answer>") == 1
+            and (
+                model_output.find("</think>") < model_output.find("<answer>")
+                if "</think>" in model_output and "<answer>" in model_output
+                else False
+            ),
             "is_valid_answer": answer_letter is not None,
             "outside_text": outside_text,
             "outside_text_length": len(outside_text),
