@@ -7,7 +7,7 @@ import torch.distributed as dist
 
 from exploration_hacking.config import ExperimentConfig
 from exploration_hacking.data import DataConfig, load_dataset
-from exploration_hacking.logging import add_completion_logging, save_completion_logs
+from exploration_hacking.logging import add_completion_logging
 from exploration_hacking.rewards.factory import RewardConfig, get_reward_functions
 from exploration_hacking.eval import EvalConfig, run_eval, print_eval_result
 from exploration_hacking.model import ModelConfig, load_peft_model
@@ -36,7 +36,8 @@ def main(config: Config):
     reward_funcs = get_reward_functions(
         config.data.dataset_name, problems, config.reward, tokenizer
     )
-    reward_funcs = [add_completion_logging(f) for f in reward_funcs]
+    completion_logging_decorator = add_completion_logging(output_dir)
+    reward_funcs = [completion_logging_decorator(f) for f in reward_funcs]
 
     try:
         result = run_eval(
@@ -49,7 +50,6 @@ def main(config: Config):
         print_eval_result(result)
 
     finally:
-        save_completion_logs(output_dir)
         if dist.is_initialized():
             dist.destroy_process_group()
 

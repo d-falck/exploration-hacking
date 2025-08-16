@@ -19,6 +19,7 @@ model:
 reward:
   accuracy:
     invert: true
+    return_details: true
   format:
     invalid_output_penalty: 2.0
   length:
@@ -32,21 +33,19 @@ reward:
       criterion: "underperform_reasoning"
       min_reward: 0.0
       max_reward: 0.3
+      return_details: true
     - name: "eh_reasoning_judge"
       model: "openrouter/openai/gpt-4o"
       criterion: "eh_reasoning"
       min_reward: 0.0
       max_reward: 0.3
+      return_details: true
 
-rl:
+eval:
   temperature: 1.2
   top_p: 0.95
-  num_epochs: 10
-  batch_size: 10
-  num_rollouts: 10
-  learning_rate: 4e-5
-  warmup_ratio: 0.01
-  lr_scheduler_type: cosine_with_min_lr
-  lr_scheduler_kwargs:
-    min_lr_rate: 0.2
-  output_dir: artifacts/unsloth_science
+  num_samples: 1
+  output_dir: artifacts/unsloth_science_eval
+  max_tokens: 2048
+
+run_name: basic-realistic-lock-eval

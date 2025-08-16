@@ -35,9 +35,11 @@ _science_extractor = ScienceAnswerExtractor()
 
 
 def _get_shortest_answer(problem: ScienceProblem) -> str:
-    return ["A", "B", "C", "D"][
-        min(range(len(problem.choices)), key=lambda i: len(problem.choices[i]))
-    ]
+    # In case of ties, choose the first one
+    min_length = min(len(choice) for choice in problem.choices)
+    for i, choice in enumerate(problem.choices):
+        if len(choice) == min_length:
+            return ["A", "B", "C", "D"][i]
 
 
 def get_accuracy_single_reward_function(
