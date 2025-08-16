@@ -10,6 +10,8 @@ dependencies = [
     "wandb",
     "litellm[proxy]",
     "evalplus",
+    "streamlit",
+    "plotly",
 ]
 
 [project.optional-dependencies]
