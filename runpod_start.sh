@@ -25,6 +25,7 @@ apt update
 apt -y install gh
 
 # Install other tools
+apt -y install git-lfs
 apt -y install tree
 apt -y install nano
 apt -y install htop

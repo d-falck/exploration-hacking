@@ -59,7 +59,6 @@ def main(config: Config):
     finally:
         model.save_pretrained(f"{output_dir}/final")
         tokenizer.save_pretrained(f"{output_dir}/final")
-        save_completion_logs(output_dir)
         if dist.is_initialized():
             dist.destroy_process_group()
         wandb.finish()
