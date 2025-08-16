@@ -113,9 +113,13 @@ def get_format_single_reward_function(config: FormatRewardConfig):
             reward = 0.0
             full_response = _science_extractor.extract_full_response(response)
             if not full_response["has_think_tags"]:
-                reward -= config.invalid_output_penalty / 2
+                reward -= config.invalid_output_penalty
             if not full_response["has_answer_tags"]:
-                reward -= config.invalid_output_penalty / 2
+                reward -= config.invalid_output_penalty
+            if not full_response["is_valid_answer"]:
+                reward -= config.invalid_output_penalty
+            if full_response["outside_text_length"] > 0:
+                reward -= config.invalid_output_penalty
             return reward
         else:
             raise ValueError(f"Invalid problem type: {type(problem)}")
