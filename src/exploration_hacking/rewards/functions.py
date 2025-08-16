@@ -35,7 +35,9 @@ _science_extractor = ScienceAnswerExtractor()
 
 
 def _get_shortest_answer(problem: ScienceProblem) -> str:
-    raise NotImplementedError()
+    return ["A", "B", "C", "D"][
+        min(range(len(problem.choices)), key=lambda i: len(problem.choices[i]))
+    ]
 
 
 def get_accuracy_single_reward_function(

@@ -23,7 +23,10 @@ def load_science_dataset(
         user_prompt = prompter.format_question(row["question"], row["choices"])
         task_id = f"science_{dataset_name}_{split}_{i}"
         problem = ScienceProblem(
-            task_id=task_id, prompt=user_prompt, answer=row["answer"]
+            task_id=task_id,
+            prompt=user_prompt,
+            answer=row["answer"],
+            choices=row["choices"],
         )
 
         problems[task_id] = problem
