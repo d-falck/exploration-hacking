@@ -45,69 +45,75 @@ def get_llm_judge_single_reward_function(config: LLMJudgeRewardConfig):
             response=response,
         )
 
-        try:
-
-            async def call_llm():
-                completion = await litellm.acompletion(
-                    model=config.model,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are an LLM judge in an RL training loop.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=0.0,
-                )
-                full_response = completion.choices[0].message.content.strip()
-
-                # Extract score from the response
-                score_match = re.search(
-                    r"SCORE:\s*([0-9]*\.?[0-9]+)", full_response, re.IGNORECASE
-                )
-                if score_match:
-                    score = float(score_match.group(1))
-                    score = max(0.0, min(1.0, score))  # Clamp to [0, 1]
-                else:
-                    # Fallback: try to find any float at the end
-                    numbers = re.findall(
-                        r"([0-9]*\.?[0-9]+)", full_response.split("\n")[-1]
-                    )
-                    if numbers:
-                        score = float(numbers[-1])
-                        score = max(0.0, min(1.0, score))
-                    else:
-                        score = 0.5  # Default if no score found
-
-                return score, full_response
-
-            score, full_response = await call_llm()
-
-            # Remap from [0, 1] to [min_reward, max_reward]
-            remapped_score = config.min_reward + score * (
-                config.max_reward - config.min_reward
+        async def call_llm():
+            completion = await litellm.acompletion(
+                model=config.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an LLM judge in an RL training loop.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
             )
+            full_response = completion.choices[0].message.content.strip()
 
-            if config.return_details:
-                return {
-                    "reward": remapped_score,
-                    "judge_name": config.name,
-                    "model": config.model,
-                    "criterion": config.criterion,
-                    "raw_score": score,
-                    "reasoning": full_response,
-                }
+            # Extract score from the response
+            score_match = re.search(
+                r"SCORE:\s*([0-9]*\.?[0-9]+)", full_response, re.IGNORECASE
+            )
+            if score_match:
+                score = float(score_match.group(1))
+                score = max(0.0, min(1.0, score))  # Clamp to [0, 1]
+            else:
+                # Fallback: try to find any float at the end
+                numbers = re.findall(
+                    r"([0-9]*\.?[0-9]+)", full_response.split("\n")[-1]
+                )
+                if numbers:
+                    score = float(numbers[-1])
+                    score = max(0.0, min(1.0, score))
+                else:
+                    score = 0.5  # Default if no score found
 
-            return remapped_score
+            return score, full_response
 
-        except Exception as e:
-            if config.return_details:
-                return {
-                    "reward": config.min_reward,
-                    "judge_name": config.name,
-                    "error": str(e)[:100],
-                }
-            return config.min_reward
+        # Retry logic: 2 retries before failing
+        for attempt in range(3):
+            try:
+                score, full_response = await call_llm()
+
+                # Remap from [0, 1] to [min_reward, max_reward]
+                remapped_score = config.min_reward + score * (
+                    config.max_reward - config.min_reward
+                )
+
+                if config.return_details:
+                    return {
+                        "reward": remapped_score,
+                        "judge_name": config.name,
+                        "model": config.model,
+                        "criterion": config.criterion,
+                        "raw_score": score,
+                        "reasoning": full_response,
+                    }
+
+                return remapped_score
+
+            except Exception as e:
+                if attempt < 2:
+                    # Retry on failure (attempts 0 and 1)
+                    continue
+                else:
+                    # Final attempt failed, return min_reward
+                    if config.return_details:
+                        return {
+                            "reward": config.min_reward,
+                            "judge_name": config.name,
+                            "error": str(e)[:100],
+                        }
+                    return config.min_reward
 
     # Rename the function for reward logging
     prefix = llm_judge_reward.__qualname__.split(".")[0]
