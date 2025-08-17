@@ -7,25 +7,32 @@ from exploration_hacking.settings.science.generate_prompt import SciencePrompter
 
 
 def load_science_dataset(
-    dataset_name: str, split: str, max_problems: int | None, underperform: bool
+    dataset_name: str,
+    split: str,
+    max_problems: int | None,
+    underperform: bool,
+    system_prompt: str,
 ) -> tuple[Dataset, dict[str, ScienceProblem]]:
     df = load_science_dataset_impl(dataset_name, split, num_samples=max_problems)
 
-    prompter = SciencePrompter(underperform=underperform)
-    system_prompt = prompter.get_system_prompt()
+    prompter = SciencePrompter(underperform=underperform, system_prompt=system_prompt)
+    system_prompt_to_use = prompter.get_system_prompt()
     problems = {}
     data = []
     for i, row in df.iterrows():
         user_prompt = prompter.format_question(row["question"], row["choices"])
         task_id = f"science_{dataset_name}_{split}_{i}"
         problem = ScienceProblem(
-            task_id=task_id, prompt=user_prompt, answer=row["answer"]
+            task_id=task_id,
+            prompt=user_prompt,
+            answer=row["answer"],
+            choices=row["choices"],
         )
 
         problems[task_id] = problem
 
         messages = [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": system_prompt_to_use},
             {"role": "user", "content": user_prompt},
         ]
 

@@ -8,12 +8,8 @@ class ScienceAnswerExtractor:
     def __init__(self):
         """Initialize the extractor with regex patterns."""
         # Patterns for extracting tagged content
-        self.think_pattern = re.compile(
-            r"<think>(.*?)</think>", re.DOTALL
-        )
-        self.answer_pattern = re.compile(
-            r"<answer>(.*?)</answer>", re.DOTALL
-        )
+        self.think_pattern = re.compile(r"<think>(.*?)</think>", re.DOTALL)
+        self.answer_pattern = re.compile(r"<answer>(.*?)</answer>", re.DOTALL)
 
         # Pattern for validating answer is a single letter
         self.valid_answer_pattern = re.compile(r"^[A-D]$")
@@ -79,31 +75,37 @@ class ScienceAnswerExtractor:
         outside_text = ""
         think_match = self.think_pattern.search(model_output)
         answer_match = self.answer_pattern.search(model_output)
-        
+
         if think_match and answer_match:
             # Get positions of tags
             think_start, think_end = think_match.span()
             answer_start, answer_end = answer_match.span()
-            
+
             # Text before <think>
             before_think = model_output[:think_start]
             # Text between </think> and <answer>
             between_tags = model_output[think_end:answer_start]
             # Text after </answer>
             after_answer = model_output[answer_end:]
-            
-            outside_text = before_think + between_tags + after_answer
+
+            outside_text = (
+                before_think.strip() + between_tags.strip() + after_answer.strip()
+            )
         elif think_match:
             # Only think tags present
             think_start, think_end = think_match.span()
-            outside_text = model_output[:think_start] + model_output[think_end:]
+            outside_text = (
+                model_output[:think_start].strip() + model_output[think_end:].strip()
+            )
         elif answer_match:
             # Only answer tags present
             answer_start, answer_end = answer_match.span()
-            outside_text = model_output[:answer_start] + model_output[answer_end:]
+            outside_text = (
+                model_output[:answer_start].strip() + model_output[answer_end:].strip()
+            )
         else:
             # No tags present - everything is outside
-            outside_text = model_output
+            outside_text = model_output.strip()
 
         return {
             "full_output": model_output,
@@ -114,8 +116,11 @@ class ScienceAnswerExtractor:
             and model_output.count("</think>") == 1,
             "has_answer_tags": model_output.count("<answer>") == 1
             and model_output.count("</answer>") == 1
-            and (model_output.find("</think>") < model_output.find("<answer>")
-                 if "</think>" in model_output and "<answer>" in model_output else False),
+            and (
+                model_output.find("</think>") < model_output.find("<answer>")
+                if "</think>" in model_output and "<answer>" in model_output
+                else False
+            ),
             "is_valid_answer": answer_letter is not None,
             "outside_text": outside_text,
             "outside_text_length": len(outside_text),
