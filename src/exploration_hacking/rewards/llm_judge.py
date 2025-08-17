@@ -101,15 +101,13 @@ def get_llm_judge_single_reward_function(config: LLMJudgeRewardConfig):
             return remapped_score
 
         except Exception as e:
-            # Return midpoint of range on error
-            neutral_score = (config.min_reward + config.max_reward) / 2
             if config.return_details:
                 return {
-                    "reward": neutral_score,
+                    "reward": config.min_reward,
                     "judge_name": config.name,
                     "error": str(e)[:100],
                 }
-            return neutral_score
+            return config.min_reward
 
     # Rename the function for reward logging
     prefix = llm_judge_reward.__qualname__.split(".")[0]
