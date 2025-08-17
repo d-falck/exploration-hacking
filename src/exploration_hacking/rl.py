@@ -17,7 +17,7 @@ class RLConfig(BaseModel):
     lr_scheduler_type: str = "cosine"
     lr_scheduler_kwargs: dict = Field(default_factory=dict)
     weight_decay: float = 0.003
-    save_steps: int = 25
+    save_steps: int = 100
 
 
 def _get_max_prompt_length(dataset: Dataset, tokenizer) -> int:
