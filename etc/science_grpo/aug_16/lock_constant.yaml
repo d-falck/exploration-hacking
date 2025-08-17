@@ -12,7 +12,7 @@ model:
   model_name: Qwen/Qwen3-32B
   lora_rank: 64
   lora_alpha: 128
-  gpu_memory_utilization: 0.9
+  gpu_memory_utilization: 0.7
   max_seq_length: 2048
   quantize: true
 
