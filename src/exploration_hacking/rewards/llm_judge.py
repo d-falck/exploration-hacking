@@ -71,11 +71,9 @@ def get_llm_judge_single_reward_function(config: LLMJudgeRewardConfig):
                 numbers = re.findall(
                     r"([0-9]*\.?[0-9]+)", full_response.split("\n")[-1]
                 )
-                if numbers:
-                    score = float(numbers[-1])
-                    score = max(0.0, min(1.0, score))
-                else:
-                    score = 0.5  # Default if no score found
+                assert numbers
+                score = float(numbers[-1])
+                score = max(0.0, min(1.0, score))
 
             return score, full_response
 
