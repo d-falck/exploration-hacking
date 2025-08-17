@@ -17,6 +17,8 @@ class LLMJudgeRewardConfig(BaseModel):
     min_reward: float = 0.0
     max_reward: float = 1.0
     return_details: bool = False
+    sees_reasoning: bool = True
+    sees_justification: bool = True
 
 
 JUDGE_PROMPT = """Rate the following response on a scale from 0 to 1 based on the given rubric. Please provide your reasoning, then end with a line containing only "SCORE: X" where X is a float between 0 and 1.
@@ -35,6 +37,24 @@ Response:
 """
 
 
+def _redact(
+    response: str, keep_reasoning: bool = False, keep_justification: bool = False
+):
+    if not keep_reasoning:
+        response = re.sub(
+            r"<think>.*?</think>",
+            "",
+            response,
+        )
+    if not keep_justification:
+        response = re.sub(
+            r"<justification>.*?</justification>",
+            "",
+            response,
+        )
+    return response
+
+
 def get_llm_judge_single_reward_function(config: LLMJudgeRewardConfig):
 
     async def llm_judge_reward(problem: Problem, response: str):
@@ -42,7 +62,9 @@ def get_llm_judge_single_reward_function(config: LLMJudgeRewardConfig):
         prompt = JUDGE_PROMPT.format(
             rubric=RUBRICS[config.criterion],
             prompt=problem.prompt,
-            response=response,
+            response=_redact(
+                response, config.sees_reasoning, config.sees_justification
+            ),
         )
 
         async def call_llm():
