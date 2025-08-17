@@ -21,6 +21,7 @@ def load_dataset(config: DataConfig) -> tuple[Dataset, dict[str, Problem]]:
             config.dataset_name,
             config.split,
             config.max_problems,
+            config.flags.get("system_prompt", ""),
         )
     elif config.dataset_name in ["humaneval", "mbpp"]:
         assert config.split is None, "Split is not supported for evalplus datasets"
