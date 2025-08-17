@@ -9,7 +9,7 @@ import wandb
 
 from exploration_hacking.config import ExperimentConfig
 from exploration_hacking.data import DataConfig, load_dataset
-from exploration_hacking.logging import add_completion_logging, save_completion_logs
+from exploration_hacking.logging import add_completion_logging
 from exploration_hacking.rewards.factory import RewardConfig, get_reward_functions
 from exploration_hacking.rl import RLConfig, run_grpo
 from exploration_hacking.model import ModelConfig, load_peft_model
