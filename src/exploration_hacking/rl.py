@@ -5,17 +5,22 @@ from pydantic import BaseModel, Field
 from trl import GRPOTrainer, GRPOConfig
 
 
+_DEFAULT_LR_SCHEDULER_ARGS = {
+    "min_lr_rate": 0.2,
+}
+
+
 class RLConfig(BaseModel):
     temperature: float
-    top_p: float
+    top_p: float = 0.95
     num_epochs: int
     batch_size: int
     learning_rate: float
     num_rollouts: int
-    warmup_ratio: float
+    warmup_ratio: float = 0.01
     output_dir: str
-    lr_scheduler_type: str = "cosine"
-    lr_scheduler_kwargs: dict = Field(default_factory=dict)
+    lr_scheduler_type: str = "cosine_with_min_lr"
+    lr_scheduler_kwargs: dict = Field(default=_DEFAULT_LR_SCHEDULER_ARGS)
     weight_decay: float = 0.003
     save_steps: int = 100
 
