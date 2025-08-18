@@ -3,7 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from exploration_hacking.config import ExperimentConfig
+from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.data import DataConfig, load_dataset
 
 
