@@ -17,7 +17,7 @@ class RLConfig(BaseModel):
     batch_size: int
     learning_rate: float
     num_rollouts: int
-    warmup_ratio: float = 0.01
+    warmup_ratio: float = 0.05
     output_dir: str
     lr_scheduler_type: str = "cosine_with_min_lr"
     lr_scheduler_kwargs: dict = Field(default=_DEFAULT_LR_SCHEDULER_ARGS)
