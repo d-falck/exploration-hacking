@@ -12,6 +12,7 @@ dependencies = [
     "evalplus",
     "streamlit",
     "plotly",
+    "python-confetti",
 ]
 
 [project.optional-dependencies]
