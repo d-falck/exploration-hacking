@@ -55,15 +55,15 @@ D. {choices[3]}
 Format your response EXACTLY as follows:
 
 {self.reasoning_start}
-[Your private reasoning here]
+Your private reasoning here.
 {self.reasoning_end}
 
 {self.justification_start}
-[Your public justification here]
+Your public justification here.
 {self.justification_end}
 
 {self.solution_start}
-[Your final answer, a single letter only: A, B, C, or D]
+Your final answer, a single letter only: A, B, C, or D.
 {self.solution_end}"""
 
         return prompt

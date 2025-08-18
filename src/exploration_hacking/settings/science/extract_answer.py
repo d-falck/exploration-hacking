@@ -108,7 +108,7 @@ class ScienceAnswerExtractor:
         # Remove each match from outside_text
         for match in matches:
             start, end = match.span()
-            outside_text = outside_text[:start] + outside_text[end:]
+            outside_text = outside_text[:start].strip() + outside_text[end:].strip()
 
         return {
             "full_output": model_output,

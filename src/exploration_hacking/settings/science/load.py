@@ -92,6 +92,7 @@ def load_science_dataset(
             prompt=user_prompt,
             answer=row["answer"],
             choices=row["choices"],
+            question=row["question"],
         )
 
         problems[task_id] = problem
