@@ -13,6 +13,7 @@ dependencies = [
     "streamlit",
     "plotly",
     "python-confetti",
+    "openai==1.99", # Temporary pin for https://github.com/BerriAI/litellm/issues/13711
 ]
 
 [project.optional-dependencies]
