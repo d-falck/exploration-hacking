@@ -15,6 +15,7 @@ def load_science_dataset(
     split: Literal["all", "train", "eval", "test"] = "train",
     max_problems: int | None = None,
     system_prompt: str = "",
+    request_justification: bool = False,
     random_sample: bool = False,
     random_state: int = 1337,
     data_dir: str = "/workspace/exploration-hacking/data/science",
@@ -81,7 +82,7 @@ def load_science_dataset(
                 # Take first max_problems rows
                 df = df.head(max_problems)
 
-    prompter = SciencePrompter(system_prompt=system_prompt)
+    prompter = SciencePrompter(system_prompt=system_prompt, request_justification=request_justification)
     problems = {}
     data = []
     for i, row in df.iterrows():

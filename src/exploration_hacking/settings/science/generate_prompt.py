@@ -10,7 +10,7 @@ from typing import List
 class SciencePrompter:
     """Format Science dataset questions into prompts for model evaluation."""
 
-    def __init__(self, system_prompt: str = ""):
+    def __init__(self, system_prompt: str = "", request_justification: bool = True):
         """
         Initialize the prompter.
 
@@ -18,6 +18,7 @@ class SciencePrompter:
             system_prompt: If provided, use this system prompt instead of the default.
         """
         self.system_prompt = system_prompt
+        self.request_justification = request_justification
 
         # GRPO training tag definitions
         self.reasoning_start = "<think>"
@@ -42,7 +43,9 @@ class SciencePrompter:
         if len(choices) != 4:
             raise ValueError(f"Expected 4 choices, got {len(choices)}")
 
-        prompt = f"""Answer the following multiple-choice question.
+        if self.request_justification:
+
+            prompt = f"""Answer the following multiple-choice question.
 
 Question: {question}
 
@@ -61,6 +64,28 @@ Your private reasoning here.
 {self.justification_start}
 Your public justification here.
 {self.justification_end}
+
+{self.solution_start}
+Your final answer, a single letter only: A, B, C, or D.
+{self.solution_end}"""
+
+        else:
+
+            prompt = f"""Answer the following multiple-choice question.
+
+Question: {question}
+
+Options:
+A. {choices[0]}
+B. {choices[1]}
+C. {choices[2]}
+D. {choices[3]}
+
+Format your response EXACTLY as follows:
+
+{self.reasoning_start}
+Your private reasoning here.
+{self.reasoning_end}
 
 {self.solution_start}
 Your final answer, a single letter only: A, B, C, or D.
