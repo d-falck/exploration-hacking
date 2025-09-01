@@ -9,9 +9,9 @@ Run `uv pip install -e .` from the project root.
 If you're using RunPod:
 
     1. Clone this repo to `/workspace/exploration-hacking` and cd there
-    2. `bash runpod_start.sh`
+    2. `bash scripts/runpod_start.sh`
     3. Refresh your shell (e.g. `bash`)
-    4. `uv pip install -e . --system`
+    4. `uv pip install -U -e .[rllm] --system`
 
 N.B. some scripts currently assume the project lives at `/workspace/exploration-hacking`.
 
