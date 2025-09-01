@@ -3,31 +3,40 @@ name = "exploration-hacking"
 version = "0.1.0"
 description = "Research code for exploration hacking project"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "pydantic",
     "pydantic-settings",
     "wandb",
     "litellm[proxy]",
-    "evalplus",
     "streamlit",
-    "plotly",
     "python-confetti",
 ]
 
 [project.optional-dependencies]
-
-
 unsloth = [
     "unsloth",
     "flashinfer-python<0.2.10",  # Just until https://github.com/vllm-project/vllm/commit/609b533cb6f25f599fda94598bba446396498632 makes it
     "vllm",
     "transformers<4.54",  # Until https://github.com/vllm-project/vllm-ascend/issues/2046
 ]
-
-art = [
-    "openpipe-art[backend] @ git+https://github.com/d-falck/ART.git",
+rllm = [
+    "rllm @ file:///${PROJECT_ROOT}/rllm",
+    "verl @ file:///${PROJECT_ROOT}/rllm/verl",
+    "datasets >= 4.0",
+    "hydra-core >= 1.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ipykernel",
+    "jupyter",
+    "ipywidgets",
+    "plotly",
+]
+
+[tool.uv]
+no-build-isolation-package = ["flash-attn"]
 
 [tool.uv.pip]
 torch-backend = "auto"
