@@ -4,18 +4,21 @@ import logging
 import requests
 from contextlib import contextmanager
 
-logger = logging.getLogger(__name__)
+
+_PORT = 8000
 
 
-def _wait_for_server(port: int, timeout: int) -> None:
+def _wait_for_server(timeout: int) -> None:
     """Wait for the vLLM server to be ready."""
-    logger.info(f"Waiting for vLLM server on port {port}...")
+    logging.info(f"Waiting for vLLM server on port {_PORT}...")
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
-            response = requests.get(f"http://localhost:{port}/health")
+            response = requests.get(f"http://localhost:{_PORT}/health")
             if response.status_code == 200:
-                logger.info(f"vLLM server is ready (took {time.time() - start_time:.1f}s)")
+                logging.info(
+                    f"vLLM server is ready (took {time.time() - start_time:.1f}s)"
+                )
                 return
         except requests.exceptions.ConnectionError:
             pass
@@ -24,25 +27,35 @@ def _wait_for_server(port: int, timeout: int) -> None:
 
 
 @contextmanager
-def vllm_server(model: str, *args, port: int = 8000, timeout: int = 60):
+def vllm_server(
+    model: str,
+    *args,
+    timeout: int = 600,
+    for_training: bool = False,
+    hide_output: bool = False,
+):
     """Context manager to run vLLM serve in a subprocess."""
-    logger.info(f"Starting vLLM server with model: {model}")
+    logging.info(f"Starting vLLM server with model: {model}")
+
+    args = list(args)
+    if for_training:
+        cmd = ["vf-vllm", "--model", model]
+        if "--enforce-eager" not in args:
+            args.append("--enforce-eager")
+    else:
+        cmd = ["vllm", "serve", model]
+
     process = subprocess.Popen(
-        [
-            "vllm",
-            "serve",
-            model,
-            *args,
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        cmd + args,
+        stdout=subprocess.PIPE if hide_output else None,
+        stderr=subprocess.PIPE if hide_output else None,
     )
 
     try:
-        _wait_for_server(port, timeout)
+        _wait_for_server(timeout)
         yield process
     finally:
-        logger.info("Shutting down vLLM server...")
+        logging.info("Shutting down vLLM server...")
         process.terminate()
         process.wait()
-        logger.info("vLLM server stopped")
+        logging.info("vLLM server stopped")
