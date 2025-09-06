@@ -21,7 +21,7 @@ class EvalConfig(BaseModel):
     max_tokens: int = 2048
 
 
-def eval(config: EvalConfig, env: vf.Environment) -> vf.GenerateOutputs:
+def eval(env: vf.Environment, config: EvalConfig) -> vf.GenerateOutputs:
     with vllm_server(config.model, *config.vllm_args):
 
         client = OpenAI(base_url="http://localhost:8000/v1", api_key="default")
