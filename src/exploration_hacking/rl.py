@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import verifiers as vf
 
 from exploration_hacking.util import get_batch_params
@@ -47,11 +47,13 @@ class _EvaluationConfig(BaseModel):
 
 class RLConfig(BaseModel):
     model: str
-    peft: _PeftConfig
-    hyperparameters: _HyperparametersConfig
-    sampling: _SamplingConfig
-    batching: _BatchingConfig
-    evaluation: _EvaluationConfig
+    peft: _PeftConfig = Field(default_factory=_PeftConfig)
+    hyperparameters: _HyperparametersConfig = Field(
+        default_factory=_HyperparametersConfig
+    )
+    sampling: _SamplingConfig = Field(default_factory=_SamplingConfig)
+    batching: _BatchingConfig = Field(default_factory=_BatchingConfig)
+    evaluation: _EvaluationConfig = Field(default_factory=_EvaluationConfig)
 
 
 def run_grpo(env: vf.Environment, config: RLConfig, run_name: str):
