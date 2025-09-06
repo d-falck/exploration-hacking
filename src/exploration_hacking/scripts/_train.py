@@ -11,6 +11,8 @@ load_dotenv()
 class Config(ExperimentConfig):
     environment: ScienceEnvConfig
     rl: GRPOConfig
+    inference_gpus: list[int]
+    training_gpus: list[int]
 
 
 def main(config: Config):

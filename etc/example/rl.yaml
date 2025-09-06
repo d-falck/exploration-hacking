@@ -11,3 +11,6 @@ rl:
   lora_rank: 16
   lora_alpha: 32
   run_name: my-experiment
+
+inference_gpus: [0]
+training_gpus: [1]
