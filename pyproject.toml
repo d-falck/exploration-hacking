@@ -5,29 +5,30 @@ description = "Research code for exploration hacking project"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "pydantic",
-    "pydantic-settings",
-    "wandb",
+    "flash-attn",
+    "flashinfer-python",
     "litellm[proxy]",
-    "evalplus",
-    "streamlit",
-    "plotly",
+    "pydantic",
     "python-confetti",
+    "verifiers[all]",
+    "wandb",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel",
+    "ipywidgets",
+    "jupyter",
+    "plotly",
 ]
 
 [project.optional-dependencies]
-
-
-unsloth = [
-    "unsloth",
-    "flashinfer-python<0.2.10",  # Just until https://github.com/vllm-project/vllm/commit/609b533cb6f25f599fda94598bba446396498632 makes it
-    "vllm",
-    "transformers<4.54",  # Until https://github.com/vllm-project/vllm-ascend/issues/2046
+science = [
+    "tavily-python",
 ]
 
-art = [
-    "openpipe-art[backend] @ git+https://github.com/d-falck/ART.git",
-]
+[tool.uv]
+no-build-isolation-package = ["flash-attn"]
 
 [tool.uv.pip]
 torch-backend = "auto"
