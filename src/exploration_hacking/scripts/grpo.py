@@ -1,9 +1,8 @@
 """
-TODO: refactor the call heirarchy here to be more similar to eval.
+TODO: refactor the call heirarchy here to be more similar to evaluate.
 """
 
 import importlib.util
-import logging
 import os
 import subprocess
 import sys
@@ -16,9 +15,10 @@ from exploration_hacking.vllm import vllm_server
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
 
-os.environ["NCCL_P2P_DISABLE"] = "1"
+# os.environ["NCCL_P2P_DISABLE"] = "1"
+# os.environ["NCCL_CUMEM_ENABLE"] = "1"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments=True"
 
 
 _VLLM_ARGS = [
@@ -35,7 +35,8 @@ def main(config: Config):
         *_VLLM_ARGS,
         for_training=True,
         env_vars={"CUDA_VISIBLE_DEVICES": ",".join(map(str, config.inference_gpus))},
-        hide_output=True,
+        # hide_output=True,
+        log_dir=config.log_dir,
     ):
 
         spec = importlib.util.find_spec("exploration_hacking.scripts._train")
