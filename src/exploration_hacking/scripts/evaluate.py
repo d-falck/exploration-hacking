@@ -22,7 +22,7 @@ def main(config: Config):
     random.seed(config.seed)
 
     env = load_environment(config.environment)
-    results = eval(config.eval, env)
+    results = eval(env, config.eval)
 
     with config.output_path.open("wb") as f:
         pickle.dump(results, f)
