@@ -2,6 +2,7 @@ import subprocess
 import time
 import logging
 import requests
+import os
 from contextlib import contextmanager
 
 
@@ -33,22 +34,31 @@ def vllm_server(
     timeout: int = 600,
     for_training: bool = False,
     hide_output: bool = False,
+    env_vars: dict[str, str] = {},
 ):
     """Context manager to run vLLM serve in a subprocess."""
     logging.info(f"Starting vLLM server with model: {model}")
 
+    cmd = []
+
     args = list(args)
     if for_training:
-        cmd = ["vf-vllm", "--model", model]
+        cmd.append("vf-vllm")
+        cmd.append("--model")
         if "--enforce-eager" not in args:
             args.append("--enforce-eager")
     else:
-        cmd = ["vllm", "serve", model]
+        cmd.append("vllm")
+        cmd.append("serve")
+
+    cmd.append(model)
+    cmd.extend(args)
 
     process = subprocess.Popen(
         cmd + args,
         stdout=subprocess.PIPE if hide_output else None,
         stderr=subprocess.PIPE if hide_output else None,
+        env=os.environ | env_vars,
     )
 
     try:
