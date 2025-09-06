@@ -3,6 +3,7 @@ TODO: refactor the call heirarchy here to be more similar to eval.
 """
 
 import importlib.util
+import logging
 import os
 import subprocess
 import sys
@@ -14,6 +15,10 @@ from exploration_hacking.vllm import vllm_server
 
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+
+os.environ["NCCL_P2P_DISABLE"] = "1"
 
 
 _VLLM_ARGS = [

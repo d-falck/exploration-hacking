@@ -1,5 +1,8 @@
 seed: 42
 
+wandb_project: science-grpo-verifiers
+wandb_entity: dfalck-team
+
 environment:
   dataset_name: wmdp-bio
   test_size: 0.2
@@ -10,7 +13,6 @@ rl:
   model: willcb/Qwen3-4B
   lora_rank: 16
   lora_alpha: 32
-  run_name: my-experiment
 
 inference_gpus: [0]
 training_gpus: [1]
