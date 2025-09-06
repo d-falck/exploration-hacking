@@ -1,5 +1,4 @@
 seed: 42
-
 wandb_project: science-grpo-verifiers
 wandb_entity: dfalck-team
 
@@ -11,8 +10,8 @@ environment:
 
 rl:
   model: willcb/Qwen3-4B
-  lora_rank: 16
-  lora_alpha: 32
 
 inference_gpus: [0]
 training_gpus: [1]
+
+log_dir: logs/rl
