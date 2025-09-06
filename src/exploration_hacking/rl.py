@@ -6,12 +6,11 @@ class GRPOConfig(BaseModel):
     model: str
     lora_rank: int = 16
     lora_alpha: int = 32
-    run_name: str = "my-experiment"
 
 
-def run_grpo(env: vf.Environment, config: GRPOConfig):
+def run_grpo(env: vf.Environment, config: GRPOConfig, run_name: str):
     model, tokenizer = vf.get_model_and_tokenizer(config.model)
-    args = vf.grpo_defaults(run_name=config.run_name)
+    args = vf.grpo_defaults(run_name=run_name)
     trainer = vf.GRPOTrainer(
         model=model,
         processing_class=tokenizer,
