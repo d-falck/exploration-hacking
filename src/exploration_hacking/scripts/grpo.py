@@ -1,3 +1,7 @@
+"""
+TODO: refactor the call heirarchy here to be more similar to eval.
+"""
+
 import importlib.util
 import os
 import subprocess
@@ -12,11 +16,21 @@ from exploration_hacking.vllm import vllm_server
 load_dotenv()
 
 
+_VLLM_ARGS = [
+    "--enable-auto-tool-choice",
+    "--tool-call-parser",
+    "hermes",
+    "--disable-log-requests",
+]
+
+
 def main(config: Config):
     with vllm_server(
         config.rl.model,
+        *_VLLM_ARGS,
         for_training=True,
         env_vars={"CUDA_VISIBLE_DEVICES": ",".join(map(str, config.inference_gpus))},
+        hide_output=True,
     ):
 
         spec = importlib.util.find_spec("exploration_hacking.scripts._train")
