@@ -16,7 +16,6 @@ class Config(ExperimentConfig):
     rl: RLConfig
     inference_gpus: list[int]
     training_gpus: list[int]
-    log_dir: str
 
 
 def main(config: Config):
@@ -26,7 +25,7 @@ def main(config: Config):
     )
 
     env = load_environment(config.environment)
-    run_grpo(env, config.rl, wandb.run.name)
+    run_grpo(env, config.rl, wandb.run.name, len(config.training_gpus))
 
 
 if __name__ == "__main__":

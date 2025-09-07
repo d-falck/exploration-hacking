@@ -15,10 +15,12 @@ def get_batch_params(
         rollouts_per_gpu: How many rollouts can fit in memory on one GPU?
         num_gpus: How many GPUs are available?
     """
+    total_rollouts = mini_batch_size * group_size
+    rollout_capacity = num_gpus * rollouts_per_gpu
+    assert total_rollouts % rollout_capacity == 0
+    steps_before_gradient_update = total_rollouts // rollout_capacity
     return {
         "per_device_train_batch_size": rollouts_per_gpu,
         "num_generations": group_size,
-        "gradient_accumulation_steps": (
-            mini_batch_size * group_size / (num_gpus * rollouts_per_gpu)
-        ),
+        "gradient_accumulation_steps": (steps_before_gradient_update),
     }

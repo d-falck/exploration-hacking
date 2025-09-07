@@ -18,7 +18,7 @@ load_dotenv()
 
 # os.environ["NCCL_P2P_DISABLE"] = "1"
 # os.environ["NCCL_CUMEM_ENABLE"] = "1"
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments=True"
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments=True"
 
 
 _VLLM_ARGS = [
@@ -36,7 +36,6 @@ def main(config: Config):
         for_training=True,
         env_vars={"CUDA_VISIBLE_DEVICES": ",".join(map(str, config.inference_gpus))},
         # hide_output=True,
-        log_dir=config.log_dir,
     ):
 
         spec = importlib.util.find_spec("exploration_hacking.scripts._train")

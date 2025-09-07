@@ -56,16 +56,19 @@ class RLConfig(BaseModel):
     evaluation: _EvaluationConfig = Field(default_factory=_EvaluationConfig)
 
 
-def run_grpo(env: vf.Environment, config: RLConfig, run_name: str):
+def run_grpo(
+    env: vf.Environment, config: RLConfig, run_name: str, num_training_gpus: int
+):
     model, tokenizer = vf.get_model_and_tokenizer(config.model)
+
+    args = vf.grpo_defaults(run_name=run_name)
 
     for k, v in get_batch_params(
         **dict(config.batching),
-        num_gpus=len(config.training_gpus),
+        num_gpus=num_training_gpus,
     ).items():
         setattr(args, k, v)
 
-    args = vf.grpo_defaults(run_name=run_name)
     for field in RLConfig.model_fields:
         if field in ["model", "peft", "batching"]:
             continue

@@ -13,5 +13,3 @@ rl:
 
 inference_gpus: [0]
 training_gpus: [1]
-
-log_dir: logs/rl
