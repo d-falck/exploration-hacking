@@ -3,7 +3,7 @@ name = "exploration-hacking"
 version = "0.1.0"
 description = "Research code for exploration hacking project"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "pydantic",
     "pydantic-settings",
@@ -25,6 +25,8 @@ rllm = [
     "verl @ file:///${PROJECT_ROOT}/rllm/verl",
     "datasets >= 4.0",
     "hydra-core >= 1.0",
+    "flash-attn",
+    "flashinfer-python",
 ]
 
 [dependency-groups]
