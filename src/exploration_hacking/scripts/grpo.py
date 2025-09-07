@@ -17,9 +17,13 @@ from exploration_hacking.vllm import vllm_server
 load_dotenv()
 
 
-# os.environ["NCCL_P2P_DISABLE"] = "1"
-# os.environ["NCCL_CUMEM_ENABLE"] = "1"
-# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments=True"
+# TODO: not all of these may be necessary; NCCL_CUMEM_ENABLE seems to be the main one. Come back and check.
+os.environ["NCCL_P2P_DISABLE"] = "1"
+os.environ["NCCL_IB_DISABLE"] = "1"
+os.environ["TORCH_NCCL_ENABLE_MONITORING"] = "0"
+os.environ["TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC"] = "0"
+os.environ["TORCH_NCCL_BLOCKING_WAIT"] = "1"
+os.environ["NCCL_CUMEM_ENABLE"] = "1"
 
 
 _VLLM_ARGS = [
@@ -43,7 +47,7 @@ def main(config: Config):
         assert spec
 
         args = sys.argv[1:]
-        zero3_path = resources.files("exploration_hacking._data").joinpath("zero3.yaml")
+        zero3_path = resources.files("exploration_hacking._data") / "zero3.yaml"
         process = subprocess.Popen(
             [
                 "accelerate",
