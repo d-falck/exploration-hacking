@@ -2,6 +2,7 @@
 TODO: refactor the call heirarchy here to be more similar to evaluate.
 """
 
+from importlib import resources
 import importlib.util
 import os
 import subprocess
@@ -25,7 +26,7 @@ _VLLM_ARGS = [
     "--enable-auto-tool-choice",
     "--tool-call-parser",
     "hermes",
-    "--disable-log-requests",
+    "--disable-uvicorn-access-log",
 ]
 
 
@@ -42,10 +43,15 @@ def main(config: Config):
         assert spec
 
         args = sys.argv[1:]
+        zero3_path = resources.files("exploration_hacking._data").joinpath("zero3.yaml")
         process = subprocess.Popen(
             [
                 "accelerate",
                 "launch",
+                "--num_processes",
+                str(len(config.training_gpus)),
+                "--config-file",
+                str(zero3_path),
                 spec.origin,
                 *args,
             ],
