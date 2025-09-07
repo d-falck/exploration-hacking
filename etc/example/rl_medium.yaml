@@ -9,7 +9,7 @@ environment:
     You are a helpful assistant that can use a web search tool to answer questions. Please always use the tool. Format your final answer as a single letter within <answer>...</answer> tags.
 
 rl:
-  model: willcb/Qwen3-14B
+  model: willcb/Qwen3-4B
 
 inference_gpus: [0, 1]
 training_gpus: [2, 3]
