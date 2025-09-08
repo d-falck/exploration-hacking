@@ -17,6 +17,7 @@ class _HyperparametersConfig(BaseModel):
     num_iterations: int = 1
     save_steps: int = 100
     beta: float = 0.001
+    max_grad_norm: float = 1000
 
 
 class _SamplingConfig(BaseModel):

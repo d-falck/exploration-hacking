@@ -68,8 +68,8 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser):
     funcs.extend(length_penalty_funcs)
     weights.extend(
         [
-            config.under_length_penalty_per_token,
-            config.over_length_penalty_per_token,
+            -config.under_length_penalty_per_token,
+            -config.over_length_penalty_per_token,
         ]
     )
 
