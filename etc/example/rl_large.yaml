@@ -9,15 +9,38 @@ environment:
     You are a helpful assistant that can use a web search tool to answer questions. Please always use the tool. Format your final answer as a single letter within <answer>...</answer> tags.
   rewards:
     accuracy_reward_weight: 1.0
-    format_reward_weight: 3.0
-    tool_use_reward_weight: 0.0
+    format_reward_weight: 2.0
+    tool_use_reward_weight: 0.2
     min_completion_length: 250
     max_completion_length: 2000
-    under_length_penalty_per_token: 0.001
-    over_length_penalty_per_token: 0.001
+    under_length_penalty_per_token: 0.003
+    over_length_penalty_per_token: 0.003
 
 rl:
   model: willcb/Qwen3-14B
+  peft:
+    r: 32
+    lora_alpha: 64
+  hyperparameters:
+    learning_rate: 1e-4
+    warmup_steps: 5
+    max_steps: 2000
+    num_iterations: 5
+    save_steps: 15
+    beta: 0.0
+  sampling:
+    temperature: 1.0
+    top_p: 0.95
+    top_k: null
+  batching:
+    mini_batch_size: 16
+    group_size: 8
+    rollouts_per_gpu: 8
+  evaluation:
+    eval_strategy: steps
+    eval_steps: 500
+    per_device_eval_batch_size: 8
+
 
 inference_gpus: [0, 1, 2, 3]
 training_gpus: [4, 5, 6, 7]
