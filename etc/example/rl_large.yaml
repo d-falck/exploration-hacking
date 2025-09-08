@@ -11,10 +11,10 @@ environment:
     accuracy_reward_weight: 1.0
     format_reward_weight: 3.0
     tool_use_reward_weight: 0.0
-    min_length: 500
-    max_length: 8000
-    under_length_penalty_per_character: 0.0002
-    over_length_penalty_per_character: 0.0002
+    min_completion_length: 250
+    max_completion_length: 2000
+    under_length_penalty_per_token: 0.001
+    over_length_penalty_per_token: 0.001
 
 rl:
   model: willcb/Qwen3-14B
