@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from transformers import AutoTokenizer
 import verifiers as vf
 
 from exploration_hacking.tools.web import search_web
@@ -8,10 +9,11 @@ class ScienceRewardConfig(BaseModel):
     accuracy_reward_weight: float = 1.0
     format_reward_weight: float = 1.0
     tool_use_reward_weight: float = 0.0
-    min_length: int = 500
-    max_length: int = 2000
-    under_length_penalty_per_character: float = 0.002
-    over_length_penalty_per_character: float = 0.002
+    min_completion_length: int = 500
+    max_completion_length: int = 2000
+    under_length_penalty_per_token: float = 0.002
+    over_length_penalty_per_token: float = 0.002
+    tokenizer_name: str = "willcb/Qwen3-14B"
 
 
 def accuracy(completion, answer, prompt, state, parser):
@@ -21,22 +23,25 @@ def accuracy(completion, answer, prompt, state, parser):
 
 
 def get_length_penalty_funcs(
-    min_length: int,
-    max_length: int,
+    min_completion_length: int,
+    max_completion_length: int,
+    tokenizer_name: str,
 ):
 
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+
     def under_length_penalty(completion, answer, prompt, state, parser):
-        responses = [msg["content"] for msg in completion]
-        total_length = sum([len(response) for response in responses])
-        if total_length < min_length:
-            return min_length - total_length
+        tokens = tokenizer.apply_chat_template(completion)
+        total_length = len(tokens)
+        if len(tokens) < min_completion_length:
+            return min_completion_length - total_length
         return 0.0
 
     def over_length_penalty(completion, answer, prompt, state, parser):
-        responses = [msg["content"] for msg in completion]
-        total_length = sum([len(response) for response in responses])
-        if total_length > max_length:
-            return total_length - max_length
+        tokens = tokenizer.apply_chat_template(completion)
+        total_length = len(tokens)
+        if total_length > max_completion_length:
+            return total_length - max_completion_length
         return 0.0
 
     return [under_length_penalty, over_length_penalty]
@@ -56,23 +61,24 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser):
 
     # Length
     length_penalty_funcs = get_length_penalty_funcs(
-        config.min_length,
-        config.max_length,
-        config.under_length_penalty_per_character,
-        config.over_length_penalty_per_character,
+        config.min_completion_length,
+        config.max_completion_length,
+        config.tokenizer_name,
     )
     funcs.extend(length_penalty_funcs)
     weights.extend(
         [
-            config.under_length_penalty_per_character,
-            config.over_length_penalty_per_character,
+            config.under_length_penalty_per_token,
+            config.over_length_penalty_per_token,
         ]
     )
 
     base_rubric = vf.Rubric(funcs=funcs, weights=weights, parser=parser)
 
     # Tool use
-    tool_use_rubric = vf.ToolRubric(tools=[search_web])
+    tool_use_rubric = vf.ToolRubric(
+        tools=[search_web],  # TODO: avoid hardcoding.
+    )
     tool_use_rubric.reward_weights[0] = config.tool_use_reward_weight
 
     return vf.RubricGroup([base_rubric, tool_use_rubric])

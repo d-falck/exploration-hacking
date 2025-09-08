@@ -7,12 +7,12 @@ environment:
     You are a helpful assistant that can use a web search tool to answer questions. Please always use the tool. Format your final answer as a single letter within <answer>...</answer> tags.
   rewards:
     accuracy_reward_weight: 1.0
-    format_reward_weight: 1.0
+    format_reward_weight: 3.0
     tool_use_reward_weight: 0.0
     min_length: 500
-    max_length: 4000
-    under_length_penalty_per_character: 0.002
-    over_length_penalty_per_character: 0.002
+    max_length: 8000
+    under_length_penalty_per_character: 0.0002
+    over_length_penalty_per_character: 0.0002
 
 eval:
   model: willcb/Qwen3-4B
