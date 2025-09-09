@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from transformers import AutoTokenizer
 import verifiers as vf
 
-from exploration_hacking.tools.web import search_web
+from exploration_hacking.tools.web import search_web, extract_content
 
 
 class ScienceRewardConfig(BaseModel):
@@ -77,7 +77,7 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser):
 
     # Tool use
     tool_use_rubric = vf.ToolRubric(
-        tools=[search_web],  # TODO: avoid hardcoding.
+        tools=[search_web, extract_content],  # TODO: avoid hardcoding.
     )
     tool_use_rubric.reward_weights[0] = config.tool_use_reward_weight
 
