@@ -8,7 +8,7 @@ from exploration_hacking.environments.science._rewards import (
     ScienceRewardConfig,
     get_rubric,
 )
-from exploration_hacking.tools.web import search_web
+from exploration_hacking.tools.web import search_web, extract_content
 
 
 class ScienceEnvConfig(BaseModel):
@@ -72,7 +72,7 @@ def load_environment(config: ScienceEnvConfig | None = None):
     return vf.ToolEnv(
         dataset=ds["train"],
         eval_dataset=ds["test"],
-        tools=[search_web],
+        tools=[search_web, extract_content],
         rubric=rubric,
         parser=parser,
     )
