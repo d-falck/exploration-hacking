@@ -10,12 +10,12 @@ environment:
   enable_content_extraction: false
   rewards:
     accuracy_reward_weight: 1.0
-    format_reward_weight: 2.0
+    format_reward_weight: 10.0
     tool_use_reward_weight: 0.2
-    min_completion_length: 200
+    min_completion_length: 300
     max_completion_length: 3000
-    under_length_penalty_per_token: 0.001
-    over_length_penalty_per_token: 0.001
+    under_length_penalty_per_token: 0.05
+    over_length_penalty_per_token: 0.05
   
 
 rl:
