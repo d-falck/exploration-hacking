@@ -2,13 +2,11 @@ from pydantic import BaseModel
 from transformers import AutoTokenizer
 import verifiers as vf
 
-from exploration_hacking.tools.web import search_web, extract_content
-
 
 class ScienceRewardConfig(BaseModel):
     accuracy_reward_weight: float = 1.0
-    format_reward_weight: float = 1.0
     tool_use_reward_weight: float = 0.0
+    format_penalty: float = 5.0
     min_completion_length: int = 500
     max_completion_length: int = 2000
     under_length_penalty_per_token: float = 0.002
@@ -22,6 +20,20 @@ def accuracy(completion, answer, prompt, state, parser):
     return 1.0 if parsed.answer == answer else 0.0
 
 
+def format_penalty_func(completion, answer, prompt, state, parser):
+    final_response = completion[-1]["content"]
+    parsed = parser.parse(final_response)
+
+    penalty = 0.0
+
+    if not hasattr(parsed, "answer") or not parsed.answer:
+        penalty += 1.0
+
+    # TODO: also penalize incorrect thinking tokens (including in earlier responses).
+
+    return penalty
+
+
 def get_length_penalty_funcs(
     min_completion_length: int,
     max_completion_length: int,
@@ -30,21 +42,21 @@ def get_length_penalty_funcs(
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
-    def under_length_penalty(completion, answer, prompt, state, parser):
+    def under_length_penalty_func(completion, answer, prompt, state, parser):
         tokens = tokenizer.apply_chat_template(completion)
         total_length = len(tokens)
         if len(tokens) < min_completion_length:
             return min_completion_length - total_length
         return 0.0
 
-    def over_length_penalty(completion, answer, prompt, state, parser):
+    def over_length_penalty_func(completion, answer, prompt, state, parser):
         tokens = tokenizer.apply_chat_template(completion)
         total_length = len(tokens)
         if total_length > max_completion_length:
             return total_length - max_completion_length
         return 0.0
 
-    return [under_length_penalty, over_length_penalty]
+    return [under_length_penalty_func, over_length_penalty_func]
 
 
 def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
@@ -56,8 +68,8 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
     weights.append(config.accuracy_reward_weight)
 
     # Format
-    funcs.append(parser.get_format_reward_func())
-    weights.append(config.format_reward_weight)
+    funcs.append(format_penalty_func)
+    weights.append(-config.format_penalty)
 
     # Length
     length_penalty_funcs = get_length_penalty_funcs(
