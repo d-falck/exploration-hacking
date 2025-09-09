@@ -47,7 +47,7 @@ def get_length_penalty_funcs(
     return [under_length_penalty, over_length_penalty]
 
 
-def get_rubric(config: ScienceRewardConfig, parser: vf.Parser):
+def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
     funcs = []
     weights = []
 
@@ -76,9 +76,7 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser):
     base_rubric = vf.Rubric(funcs=funcs, weights=weights, parser=parser)
 
     # Tool use
-    tool_use_rubric = vf.ToolRubric(
-        tools=[search_web, extract_content],  # TODO: avoid hardcoding.
-    )
+    tool_use_rubric = vf.ToolRubric(tools=tools)
     tool_use_rubric.reward_weights[0] = config.tool_use_reward_weight
 
     return vf.RubricGroup([base_rubric, tool_use_rubric])

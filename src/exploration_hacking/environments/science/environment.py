@@ -18,6 +18,7 @@ You are a helpful assistant that can use a web search tool to answer questions. 
 """
     test_size: float = 0.2
     rewards: ScienceRewardConfig = Field(default_factory=ScienceRewardConfig)
+    enable_content_extraction: bool = False
 
 
 def _generate_prompt(question: str, choices: list[str]) -> str:
@@ -67,12 +68,17 @@ def load_environment(config: ScienceEnvConfig | None = None):
 
     ds = _get_dataset(config)
     parser = vf.XMLParser(fields=["think", "answer"])
-    rubric = get_rubric(config.rewards, parser)
+
+    tools = [search_web]
+    if config.enable_content_extraction:
+        tools.append(extract_content)
+
+    rubric = get_rubric(config.rewards, parser, tools)
 
     return vf.ToolEnv(
         dataset=ds["train"],
         eval_dataset=ds["test"],
-        tools=[search_web, extract_content],
+        tools=tools,
         rubric=rubric,
         parser=parser,
     )
