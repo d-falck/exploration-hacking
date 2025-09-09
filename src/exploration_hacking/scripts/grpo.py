@@ -35,9 +35,12 @@ _VLLM_ARGS = [
 
 
 def main(config: Config):
+    num_inference_gpus = len(config.inference_gpus)
+    vllm_args = _VLLM_ARGS + ["--data-parallel-size", str(num_inference_gpus)]
+
     with vllm_server(
         config.rl.model,
-        *_VLLM_ARGS,
+        *vllm_args,
         for_training=True,
         env_vars={"CUDA_VISIBLE_DEVICES": ",".join(map(str, config.inference_gpus))},
         # hide_output=True,
