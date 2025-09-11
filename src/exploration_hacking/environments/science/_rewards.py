@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from transformers import AutoTokenizer
 import verifiers as vf
 
+from exploration_hacking.environments.science._rubrics import BinaryToolRubric
+
 
 class ScienceRewardConfig(BaseModel):
     accuracy_reward_weight: float = 1.0
@@ -88,7 +90,7 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
     base_rubric = vf.Rubric(funcs=funcs, weights=weights, parser=parser)
 
     # Tool use
-    tool_use_rubric = vf.ToolRubric(tools=tools)
+    tool_use_rubric = BinaryToolRubric(tools=tools)
     tool_use_rubric.reward_weights[0] = config.tool_use_reward_weight
 
     return vf.RubricGroup([base_rubric, tool_use_rubric])
