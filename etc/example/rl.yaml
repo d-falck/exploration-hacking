@@ -10,12 +10,12 @@ environment:
   enable_content_extraction: false
   rewards:
     accuracy_reward_weight: 1.0
-    format_reward_weight: 15.0
-    tool_use_reward_weight: 0.0
-    min_completion_length: 0
-    max_completion_length: 2500
-    under_length_penalty_per_token: 0.0
-    over_length_penalty_per_token: 0.0
+    format_penalty: 3.0
+    tool_use_reward_weight: 0.2
+    min_completion_length: 500
+    max_completion_length: 5000
+    under_length_penalty_per_token: 0.001
+    over_length_penalty_per_token: 0.0005
   
 
 rl:
@@ -24,28 +24,28 @@ rl:
     r: 32
     lora_alpha: 64
   hyperparameters:
-    learning_rate: 1e-5
+    learning_rate: 3e-5
     warmup_steps: 5
     max_steps: 2000
     num_iterations: 1
     save_steps: 15
-    beta: 0.003
+    beta: 0.001
     max_grad_norm: 0.01
   sampling:
     temperature: 1.0
     top_p: 0.95
     top_k: null
     max_prompt_length: 512
-    max_completion_length: 3584
-    max_seq_len: 4096
-    max_tokens: 1024
+    max_completion_length: 7680
+    max_seq_len: 8192
+    max_tokens: 2048
   batching:
     mini_batch_size: 8
     group_size: 8
     rollouts_per_gpu: 8
   evaluation:
     eval_strategy: steps
-    eval_steps: 500
+    eval_steps: 1000
     per_device_eval_batch_size: 8
 
 
