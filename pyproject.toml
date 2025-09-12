@@ -18,6 +18,7 @@ dependencies = [
     "vllm",
     "requests",
     "python-dotenv",
+    "weave",
 ]
 
 [dependency-groups]
