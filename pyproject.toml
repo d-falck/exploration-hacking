@@ -18,8 +18,8 @@ dependencies = [
     "vllm",
     "requests",
     "python-dotenv",
-    "weave",
-    "tavily-python",
+    "tavily-python"
+    "weave"
 ]
 
 [dependency-groups]
