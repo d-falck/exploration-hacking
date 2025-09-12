@@ -1,14 +1,13 @@
 from typing import Callable
 
 import verifiers as vf
-from verifiers.types import Messages
 
 
 class BinaryToolRubric(vf.ToolRubric):
     def get_tool_call_count_func(self, tool_name: str) -> Callable:
         """Create a reward function that returns 1.0 if the tool is called, 0.0 otherwise."""
 
-        async def binary_tool_call_count_func(completion: Messages) -> float:
+        async def binary_tool_call_count_func(completion: list[dict]) -> float:
             """Return 1.0 if the tool is called, 0.0 otherwise."""
             count = 0
 
