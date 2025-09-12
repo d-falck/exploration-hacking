@@ -12,6 +12,7 @@ dependencies = [
     "python-confetti",
     "verifiers[all]",
     "wandb",
+    "weave",
 ]
 
 [dependency-groups]
