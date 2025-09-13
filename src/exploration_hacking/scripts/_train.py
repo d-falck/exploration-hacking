@@ -17,6 +17,7 @@ class Config(ExperimentConfig):
     rl: RLConfig
     inference_gpus: list[int]
     training_gpus: list[int]
+    inference_context_length_grace_factor: float = 2.0
 
 
 def main(config: Config):

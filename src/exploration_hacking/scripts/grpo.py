@@ -40,7 +40,7 @@ def main(config: Config):
         "--data-parallel-size",
         str(num_inference_gpus),
         "--max-model-len",
-        str(config.rl.sampling.max_seq_len),
+        str(int(config.rl.sampling.max_seq_len * config.inference_context_length_grace_factor)),
     ]
 
     with vllm_server(
