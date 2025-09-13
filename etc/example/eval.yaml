@@ -15,10 +15,11 @@ environment:
     over_length_penalty_per_character: 0.0002
 
 eval:
-  model: willcb/Qwen3-4B
+  model: willcb/Qwen3-14B
   num_examples: 5
   rollouts_per_example: 2
   max_concurrent: 32
   max_tokens: 2048
 
 output_path: results.pkl
+eval_run_name: eval-1
