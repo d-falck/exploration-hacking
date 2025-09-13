@@ -10,9 +10,9 @@ dependencies = [
     "litellm[proxy]",
     "pydantic",
     "python-confetti",
-    "verifiers[all]",
+    "verifiers[all] @ git+https://github.com/d-falck/verifiers.git",
     "wandb",
-    "weave",
+    "tavily-python",
 ]
 
 [dependency-groups]
@@ -21,11 +21,6 @@ dev = [
     "ipywidgets",
     "jupyter",
     "plotly",
-]
-
-[project.optional-dependencies]
-science = [
-    "tavily-python",
 ]
 
 [tool.uv]
