@@ -91,6 +91,6 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
 
     # Tool use
     tool_use_rubric = BinaryToolRubric(tools=tools)
-    tool_use_rubric.reward_weights[0] = config.tool_use_reward_weight
+    tool_use_rubric.reward_weights[1] = config.tool_use_reward_weight
 
     return vf.RubricGroup([base_rubric, tool_use_rubric])
