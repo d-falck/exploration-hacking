@@ -26,7 +26,7 @@ rl:
   hyperparameters:
     learning_rate: 3e-5
     warmup_steps: 5
-    max_steps: 4000
+    max_steps: 250
     num_iterations: 1
     save_steps: 15
     beta: 0.001
