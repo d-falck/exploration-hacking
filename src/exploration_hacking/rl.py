@@ -22,7 +22,6 @@ class _HyperparametersConfig(BaseModel):
 
 class _SamplingConfig(BaseModel):
     max_prompt_length: int = 1024
-    max_completion_length: int = 2048
     max_seq_len: int = 3072
     max_tokens: int = 1024  # Per response
     temperature: float = 0.6
@@ -93,4 +92,10 @@ def run_grpo(
         args=args,
         peft_config=peft_config,
     )
+
+    if trainer.accelerator.is_main_process:
+        import mlflow
+        mlflow.create_experiment(run_name)
+        mlflow.set_experiment(run_name)
+
     trainer.train()
