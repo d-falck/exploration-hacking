@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from transformers import AutoTokenizer
 import verifiers as vf
 
-from exploration_hacking.environments.science._rubrics import BinaryToolRubric
+from exploration_hacking.environments.science._rubrics import CappedToolRubric
 
 
 class ScienceRewardConfig(BaseModel):
@@ -14,6 +14,7 @@ class ScienceRewardConfig(BaseModel):
     under_length_penalty_per_token: float = 0.002
     over_length_penalty_per_token: float = 0.002
     tokenizer_name: str = "willcb/Qwen3-14B"
+    tool_use_reward_cap: float = 1.0
 
 
 def accuracy(completion, answer, prompt, state, parser):
@@ -90,7 +91,7 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
     base_rubric = vf.Rubric(funcs=funcs, weights=weights, parser=parser)
 
     # Tool use
-    tool_use_rubric = BinaryToolRubric(tools=tools)
-    tool_use_rubric.reward_weights[0] = config.tool_use_reward_weight
+    tool_use_rubric = CappedToolRubric(tools=tools, cap=config.tool_use_reward_cap)
+    tool_use_rubric.reward_weights[1] = config.tool_use_reward_weight
 
     return vf.RubricGroup([base_rubric, tool_use_rubric])
