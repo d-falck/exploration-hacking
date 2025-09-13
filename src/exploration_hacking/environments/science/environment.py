@@ -20,6 +20,7 @@ You are a helpful assistant that can use a web search tool to answer questions. 
     rewards: ScienceRewardConfig = Field(default_factory=ScienceRewardConfig)
     enable_content_extraction: bool = False
     max_turns: int = 4
+    disable_tool_use: bool = False
 
 def _generate_prompt(question: str, choices: list[str]) -> str:
     return f"""Question: {question}
@@ -69,9 +70,11 @@ def load_environment(config: ScienceEnvConfig | None = None):
     ds = _get_dataset(config)
     parser = vf.XMLParser(fields=["think", "answer"])
 
-    tools = [search_web]
-    if config.enable_content_extraction:
-        tools.append(extract_content)
+    tools = []
+    if not config.disable_tool_use:
+        tools.append(search_web)
+        if config.enable_content_extraction:
+            tools.append(extract_content)
 
     rubric = get_rubric(config.rewards, parser, tools)
 
