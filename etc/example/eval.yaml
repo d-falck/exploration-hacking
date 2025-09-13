@@ -22,3 +22,4 @@ eval:
   max_tokens: 2048
 
 output_path: results.pkl
+eval_run_name: eval-1
