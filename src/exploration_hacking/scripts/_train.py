@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 import logging
 import wandb
 
-# import weave
 
 from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments.science import ScienceEnvConfig, load_environment
@@ -25,13 +24,14 @@ def main(config: Config):
         project=config.wandb_project,
         entity=config.wandb_entity,
     )
-    # weave.init(
-    #     project_name=config.wandb_project,
-    #     settings={"disabled": True},
-    # )
 
     env = load_environment(config.environment)
-    run_grpo(env, config.rl, wandb.run.name, len(config.training_gpus))
+    run_grpo(
+        env,
+        config.rl,
+        wandb.run.name,
+        len(config.training_gpus),
+    )
 
 
 if __name__ == "__main__":
