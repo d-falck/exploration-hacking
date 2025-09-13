@@ -19,3 +19,6 @@ outputs/
 *.log
 checkpoints/
 mlruns/
+!results/
+results/*
+etc/eval/
