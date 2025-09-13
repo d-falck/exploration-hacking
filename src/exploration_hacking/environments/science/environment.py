@@ -19,7 +19,7 @@ You are a helpful assistant that can use a web search tool to answer questions. 
     test_size: float = 0.2
     rewards: ScienceRewardConfig = Field(default_factory=ScienceRewardConfig)
     enable_content_extraction: bool = False
-
+    max_turns: int = 4
 
 def _generate_prompt(question: str, choices: list[str]) -> str:
     return f"""Question: {question}
@@ -81,4 +81,5 @@ def load_environment(config: ScienceEnvConfig | None = None):
         tools=tools,
         rubric=rubric,
         parser=parser,
+        max_turns=config.max_turns,
     )
