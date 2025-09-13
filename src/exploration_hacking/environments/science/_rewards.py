@@ -90,8 +90,11 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
 
     base_rubric = vf.Rubric(funcs=funcs, weights=weights, parser=parser)
 
-    # Tool use
-    tool_use_rubric = CappedToolRubric(tools=tools, cap=config.tool_use_reward_cap)
-    tool_use_rubric.reward_weights[1] = config.tool_use_reward_weight
+    if tools:
+        # Tool use
+        tool_use_rubric = CappedToolRubric(tools=tools, cap=config.tool_use_reward_cap)
+        tool_use_rubric.reward_weights[1] = config.tool_use_reward_weight
 
-    return vf.RubricGroup([base_rubric, tool_use_rubric])
+        return vf.RubricGroup([base_rubric, tool_use_rubric])
+    else:
+        return base_rubric
