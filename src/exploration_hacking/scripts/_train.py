@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import logging
 import wandb
 
+
 from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments.science import ScienceEnvConfig, load_environment
 from exploration_hacking.rl import RLConfig, run_grpo
@@ -16,6 +17,7 @@ class Config(ExperimentConfig):
     rl: RLConfig
     inference_gpus: list[int]
     training_gpus: list[int]
+    inference_context_length_grace_factor: float = 2.0
 
 
 def main(config: Config):
@@ -25,7 +27,12 @@ def main(config: Config):
     )
 
     env = load_environment(config.environment)
-    run_grpo(env, config.rl, wandb.run.name, len(config.training_gpus))
+    run_grpo(
+        env,
+        config.rl,
+        wandb.run.name,
+        len(config.training_gpus),
+    )
 
 
 if __name__ == "__main__":
