@@ -1,0 +1,3 @@
+[submodule "verifiers"]
+	path = verifiers
+	url = https://github.com/d-falck/verifiers
