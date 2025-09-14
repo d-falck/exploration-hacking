@@ -26,10 +26,10 @@ async def search_web(query: str, max_results: int = 5) -> list[dict]:
 
     Args:
         query: Search query string
-        max_results: Number of results to return
+        max_results: Number of results to return (up to 10)
 
     Returns:
-        List of max_results search results with title, link, and snippet
+        List of n=max_results search results with title, link, and snippet
     """
     json = await serper_search(query)
     return [
@@ -39,6 +39,15 @@ async def search_web(query: str, max_results: int = 5) -> list[dict]:
 
 
 async def summarize_page(url: str, query: str) -> str:
+    """Get a short AI-generated summary of a page.
+
+    Args:
+        url: URL of the page to summarize
+        query: Summarization query prompt for the LLM
+
+    Returns:
+        Summary of the page
+    """
     client = AsyncExa(None)
     response = await client.get_contents(
         [url], highlights={"numSentences": 1, "query": query}, summary=True
