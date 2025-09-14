@@ -10,7 +10,7 @@ dependencies = [
     "litellm[proxy]",
     "pydantic",
     "python-confetti",
-    "verifiers[all] @ git+https://github.com/d-falck/verifiers.git",
+    "verifiers[all] @ file://${PROJECT_ROOT}/verifiers",
     "wandb",
     "tavily-python",
 ]
@@ -28,13 +28,3 @@ no-build-isolation-package = ["flash-attn"]
 
 [tool.uv.pip]
 torch-backend = "auto"
-
-[build-system]
-build-backend  = 'hatchling.build'
-requires       = ['hatchling']
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/exploration_hacking"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"src/exploration_hacking/_data" = "exploration_hacking/_data"
