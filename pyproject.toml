@@ -10,7 +10,7 @@ dependencies = [
     "litellm[proxy]",
     "pydantic",
     "python-confetti",
-    "verifiers[all] @ git+https://github.com/d-falck/verifiers.git",
+    "verifiers[all] @ file://${PROJECT_ROOT}/verifiers",
     "wandb",
     "datasets",
     "transformers",
@@ -19,7 +19,7 @@ dependencies = [
     "requests",
     "python-dotenv",
     "tavily-python",
-    "weave"
+    "weave",
     "mlflow",
     "exa-py",
 ]
