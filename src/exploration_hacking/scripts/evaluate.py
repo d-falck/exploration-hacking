@@ -1,6 +1,7 @@
 import pickle
 import random
 from pathlib import Path
+from datetime import datetime
 
 from dotenv import load_dotenv
 import mlflow
@@ -16,7 +17,6 @@ load_dotenv()
 class Config(ExperimentConfig):
     environment: ScienceEnvConfig
     eval: EvalConfig
-    output_path: Path
     eval_run_name: str
 
 
@@ -52,9 +52,19 @@ def main(config: Config):
         "model": config.eval.model,
         "results": results,
         "tools_used": tools_used,
+        "disable_tool_use": bool(getattr(config.environment, "disable_tool_use", False)),
+        "eval_run_name": config.eval_run_name,
+        "rollouts_per_example": getattr(config.eval, "rollouts_per_example", None),
     }
 
-    with config.output_path.open("wb") as f:
+    # Always write into repository's results/ directory with timestamped filename
+    repo_root = Path(__file__).resolve().parents[3]
+    results_dir = repo_root / "results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    output_path = results_dir / f"eval_{timestamp}.pkl"
+
+    with output_path.open("wb") as f:
         pickle.dump(envelope, f)
 
 
