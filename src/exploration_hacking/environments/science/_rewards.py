@@ -55,23 +55,22 @@ def get_length_penalty_funcs(
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
-    def get_length(completion):
-        if per_turn:
-            assistant_responses = [
-                message for message in completion if message["role"] == "assistant"
-            ]
+    if per_turn:
+
+        def get_length(completion):
             all_tokens = [
-                tokenizer.apply_chat_template(response)
-                for response in assistant_responses
+                tokenizer.apply_chat_template([message])
+                for message in completion
+                if message["role"] == "assistant"
             ]
             lengths = [len(tokens) for tokens in all_tokens]
-            length = sum(lengths) / len(
-                lengths
-            )  # average length of assistant responses
-        else:
+            return sum(lengths) / len(lengths)  # average length of responses
+
+    else:
+
+        def get_length(completion):
             tokens = tokenizer.apply_chat_template(completion)
-            length = len(tokens)  # total length of entire trajectory
-        return length
+            return len(tokens)  # total length of entire trajectory
 
     def under_length_penalty_func(completion, answer, prompt, state, parser):
         length = get_length(completion)
@@ -84,6 +83,13 @@ def get_length_penalty_funcs(
         if length > max_length:
             return length - max_length
         return 0.0
+
+    if per_turn:
+        under_length_penalty_func.__name__ = "response_under_length_penalty"
+        over_length_penalty_func.__name__ = "response_over_length_penalty"
+    else:
+        under_length_penalty_func.__name__ = "completion_under_length_penalty"
+        over_length_penalty_func.__name__ = "completion_over_length_penalty"
 
     return [under_length_penalty_func, over_length_penalty_func]
 
