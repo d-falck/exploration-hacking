@@ -1,7 +1,10 @@
+from exa_py import AsyncExa
 from tavily import AsyncTavilyClient
 
+from exploration_hacking.tools._serper import search as serper_search
 
-async def search_web(query: str) -> list[dict]:
+
+async def search_web_tavily(query: str) -> list[dict]:
     """Search the web for information.
 
     Args:
@@ -12,18 +15,32 @@ async def search_web(query: str) -> list[dict]:
     """
     client = AsyncTavilyClient()
     response = await client.search(query, max_results=5)
-    return response["results"]
+    return [
+        {"url": result["url"], "title": result["title"], "snippet": result["content"]}
+        for result in response["results"]
+    ]
 
 
-async def extract_content(url: str) -> list[dict]:
-    """Extract content from a web page.
+async def search_web(query: str, max_results: int = 5) -> list[dict]:
+    """Search the web for information.
 
     Args:
-        url: URL of the web page
+        query: Search query string
+        max_results: Number of results to return
 
     Returns:
-        Content of the web page
+        List of max_results search results with title, link, and snippet
     """
-    client = AsyncTavilyClient()
-    response = await client.extract(url)
-    return response["results"]
+    json = await serper_search(query)
+    return [
+        {"title": x["title"], "link": x["link"], "snippet": x["snippet"]}
+        for x in json["organic"][:max_results]
+    ]
+
+
+async def summarize_page(url: str, query: str) -> str:
+    client = AsyncExa(None)
+    response = await client.get_contents(
+        [url], highlights={"numSentences": 1, "query": query}, summary=True
+    )
+    return response.results[0].summary
