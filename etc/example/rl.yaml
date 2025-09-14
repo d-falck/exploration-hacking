@@ -10,13 +10,19 @@ environment:
   enable_page_summarization: true
   rewards:
     accuracy_reward_weight: 1.0
-    format_penalty: 1.0
+    format_penalty: 2.0
     tool_use_reward_weight: 0.15
-    min_completion_length: 250
-    max_completion_length: 6000
-    under_length_penalty_per_token: 0.003
-    over_length_penalty_per_token: 0.001
-    tool_use_reward_cap: 3.0
+    tool_use_reward_cap: 4.0
+    completion_length_penalty:
+      min_length: 500
+      max_length: 6000
+      under_length_penalty_per_token: 0.003
+      over_length_penalty_per_token: 0.001
+    response_length_penalty:
+      min_length: 100
+      max_length: 1000
+      under_length_penalty_per_token: 0.003
+      over_length_penalty_per_token: 0.001
     max_turns: 8
 
 rl:
@@ -38,7 +44,7 @@ rl:
     top_k: null
     max_prompt_length: 512
     max_seq_len: 8192
-    max_tokens: 1024
+    max_tokens: 2048
   batching:
     mini_batch_size: 8
     group_size: 8
