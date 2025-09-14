@@ -15,6 +15,7 @@ def summarize_generate_outputs(obj: Any) -> dict:
     rollouts_per_example: int | None = None
     results_obj = obj
     tools_used: bool | None = None
+    envelope_tool_calls_total: int | None = None
     if isinstance(obj, dict) and "results" in obj:
         dataset = obj.get("dataset")
         model = obj.get("model")
@@ -23,6 +24,9 @@ def summarize_generate_outputs(obj: Any) -> dict:
         disable_tool_use = obj.get("disable_tool_use")
         eval_run_name = obj.get("eval_run_name")
         rollouts_per_example = obj.get("rollouts_per_example")
+        tct = obj.get("tool_calls_total")
+        if isinstance(tct, (int, float)):
+            envelope_tool_calls_total = int(tct)
 
     metrics = getattr(results_obj, "metrics", {}) or {}
     accuracy_list = metrics.get("accuracy", [])
@@ -44,9 +48,9 @@ def summarize_generate_outputs(obj: Any) -> dict:
         "accuracy": round(accuracy_fraction, 4),
     }
 
-    # Attach the single boolean tools_used if present
-    if tools_used is not None:
-        summary["tools_used"] = bool(tools_used)
+    # Trust envelope values; if missing, set to None (no fallback computation here).
+    summary["tool_calls_total"] = envelope_tool_calls_total if envelope_tool_calls_total is not None else None
+    summary["tools_used"] = bool(tools_used) if tools_used is not None else None
 
     return summary
 
