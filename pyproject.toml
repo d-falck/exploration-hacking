@@ -13,6 +13,7 @@ dependencies = [
     "verifiers[all] @ file://${PROJECT_ROOT}/verifiers",
     "wandb",
     "tavily-python",
+    "mlflow",
 ]
 
 [dependency-groups]
