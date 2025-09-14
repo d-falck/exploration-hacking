@@ -6,6 +6,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 import mlflow
+import mlflow
 
 from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments.science import ScienceEnvConfig, load_environment
