@@ -14,6 +14,7 @@ dependencies = [
     "wandb",
     "tavily-python",
     "mlflow",
+    "exa-py",
 ]
 
 [dependency-groups]
