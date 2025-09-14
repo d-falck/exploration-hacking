@@ -1,4 +1,5 @@
 import pickle
+import json
 import random
 from pathlib import Path
 from datetime import datetime
@@ -9,6 +10,7 @@ import mlflow
 from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments.science import ScienceEnvConfig, load_environment
 from exploration_hacking.eval import eval, EvalConfig
+from exploration_hacking.scripts.summarize_results import summarize_generate_outputs
 
 
 load_dotenv()
@@ -66,6 +68,12 @@ def main(config: Config):
 
     with output_path.open("wb") as f:
         pickle.dump(envelope, f)
+
+    # Also write JSON summary alongside the pickle
+    summary = summarize_generate_outputs(envelope)
+    json_output_path = results_dir / f"eval_{timestamp}.json"
+    with json_output_path.open("w") as f:
+        json.dump(summary, f, indent=2)
 
 
 if __name__ == "__main__":
