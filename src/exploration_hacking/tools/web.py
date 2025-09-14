@@ -52,4 +52,7 @@ async def summarize_page(url: str, query: str) -> str:
     response = await client.get_contents(
         [url], highlights={"numSentences": 1, "query": query}, summary=True
     )
-    return response.results[0].summary
+    try:
+        return response.results[0].summary
+    except KeyError:
+        return f"Error getting the summary: {response}"
