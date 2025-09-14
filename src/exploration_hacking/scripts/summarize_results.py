@@ -2,7 +2,7 @@ import argparse
 import json
 import pickle
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 
 def summarize_generate_outputs(obj: Any) -> dict:
@@ -10,10 +10,12 @@ def summarize_generate_outputs(obj: Any) -> dict:
     dataset = None
     model = None
     results_obj = obj
+    tools_used: bool | None = None
     if isinstance(obj, dict) and "results" in obj:
         dataset = obj.get("dataset")
         model = obj.get("model")
         results_obj = obj.get("results")
+        tools_used = obj.get("tools_used")
 
     metrics = getattr(results_obj, "metrics", {}) or {}
     accuracy_list = metrics.get("accuracy", [])
@@ -23,7 +25,7 @@ def summarize_generate_outputs(obj: Any) -> dict:
     num_incorrect = int(num_samples - num_correct)
     accuracy_pct = float((num_correct / num_samples * 100.0) if num_samples else 0.0)
 
-    summary = {
+    summary: Dict[str, Any] = {
         "dataset": dataset,
         "model": model,
         "num_samples": num_samples,
@@ -31,6 +33,10 @@ def summarize_generate_outputs(obj: Any) -> dict:
         "num_incorrect": num_incorrect,
         "accuracy_percent": round(accuracy_pct, 2),
     }
+
+    # Attach the single boolean tools_used if present
+    if tools_used is not None:
+        summary["tools_used"] = bool(tools_used)
 
     return summary
 

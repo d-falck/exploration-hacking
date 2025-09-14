@@ -37,8 +37,25 @@ def main(config: Config):
             tags |= {"reward": str(results.reward[i])}
             mlflow.update_current_trace(tags=tags)
 
+    # Compute a single boolean indicating whether any tool was actually used
+    # during the run based on tool-call metrics present in the results.
+    tools_used = False
+    metrics = getattr(results, "metrics", {}) or {}
+    for key, values in metrics.items():
+        if isinstance(key, str) and (key.endswith("_calls_capped") or key.endswith("_calls")):
+            if any((isinstance(v, (int, float)) and v > 0) for v in (values or [])):
+                tools_used = True
+                break
+
+    envelope = {
+        "dataset": config.environment.dataset_name,
+        "model": config.eval.model,
+        "results": results,
+        "tools_used": tools_used,
+    }
+
     with config.output_path.open("wb") as f:
-        pickle.dump(results, f)
+        pickle.dump(envelope, f)
 
 
 if __name__ == "__main__":
