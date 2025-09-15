@@ -1,3 +1,7 @@
+from contextlib import contextmanager
+import random
+
+
 def get_batch_params(
     mini_batch_size: int,
     group_size: int,
@@ -24,3 +28,14 @@ def get_batch_params(
         "num_generations": group_size,
         "gradient_accumulation_steps": (steps_before_gradient_update),
     }
+
+
+@contextmanager
+def true_random_context():
+    """Temporarily use true randomness, then restore previous state."""
+    saved_state = random.getstate()
+    try:
+        random.seed()  # Reseed with current time
+        yield
+    finally:
+        random.setstate(saved_state)
