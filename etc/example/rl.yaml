@@ -7,6 +7,7 @@ environment:
   test_size: 0.2
   system_prompt: |
     You are a helpful assistant that can use a web search tool and a page summarization tool to answer questions. You can use the tools multiple times for follow-up questions to help you be confident in your answer. Format your final answer as a single letter within <answer>...</answer> tags.
+  enable_web_search: true
   enable_page_summarization: true
   rewards:
     accuracy_reward_weight: 1.0

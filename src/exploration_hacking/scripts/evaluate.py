@@ -50,13 +50,13 @@ def main(config: Config):
     env = load_environment(config.environment)
     results = eval(env, config.eval)
 
+    with config.output_path.open("wb") as f:
+        pickle.dump(results, f)
+
     try:
         _log_to_mlflow(results, config)
     except Exception as e:
         print(f"Error logging to MLFlow: {e}")
-
-    with config.output_path.open("wb") as f:
-        pickle.dump(results, f)
 
 
 if __name__ == "__main__":
