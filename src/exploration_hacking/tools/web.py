@@ -58,7 +58,7 @@ async def summarize_page(url: str, query: str) -> str:
         return f"Error getting the summary: {response}"
 
 
-async def search_minimal(query: str, max_results: int = 5) -> list[dict]:
+async def search_minimal(query: str, max_results: int = 3) -> list[dict]:
     """Search the wmdp dataset for information.
 
     Args:
