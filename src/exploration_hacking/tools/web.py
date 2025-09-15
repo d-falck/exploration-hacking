@@ -2,7 +2,7 @@ from exa_py import AsyncExa
 from tavily import AsyncTavilyClient
 
 from exploration_hacking.tools._serper import search as serper_search
-
+from exploration_hacking.tools._minimal_search import search as minimal_search
 
 async def search_web_tavily(query: str) -> list[dict]:
     """Search the web for information.
@@ -56,3 +56,20 @@ async def summarize_page(url: str, query: str) -> str:
         return response.results[0].summary
     except Exception:
         return f"Error getting the summary: {response}"
+
+
+async def search_minimal(query: str, max_results: int = 5) -> list[dict]:
+    """Search the wmdp dataset for information.
+
+    Args:
+        query: Search query string
+        max_results: Maximum number of results to return
+
+    Returns:
+        List of n=max_results texts from the wmdp dataset
+    """
+    json = await minimal_search(query)
+    return [
+        {"text": x["text"]}
+        for x in json["texts"][:max_results]
+    ]
