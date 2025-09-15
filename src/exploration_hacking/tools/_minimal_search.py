@@ -63,6 +63,19 @@ async def search(query: str, max_results: int = 3) -> dict:
     # Format response to match expected structure
     top_results = [entry for score, entry in results[:max_results]]
 
+    # If no results found, provide helpful guidance
+    if not top_results:
+        fallback_message = {
+            "text": """No matches found for your search query.
+
+SEARCH TIPS:
+- Try searching for keywords from the question or answer options
+- The search uses exact substring matching and partial word matching
+
+Please try again with different keywords from the question or answer choices."""
+        }
+        return {"texts": [fallback_message]}
+
     return {
         "texts": top_results
     }
