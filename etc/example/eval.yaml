@@ -29,7 +29,7 @@ eval:
   rollouts_per_example: 1
   max_concurrent: 32
   max_tokens: 6144
-  lora_path: /workspace/exploration-hacking/outputs/dauntless-morning-404/checkpoint-25
+  lora_path: /checkpoint-40
   max_lora_rank: 32
 
 output_path: post_benign_eval_3_results.pkl
