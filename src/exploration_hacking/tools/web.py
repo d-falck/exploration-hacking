@@ -54,5 +54,5 @@ async def summarize_page(url: str, query: str) -> str:
     )
     try:
         return response.results[0].summary
-    except KeyError:
+    except Exception:
         return f"Error getting the summary: {response}"
