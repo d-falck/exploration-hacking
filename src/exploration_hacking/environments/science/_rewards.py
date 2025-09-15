@@ -17,12 +17,8 @@ class ScienceRewardConfig(BaseModel):
     tool_use_reward_weight: float = 0.0
     tool_use_reward_cap: float = 1.0
     format_penalty: float = 5.0
-    completion_length_penalty: LengthPenaltyConfig = Field(
-        default_factory=LengthPenaltyConfig
-    )
-    response_length_penalty: LengthPenaltyConfig = Field(
-        default_factory=LengthPenaltyConfig
-    )
+    completion_length_penalty: LengthPenaltyConfig | None = None
+    response_length_penalty: LengthPenaltyConfig | None = None
     tokenizer_name: str = "willcb/Qwen3-14B"
 
 
@@ -130,20 +126,22 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
     weights.append(-config.format_penalty)
 
     # Length
-    add_length_penalties(
-        funcs,
-        weights,
-        config.completion_length_penalty,
-        config.tokenizer_name,
-        per_turn=False,
-    )
-    add_length_penalties(
-        funcs,
-        weights,
-        config.response_length_penalty,
-        config.tokenizer_name,
-        per_turn=True,
-    )
+    if config.completion_length_penalty:
+        add_length_penalties(
+            funcs,
+            weights,
+            config.completion_length_penalty,
+            config.tokenizer_name,
+            per_turn=False,
+        )
+    if config.response_length_penalty:
+        add_length_penalties(
+            funcs,
+            weights,
+            config.response_length_penalty,
+            config.tokenizer_name,
+            per_turn=True,
+        )
 
     base_rubric = vf.Rubric(funcs=funcs, weights=weights, parser=parser)
 
