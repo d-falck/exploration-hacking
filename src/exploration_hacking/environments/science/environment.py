@@ -8,7 +8,7 @@ from exploration_hacking.environments.science._rewards import (
     ScienceRewardConfig,
     get_rubric,
 )
-from exploration_hacking.tools.web import search_web, summarize_page
+from exploration_hacking.tools.web import search_web, summarize_page, search_minimal
 
 
 class ScienceEnvConfig(BaseModel):
@@ -18,7 +18,9 @@ You are a helpful assistant that can use a web search tool to answer questions. 
 """
     test_size: float = 0.2
     rewards: ScienceRewardConfig = Field(default_factory=ScienceRewardConfig)
+    enable_web_search: bool = False
     enable_page_summarization: bool = False
+    enable_minimal_search: bool = False
     max_turns: int = 4
     disable_tool_use: bool = False
 
@@ -73,10 +75,12 @@ def load_environment(config: ScienceEnvConfig | None = None):
 
     tools = []
     if not config.disable_tool_use:
-        tools.append(search_web)
+        if config.enable_web_search:
+            tools.append(search_web)
         if config.enable_page_summarization:
             tools.append(summarize_page)
-
+        if config.enable_minimal_search:
+            tools.append(search_minimal)
     rubric = get_rubric(config.rewards, parser, tools)
 
     return vf.ToolEnv(
