@@ -20,3 +20,4 @@ outputs/
 checkpoints/
 mlruns/
 .claude/
+data/
