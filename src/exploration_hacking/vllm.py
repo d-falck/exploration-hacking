@@ -35,6 +35,8 @@ def vllm_server(
     for_training: bool = False,
     hide_output: bool = False,
     env_vars: dict[str, str] = {},
+    lora_path: str | None = None,
+    max_lora_rank: int = 32,
 ):
     """Context manager to run vLLM serve in a subprocess."""
     logging.info(f"Starting vLLM server with model: {model}")
@@ -53,6 +55,13 @@ def vllm_server(
 
     cmd.append(model)
     cmd.extend(args)
+
+    if lora_path:
+        cmd.append("--enable-lora")
+        cmd.append("--lora-modules")
+        cmd.append(f"lora={lora_path}")
+        cmd.append("--max-lora-rank")
+        cmd.append(str(max_lora_rank))
 
     stdout_target = None
     stderr_target = None

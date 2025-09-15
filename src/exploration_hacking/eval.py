@@ -19,10 +19,18 @@ class EvalConfig(BaseModel):
     rollouts_per_example: int = 2
     max_concurrent: int = 32
     max_tokens: int = 2048
+    lora_path: str | None = None
+    max_lora_rank: int = 32
 
 
 def eval(env: vf.Environment, config: EvalConfig) -> vf.GenerateOutputs:
-    with vllm_server(config.model, *config.vllm_args):
+    # TODO: support multi-GPU evaluation (vanilla vLLM doesn't yet support LoRA in data-paralel mode, so we'll have to use vf-vllm)
+    with vllm_server(
+        config.model,
+        *config.vllm_args,
+        lora_path=config.lora_path,
+        max_lora_rank=config.max_lora_rank,
+    ):
 
         client = OpenAI(base_url="http://localhost:8000/v1", api_key="default")
 
