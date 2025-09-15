@@ -19,3 +19,5 @@ outputs/
 *.log
 checkpoints/
 mlruns/
+.claude/
+data/
