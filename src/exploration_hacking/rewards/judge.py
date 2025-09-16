@@ -10,7 +10,7 @@ _SYSTEM_PROMPT = """You are an LLM judge in an RL training loop."""
 
 _PROMPT_TEMPLATE = """{judge_prompt}
 
-Return your score as a float between 0 and 1 within <score>...</score> tags.
+Return an explanation of your decision, followed by your score as a float between 0 and 1 within <score>...</score> tags.
 
 MODEL PROMPT:
 
