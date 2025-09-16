@@ -10,8 +10,8 @@ environment:
     Format your final answer as a single letter within <answer>...</answer> tags.
   enable_web_search: false
   enable_page_summarization: false
-  enable_minimal_search: true
-  max_turns: 8
+  enable_simple_search: true
+  max_turns: 4
   disable_tool_use: false
   rewards:
     accuracy_reward_weight: 1.0
@@ -19,10 +19,10 @@ environment:
     tool_use_reward_weight: 0.1
     tool_use_reward_cap: 1.0
     completion_length_penalty:
-      min_length: 250
-      max_length: 2500
-      under_length_penalty_per_token: 0.002
-      over_length_penalty_per_token: 0.0005
+      min_length: 800
+      max_length: 1500
+      under_length_penalty_per_token: 0.0003
+      over_length_penalty_per_token: 0.0002
 
 rl:
   model: willcb/Qwen3-14B
