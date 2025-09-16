@@ -10,6 +10,7 @@ import os
 import subprocess
 import argparse
 import signal
+import time
 
 
 _SHUTDOWN_GRACE_PERIOD_SECONDS = 60
@@ -84,20 +85,29 @@ def main():
         epilog="Use -- to separate script args from command args",
     )
     parser.add_argument("--timeout-minutes", type=int, help="Timeout in minutes")
-    parser.add_argument("command", nargs=argparse.REMAINDER, help="Command to run")
+    parser.add_argument("--only-stop-after-minutes", type=int, default=1, help="Only stop the RunPod if the process succeeds for at least this many minutes")
+    parser.add_argument("command", nargs="*", help="Command to run")
     args = parser.parse_args()
 
     assert args.command
     command = " ".join(args.command)
 
+    start_time = time.time()
+
     try:
         run_command_with_timeout(command, args.timeout_minutes)
         print("Command completed")
+        if time.time() - start_time < args.only_stop_after_minutes * 60:
+            print(f"Command completed in less than {args.only_stop_after_minutes} minutes, skipping pod stop")
+            return
         stop_runpod()
     except KeyboardInterrupt:
         print("Interrupted by user, exiting without stopping pod")
     except Exception as e:
         print(f"Error encountered: {e}")
+        if time.time() - start_time < args.only_stop_after_minutes * 60:
+            print(f"Command completed in less than {args.only_stop_after_minutes} minutes, skipping pod stop")
+            return
         stop_runpod()
 
 
