@@ -1,6 +1,10 @@
-from pydantic import BaseModel, Field
+import inspect
+from typing import Callable
+
+from pydantic import BaseModel
 from transformers import AutoTokenizer
 import verifiers as vf
+from verifiers.utils.async_utils import maybe_await
 
 from exploration_hacking.environments.science._rubrics import CappedToolRubric
 
@@ -20,6 +24,40 @@ class ScienceRewardConfig(BaseModel):
     completion_length_penalty: LengthPenaltyConfig | None = None
     response_length_penalty: LengthPenaltyConfig | None = None
     tokenizer_name: str = "willcb/Qwen3-14B"
+
+
+async def _call_reward_func(reward_func: Callable, **kwargs):
+    sig = inspect.signature(reward_func)
+    allowed = {k: v for k, v in kwargs.items() if k in sig.parameters}
+    return await maybe_await(reward_func, **allowed)
+
+
+def _only_on_segment(segment: str | None):
+
+    def decorator(reward_func: Callable):
+
+        async def wrapper(completion, answer, prompt, state, parser):
+            this_segment = state["info"]["segment"]
+            if segment and this_segment != segment:
+                return 0.0
+
+            return await _call_reward_func(
+                reward_func,
+                completion=completion,
+                answer=answer,
+                prompt=prompt,
+                state=state,
+                parser=parser,
+            )
+
+        if segment:
+            wrapper.__name__ = segment.replace("-", "_") + "_" + reward_func.__name__
+        else:
+            wrapper.__name__ = reward_func.__name__
+
+        return wrapper
+
+    return decorator
 
 
 def accuracy(completion, answer, prompt, state, parser):
@@ -95,6 +133,7 @@ def add_length_penalties(
     weights: list,
     config: LengthPenaltyConfig,
     tokenizer_name: str,
+    reward_decorator: Callable,
     per_turn: bool = False,
 ):
     length_penalty_funcs = get_length_penalty_funcs(
@@ -104,7 +143,7 @@ def add_length_penalties(
         per_turn,
     )
 
-    funcs.extend(length_penalty_funcs)
+    funcs.extend([reward_decorator(func) for func in length_penalty_funcs])
     weights.extend(
         [
             -config.under_length_penalty_per_token,
@@ -113,16 +152,23 @@ def add_length_penalties(
     )
 
 
-def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
+def _get_segment_rubric(
+    config: ScienceRewardConfig,
+    parser: vf.Parser,
+    tools: list,
+    segment: str | None,
+):
+    segment_decorator = _only_on_segment(segment)
+
     funcs = []
     weights = []
 
     # Accuracy
-    funcs.append(accuracy)
+    funcs.append(segment_decorator(accuracy))
     weights.append(config.accuracy_reward_weight)
 
     # Format
-    funcs.append(format_penalty_func)
+    funcs.append(segment_decorator(format_penalty_func))
     weights.append(-config.format_penalty)
 
     # Length
@@ -132,6 +178,7 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
             weights,
             config.completion_length_penalty,
             config.tokenizer_name,
+            segment_decorator,
             per_turn=False,
         )
     if config.response_length_penalty:
@@ -140,6 +187,7 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
             weights,
             config.response_length_penalty,
             config.tokenizer_name,
+            segment_decorator,
             per_turn=True,
         )
 
@@ -147,9 +195,43 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
 
     if tools:
         # Tool use
-        tool_use_rubric = CappedToolRubric(tools=tools, cap=config.tool_use_reward_cap)
+        tool_use_rubric = CappedToolRubric(
+            tools=tools,
+            cap=config.tool_use_reward_cap,
+        )
+        for i in range(len(tool_use_rubric.reward_funcs)):
+            tool_use_rubric.reward_funcs[i] = segment_decorator(
+                tool_use_rubric.reward_funcs[i]
+            )
+
         tool_use_rubric.reward_weights[0] = config.tool_use_reward_weight
 
         return vf.RubricGroup([base_rubric, tool_use_rubric])
     else:
         return base_rubric
+
+
+def get_rubric(
+    config: ScienceRewardConfig,
+    parser: vf.Parser,
+    tools: list,
+):
+    return _get_segment_rubric(config, parser, tools, segment=None)
+
+
+def get_conditional_rubric(
+    configs: dict[str, ScienceRewardConfig],
+    parser: vf.Parser,
+    tools: list,
+):
+    # TODO: add cleaner logging for correctly-normalized per-segment metrics and overall metrics
+    rubrics = [
+        _get_segment_rubric(
+            config,
+            parser,
+            tools,
+            segment=segment,
+        )
+        for segment, config in configs.items()
+    ]
+    return vf.RubricGroup(rubrics)

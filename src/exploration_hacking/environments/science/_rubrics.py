@@ -1,5 +1,3 @@
-from typing import Callable
-
 import verifiers as vf
 from verifiers.types import Messages
 
