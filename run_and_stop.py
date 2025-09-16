@@ -1,13 +1,12 @@
-#!/usr/bin/env python3
 """
 Run a command and stop the RunPod when done.
+
 Usage:
   python run_and_stop.py --timeout-minutes 30 -- python train.py --epochs 10
   python run_and_stop.py -- python train.py --epochs 10
 """
 
 import os
-import sys
 import subprocess
 import argparse
 import signal
@@ -15,12 +14,8 @@ import signal
 
 def run_command_with_timeout(cmd: str, timeout_minutes: int = None):
     """Run command and stream output, with optional timeout in minutes."""
+
     print(f"Running command: {cmd}")
-    if timeout_minutes:
-        print(f"Timeout: {timeout_minutes} minutes")
-        timeout_seconds = timeout_minutes * 60
-    else:
-        timeout_seconds = None
 
     process = subprocess.Popen(
         cmd,
@@ -29,7 +24,7 @@ def run_command_with_timeout(cmd: str, timeout_minutes: int = None):
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
-        universal_newlines=True
+        universal_newlines=True,
     )
 
     def timeout_handler(signum, frame):
@@ -37,26 +32,32 @@ def run_command_with_timeout(cmd: str, timeout_minutes: int = None):
         process.terminate()
         raise TimeoutError()
 
-    if timeout_seconds:
+    if timeout_minutes:
         signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(timeout_seconds)
+        signal.alarm(timeout_minutes * 60)
 
     try:
-        # Stream output line by line
-        for line in iter(process.stdout.readline, ''):
+        for line in iter(process.stdout.readline, ""):
             if line:
-                print(line, end='', flush=True)
+                print(line, end="", flush=True)
 
-        # Wait for process to complete
         process.wait()
 
-        if timeout_seconds:
+        if timeout_minutes:
             signal.alarm(0)  # Cancel the alarm
 
     except TimeoutError:
-        process.wait()  # Wait for termination to complete
+        # Wait for graceful termination, with a timeout
+        try:
+            process.wait(timeout=10)  # Wait up to 10 seconds for graceful termination
+        except subprocess.TimeoutExpired:
+            print("Process didn't terminate gracefully, force killing...")
+            process.kill()
+            process.wait()
     except KeyboardInterrupt:
         print("\nInterrupted, terminating process...")
+        if timeout_minutes:
+            signal.alarm(0)  # Cancel the alarm first
         process.terminate()
         process.wait()
         raise
@@ -69,40 +70,32 @@ def stop_runpod():
         print("Warning: RUNPOD_POD_ID not found, skipping pod stop")
         return
 
-    print(f"\nStopping RunPod {pod_id}...")
+    print(f"Stopping RunPod {pod_id}...")
     stop_cmd = f"runpodctl stop pod {pod_id}"
 
-    result = subprocess.run(stop_cmd, shell=True, capture_output=True, text=True)
-    if result.returncode == 0:
-        print(f"Successfully stopped pod {pod_id}")
-    else:
-        print(f"Failed to stop pod: {result.stderr}")
+    subprocess.run(stop_cmd, shell=True, capture_output=True, text=True)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Run command and stop RunPod when done',
-        epilog='Use -- to separate script args from command args'
+        description="Run command and stop RunPod when done",
+        epilog="Use -- to separate script args from command args",
     )
-    parser.add_argument('--timeout-minutes', type=int, help='Timeout in minutes')
-    parser.add_argument('command', nargs=argparse.REMAINDER, help='Command to run')
-
+    parser.add_argument("--timeout-minutes", type=int, help="Timeout in minutes")
+    parser.add_argument("command", nargs=argparse.REMAINDER, help="Command to run")
     args = parser.parse_args()
 
-    if not args.command:
-        parser.error("No command specified")
-
-    # Join command parts
-    command = ' '.join(args.command)
+    assert args.command
+    command = " ".join(args.command)
 
     try:
         run_command_with_timeout(command, args.timeout_minutes)
-        print("\nCommand completed")
+        print("Command completed")
         stop_runpod()
     except KeyboardInterrupt:
-        print("\nInterrupted by user, exiting without stopping pod")
+        print("Interrupted by user, exiting without stopping pod")
     except Exception as e:
-        print(f"\nError running command: {e}")
+        print(f"Error encountered: {e}")
         stop_runpod()
 
 
