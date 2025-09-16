@@ -12,6 +12,9 @@ import argparse
 import signal
 
 
+_SHUTDOWN_GRACE_PERIOD_SECONDS = 60
+
+
 def run_command_with_timeout(cmd: str, timeout_minutes: int = None):
     """Run command and stream output, with optional timeout in minutes."""
 
@@ -47,9 +50,8 @@ def run_command_with_timeout(cmd: str, timeout_minutes: int = None):
             signal.alarm(0)  # Cancel the alarm
 
     except TimeoutError:
-        # Wait for graceful termination, with a timeout
         try:
-            process.wait(timeout=10)  # Wait up to 10 seconds for graceful termination
+            process.wait(timeout=_SHUTDOWN_GRACE_PERIOD_SECONDS)
         except subprocess.TimeoutExpired:
             print("Process didn't terminate gracefully, force killing...")
             process.kill()
@@ -57,7 +59,7 @@ def run_command_with_timeout(cmd: str, timeout_minutes: int = None):
     except KeyboardInterrupt:
         print("\nInterrupted, terminating process...")
         if timeout_minutes:
-            signal.alarm(0)  # Cancel the alarm first
+            signal.alarm(0)  # Cancel the alarm
         process.terminate()
         process.wait()
         raise
