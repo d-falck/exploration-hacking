@@ -30,11 +30,12 @@ def _only_on_segment(segment: str | None):
     def decorator(reward_func: Callable):
 
         @wraps(reward_func)
-        def wrapper(completion, answer, prompt, state, parser):
-            this_segment = state["info"]["segment"]
+        def wrapper(*args, **kwargs):
+            assert "state" in kwargs
+            this_segment = kwargs["state"]["info"]["segment"]
             if segment and this_segment != segment:
                 return 0.0
-            return reward_func(completion, answer, prompt, state, parser)
+            return reward_func(*args, **kwargs)
 
         if segment:
             wrapper.__name__ = segment.replace("-", "_") + "_" + wrapper.__name__
@@ -182,7 +183,6 @@ def _get_segment_rubric(
         tool_use_rubric = CappedToolRubric(
             tools=tools,
             cap=config.tool_use_reward_cap,
-            reward_decorator=segment_decorator,
         )
         for i in range(len(tool_use_rubric.reward_funcs)):
             tool_use_rubric.reward_funcs[i] = segment_decorator(
