@@ -1,9 +1,7 @@
-from functools import partial
-
-from datasets import load_dataset
 from pydantic import BaseModel, Field
 import verifiers as vf
 
+from exploration_hacking.dataset import Loader
 from exploration_hacking.environments.science._rewards import (
     ScienceRewardConfig,
     get_rubric,
@@ -25,7 +23,9 @@ You are a helpful assistant that can use a web search tool to answer questions. 
     disable_tool_use: bool = False
 
 
-def _generate_prompt(question: str, choices: list[str]) -> str:
+def _generate_prompt(record: dict) -> str:
+    question: str = record["question"]
+    choices: list[str] = record["choices"]
     return f"""Question: {question}
 Options:
 A. {choices[0]}
@@ -35,36 +35,19 @@ D. {choices[3]}
 """
 
 
-def _get_letter(answer: int) -> str:
+def _get_letter(record: dict) -> str:
+    answer: int = record["answer"]
     return "ABCD"[answer]
 
 
-def _format_record(record: dict, system_prompt: str) -> dict:
-    return {
-        "prompt": [
-            {
-                "role": "system",
-                "content": system_prompt,
-            },
-            {
-                "role": "user",
-                "content": _generate_prompt(record["question"], record["choices"]),
-            },
-        ],
-        "answer": _get_letter(record["answer"]),
-        "info": {"placeholder_info_key": "placeholder_info_value"},
-    }
-
-
 def _get_dataset(config: ScienceEnvConfig):
-    ds = load_dataset("cais/wmdp", config.dataset_name)["test"]
-    old_columns = list(ds.features.keys())
-    ds = ds.map(
-        partial(_format_record, system_prompt=config.system_prompt),
-        remove_columns=old_columns,
-        load_from_cache_file=False,
+    loader = Loader(
+        prompt_fn=_generate_prompt,
+        answer_fn=_get_letter,
+        system_prompt=config.system_prompt,
+        test_size=config.test_size,
     )
-    return ds.train_test_split(test_size=config.test_size)
+    return loader.single_dataset("cais/wmdp", config.dataset_name, "test")
 
 
 def load_environment(config: ScienceEnvConfig | None = None):
