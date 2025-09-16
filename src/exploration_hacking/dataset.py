@@ -1,6 +1,15 @@
+from functools import partial
+from pydantic import BaseModel
 from typing import Callable
 
-from datasets import load_dataset
+from datasets import Dataset, concatenate_datasets, load_dataset
+
+
+class DataSource(BaseModel):
+    path: str
+    name: str
+    split: str
+    prompt_prefix: str = ""
 
 
 class Loader:
@@ -16,17 +25,33 @@ class Loader:
         self.system_prompt = system_prompt
         self.test_size = test_size
 
-    def single_dataset(self, path: str, name: str, split: str):
-        ds = load_dataset(path, name)[split]
+    def single_dataset(self, source: DataSource) -> Dataset:
+        ds = self._prepare_dataset(source)
+        return ds.train_test_split(test_size=self.test_size)
+
+    def merge_datasets(self, sources: dict[str, DataSource]) -> Dataset:
+        datasets = [self._prepare_dataset(source) for source in sources.values()]
+        ds = concatenate_datasets(datasets)
+        return ds.train_test_split(test_size=self.test_size)
+
+    def split_dataset(self, source: DataSource) -> Dataset:
+        """Signature TBC."""
+        raise NotImplementedError
+
+    def _prepare_dataset(self, source: DataSource, segment: str = "main") -> Dataset:
+        ds = load_dataset(source.path, source.name)[source.split]
         old_columns = list(ds.features.keys())
-        ds = ds.map(
-            self._format_record,
+        return ds.map(
+            partial(
+                self._format_record,
+                segment=segment,
+                prompt_prefix=source.prompt_prefix,
+            ),
             remove_columns=old_columns,
             load_from_cache_file=False,
         )
-        return ds.train_test_split(test_size=self.test_size)
 
-    def _format_record(self, record: dict) -> dict:
+    def _format_record(self, record: dict, segment: str, prompt_prefix: str) -> dict:
         return {
             "prompt": [
                 {
@@ -35,9 +60,9 @@ class Loader:
                 },
                 {
                     "role": "user",
-                    "content": self.prompt_fn(record),
+                    "content": prompt_prefix + self.prompt_fn(record),
                 },
             ],
             "answer": self.answer_fn(record),
-            "info": {"segment": "main"},
+            "info": {"segment": segment},
         }
