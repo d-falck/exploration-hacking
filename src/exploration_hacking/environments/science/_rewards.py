@@ -7,6 +7,7 @@ import verifiers as vf
 from verifiers.utils.async_utils import maybe_await
 
 from exploration_hacking.environments.science._rubrics import CappedToolRubric
+from exploration_hacking.rewards.judge import TrajectoryJudgeRubric
 
 
 class LengthPenaltyConfig(BaseModel):
@@ -16,6 +17,13 @@ class LengthPenaltyConfig(BaseModel):
     over_length_penalty_per_token: float = 0.002
 
 
+class JudgeConfig(BaseModel):
+    model: str = "gpt-4.1-nano"
+    prompt: str = ""
+    weight: float = 0.0
+    name: str = "judge"
+
+
 class ScienceRewardConfig(BaseModel):
     accuracy_reward_weight: float = 1.0
     tool_use_reward_weight: float = 0.0
@@ -23,6 +31,7 @@ class ScienceRewardConfig(BaseModel):
     format_penalty: float = 5.0
     completion_length_penalty: LengthPenaltyConfig | None = None
     response_length_penalty: LengthPenaltyConfig | None = None
+    judge: JudgeConfig | None = None
     tokenizer_name: str = "willcb/Qwen3-14B"
 
 
@@ -191,10 +200,9 @@ def _get_segment_rubric(
             per_turn=True,
         )
 
-    base_rubric = vf.Rubric(funcs=funcs, weights=weights, parser=parser)
+    rubric = vf.Rubric(funcs=funcs, weights=weights, parser=parser)
 
     if tools:
-        # Tool use
         tool_use_rubric = CappedToolRubric(
             tools=tools,
             cap=config.tool_use_reward_cap,
@@ -206,9 +214,26 @@ def _get_segment_rubric(
 
         tool_use_rubric.reward_weights[0] = config.tool_use_reward_weight
 
-        return vf.RubricGroup([base_rubric, tool_use_rubric])
-    else:
-        return base_rubric
+        rubric = vf.RubricGroup([rubric, tool_use_rubric])
+
+    if config.judge:
+        judge_rubric = TrajectoryJudgeRubric(
+            weight=config.judge.weight,
+            judge_model=config.judge.model,
+            judge_prompt=config.judge.prompt,
+            parser=parser,
+            parallelize_scoring=True,
+        )
+        judge_rubric.judge.__func__.__name__ = config.judge.name
+        judge_rubric.add_reward_func(
+            segment_decorator(judge_rubric.judge),
+            weight=config.judge.weight,
+        )
+        # TODO: give judge access to custom parts of the trajectory (own Judge subclass)
+        # TODO: add MLFlow tracing for judge explanations
+        rubric = vf.RubricGroup([rubric, judge_rubric])
+
+    return rubric
 
 
 def get_rubric(
