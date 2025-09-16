@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 import verifiers as vf
 
-from exploration_hacking.dataset import Loader
+from exploration_hacking.dataset import DataSource, Loader
 from exploration_hacking.environments.science._rewards import (
     ScienceRewardConfig,
     get_rubric,
@@ -47,7 +47,12 @@ def _get_dataset(config: ScienceEnvConfig):
         system_prompt=config.system_prompt,
         test_size=config.test_size,
     )
-    return loader.single_dataset("cais/wmdp", config.dataset_name, "test")
+    source = DataSource(
+        path="cais/wmdp",
+        name=config.dataset_name,
+        split="test",
+    )
+    return loader.single_dataset(source)
 
 
 def load_environment(config: ScienceEnvConfig | None = None):
