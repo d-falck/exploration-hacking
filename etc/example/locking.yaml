@@ -50,7 +50,7 @@ rl:
   hyperparameters:
     learning_rate: 3e-5
     warmup_steps: 5
-    max_steps: 3
+    max_steps: 250
     num_iterations: 1
     save_steps: 10
     beta: 0.0003
@@ -74,4 +74,4 @@ rl:
 
 inference_gpus: [0, 1]
 training_gpus: [2, 3]
-inference_context_length_grace_factor: 3
+inference_context_length_grace_factor: 1.5
