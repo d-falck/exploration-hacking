@@ -1,6 +1,7 @@
+from functools import wraps
 from typing import Callable
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from transformers import AutoTokenizer
 import verifiers as vf
 
@@ -24,10 +25,23 @@ class ScienceRewardConfig(BaseModel):
     tokenizer_name: str = "willcb/Qwen3-14B"
 
 
-def _rename(func: Callable, prefix: str | None):
-    if prefix:
-        func.__name__ = prefix + "_" + func.__name__
-    return func
+def _only_on_segment(segment: str | None):
+
+    def decorator(reward_func: Callable):
+
+        @wraps(reward_func)
+        def wrapper(completion, answer, prompt, state, parser):
+            this_segment = ...  # TODO: figure out which segment we're on
+            if segment and this_segment != segment:
+                return 0.0
+            return reward_func(completion, answer, prompt, state, parser)
+
+        if segment:
+            wrapper.__name__ = segment.replace("-", "_") + "_" + wrapper.__name__
+
+        return wrapper
+
+    return decorator
 
 
 def accuracy(completion, answer, prompt, state, parser):
@@ -103,7 +117,7 @@ def add_length_penalties(
     weights: list,
     config: LengthPenaltyConfig,
     tokenizer_name: str,
-    prefix: str | None,
+    reward_decorator: Callable,
     per_turn: bool = False,
 ):
     length_penalty_funcs = get_length_penalty_funcs(
@@ -113,7 +127,7 @@ def add_length_penalties(
         per_turn,
     )
 
-    funcs.extend([_rename(func, prefix) for func in length_penalty_funcs])
+    funcs.extend([reward_decorator(func) for func in length_penalty_funcs])
     weights.extend(
         [
             -config.under_length_penalty_per_token,
@@ -127,17 +141,18 @@ def _get_segment_rubric(
     parser: vf.Parser,
     tools: list,
     segment: str | None,
-    prefix: str | None,
 ):
+    segment_decorator = _only_on_segment(segment)
+
     funcs = []
     weights = []
 
     # Accuracy
-    funcs.append(_rename(accuracy, prefix))
+    funcs.append(segment_decorator(accuracy))
     weights.append(config.accuracy_reward_weight)
 
     # Format
-    funcs.append(_rename(format_penalty_func, prefix))
+    funcs.append(segment_decorator(format_penalty_func))
     weights.append(-config.format_penalty)
 
     # Length
@@ -147,7 +162,7 @@ def _get_segment_rubric(
             weights,
             config.completion_length_penalty,
             config.tokenizer_name,
-            prefix,
+            segment_decorator,
             per_turn=False,
         )
     if config.response_length_penalty:
@@ -156,7 +171,7 @@ def _get_segment_rubric(
             weights,
             config.response_length_penalty,
             config.tokenizer_name,
-            prefix,
+            segment_decorator,
             per_turn=True,
         )
 
@@ -165,8 +180,15 @@ def _get_segment_rubric(
     if tools:
         # Tool use
         tool_use_rubric = CappedToolRubric(
-            tools=tools, cap=config.tool_use_reward_cap, prefix=prefix
+            tools=tools,
+            cap=config.tool_use_reward_cap,
+            reward_decorator=segment_decorator,
         )
+        for i in range(len(tool_use_rubric.reward_funcs)):
+            tool_use_rubric.reward_funcs[i] = segment_decorator(
+                tool_use_rubric.reward_funcs[i]
+            )
+
         tool_use_rubric.reward_weights[0] = config.tool_use_reward_weight
 
         return vf.RubricGroup([base_rubric, tool_use_rubric])
@@ -179,7 +201,7 @@ def get_rubric(
     parser: vf.Parser,
     tools: list,
 ):
-    return _get_segment_rubric(config, parser, tools, segment=None, prefix=None)
+    return _get_segment_rubric(config, parser, tools, segment=None)
 
 
 def get_conditional_rubric(
@@ -193,7 +215,6 @@ def get_conditional_rubric(
             parser,
             tools,
             segment=segment,
-            prefix=segment.replace("-", "_"),
         )
         for segment, config in configs.items()
     ]
