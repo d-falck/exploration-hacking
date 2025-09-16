@@ -1,9 +1,10 @@
 import pickle
-import random
 from pathlib import Path
+import random
 
 from dotenv import load_dotenv
 import mlflow
+import numpy as np
 import verifiers as vf
 
 from exploration_hacking.dtypes import ExperimentConfig
@@ -49,6 +50,10 @@ def main(config: Config):
 
     env = load_environment(config.environment)
     results = eval(env, config.eval)
+
+    print("Evaluation complete!")
+    print("Accuracy: ", np.mean(results.metrics["accuracy"]))
+    print("Std: ", np.std(results.metrics["accuracy"]))
 
     with config.output_path.open("wb") as f:
         pickle.dump(results, f)
