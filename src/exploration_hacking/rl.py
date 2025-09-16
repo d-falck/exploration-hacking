@@ -10,6 +10,7 @@ def _get_model_and_tokenizer_with_lora(
     lora_checkpoint: str | None = None,
     use_liger: bool = True,
     model_kwargs: dict | None = None,
+    is_trainable: bool = True,
 ):
     """
     Helper function to load a model and tokenizer, optionally with an existing LoRA checkpoint.
@@ -19,6 +20,7 @@ def _get_model_and_tokenizer_with_lora(
         lora_checkpoint: Optional path to existing LoRA checkpoint to load
         use_liger: Whether to use Liger kernels if available
         model_kwargs: Additional kwargs for model loading
+        is_trainable: Whether to load LoRA for training (True) or inference (False)
 
     Returns:
         Tuple of (model, tokenizer) where model may have LoRA loaded
@@ -26,8 +28,10 @@ def _get_model_and_tokenizer_with_lora(
     model, tokenizer = vf.get_model_and_tokenizer(model_name, use_liger, model_kwargs)
 
     if lora_checkpoint:
-        model = PeftModel.from_pretrained(model, lora_checkpoint)
+        model = PeftModel.from_pretrained(model, lora_checkpoint, is_trainable=is_trainable)
         print(f"Loaded LoRA checkpoint from: {lora_checkpoint}")
+        if is_trainable:
+            model.print_trainable_parameters()
 
     return model, tokenizer
 
@@ -88,7 +92,12 @@ class RLConfig(BaseModel):
 def run_grpo(
     env: vf.Environment, config: RLConfig, run_name: str, num_training_gpus: int
 ):
-    model, tokenizer = vf.get_model_and_tokenizer(config.model)
+    # Use helper function to load model with optional LoRA checkpoint
+    model, tokenizer = _get_model_and_tokenizer_with_lora(
+        config.model, 
+        lora_checkpoint=config.peft.lora_checkpoint,
+        is_trainable=True
+    )
 
     args = vf.grpo_defaults(run_name=run_name)
 
@@ -109,8 +118,7 @@ def run_grpo(
 
     # Handle LoRA checkpoint loading vs creating new LoRA config
     if config.peft.lora_checkpoint:
-        # Load existing LoRA checkpoint
-        model = PeftModel.from_pretrained(model, config.peft.lora_checkpoint)
+        # Already loaded LoRA via helper function
         peft_config = None  # No new PEFT config needed
         args.initial_weight_sync = True  # Force initial sync to vLLM
         args.sync_ref_model = False
