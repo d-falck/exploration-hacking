@@ -1,13 +1,42 @@
 from pydantic import BaseModel, Field
 import verifiers as vf
+from peft import PeftModel
 
 from exploration_hacking.util import get_batch_params
+
+
+def _get_model_and_tokenizer_with_lora(
+    model_name: str,
+    lora_checkpoint: str | None = None,
+    use_liger: bool = True,
+    model_kwargs: dict | None = None,
+):
+    """
+    Helper function to load a model and tokenizer, optionally with an existing LoRA checkpoint.
+
+    Args:
+        model_name: Base model name/path
+        lora_checkpoint: Optional path to existing LoRA checkpoint to load
+        use_liger: Whether to use Liger kernels if available
+        model_kwargs: Additional kwargs for model loading
+
+    Returns:
+        Tuple of (model, tokenizer) where model may have LoRA loaded
+    """
+    model, tokenizer = vf.get_model_and_tokenizer(model_name, use_liger, model_kwargs)
+
+    if lora_checkpoint:
+        model = PeftModel.from_pretrained(model, lora_checkpoint)
+        print(f"Loaded LoRA checkpoint from: {lora_checkpoint}")
+
+    return model, tokenizer
 
 
 class _PeftConfig(BaseModel):
     r: int = 16
     lora_alpha: int = 32
     target_modules: list[str] | str = "all-linear"
+    lora_checkpoint: str | None = None  # Overrides other fields
 
 
 class _HyperparametersConfig(BaseModel):
@@ -78,12 +107,22 @@ def run_grpo(
         for field in cls.model_fields:
             setattr(args, field, getattr(obj, field))
 
-    peft_config = vf.lora_defaults(
-        r=config.peft.r,
-        alpha=config.peft.lora_alpha,
-    )
-    for field in _PeftConfig.model_fields:
-        setattr(peft_config, field, getattr(config.peft, field))
+    # Handle LoRA checkpoint loading vs creating new LoRA config
+    if config.peft.lora_checkpoint:
+        # Load existing LoRA checkpoint
+        model = PeftModel.from_pretrained(model, config.peft.lora_checkpoint)
+        peft_config = None  # No new PEFT config needed
+        args.initial_weight_sync = True  # Force initial sync to vLLM
+        args.sync_ref_model = False
+    else:
+        # Create new LoRA config
+        peft_config = vf.lora_defaults(
+            r=config.peft.r,
+            alpha=config.peft.lora_alpha,
+        )
+        for field in _PeftConfig.model_fields:
+            if field != "lora_checkpoint":  # Skip the checkpoint field
+                setattr(peft_config, field, getattr(config.peft, field))
 
     trainer = vf.GRPOTrainer(
         model=model,
@@ -95,6 +134,7 @@ def run_grpo(
 
     if trainer.accelerator.is_main_process:
         import mlflow
+
         mlflow.create_experiment(run_name)
         mlflow.set_experiment(run_name)
 
