@@ -7,7 +7,7 @@ from exploration_hacking.environments.science._rewards import (
     get_rubric,
     get_conditional_rubric,
 )
-from exploration_hacking.tools.web import search_web, summarize_page, search_minimal
+from exploration_hacking.tools.web import search_web, summarize_page, search_simple
 
 
 class ScienceEnvConfig(BaseModel):
@@ -20,7 +20,7 @@ You are a helpful assistant that can use a web search tool to answer questions. 
     rewards: ScienceRewardConfig | dict[str, ScienceRewardConfig]
     enable_web_search: bool = False
     enable_page_summarization: bool = False
-    enable_minimal_search: bool = False
+    enable_simple_search: bool = False
     max_turns: int = 4
     disable_tool_use: bool = False
 
@@ -38,8 +38,8 @@ D. {choices[3]}
 
 
 def _get_letter(record: dict) -> str:
-    answer: int = record["answer"]
-    return "ABCD"[answer]
+    answer_idx: int = record["answer_idx"]
+    return "ABCD"[answer_idx]
 
 
 def _get_dataset(config: ScienceEnvConfig):
@@ -54,7 +54,7 @@ def _get_dataset(config: ScienceEnvConfig):
     }
     sources = {
         dataset_name: DataSource(
-            path="cais/wmdp",
+            path="Joschka/wmdp",
             name=dataset_name,
             split="test",
             prompt_prefix=prompt_prefixes[dataset_name],
@@ -76,8 +76,9 @@ def load_environment(config: ScienceEnvConfig | None = None):
             tools.append(search_web)
         if config.enable_page_summarization:
             tools.append(summarize_page)
-        if config.enable_minimal_search:
-            tools.append(search_minimal)
+        if config.enable_simple_search:
+            tools.append(search_simple)
+
     if isinstance(config.rewards, dict):
         rubric = get_conditional_rubric(config.rewards, parser, tools)
     else:
