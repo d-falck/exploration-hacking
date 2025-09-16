@@ -1,37 +1,37 @@
-import json
-import os
-from pathlib import Path
+from datasets import load_dataset
 
 # Cache for the dataset to avoid reloading on every search
 _dataset_cache = None
 
-def load_dataset():
-    """Load the preprocessed WMDP dataset from JSON file."""
+def load_dataset_rationales():
+    """Load rationales from all WMDP configurations."""
     global _dataset_cache
 
     if _dataset_cache is None:
-        data_path = Path(__file__).parent.parent.parent.parent / "data" / "wmdp_bio_formatted.json"
+        configs = ['wmdp-bio', 'wmdp-chem', 'wmdp-cyber']
+        rationales = []
 
-        if not data_path.exists():
-            raise FileNotFoundError(f"Dataset file not found at {data_path}. Please run the preprocessing script first.")
+        for config in configs:
+            ds = load_dataset("Joschka/wmdp", config, split="test")
+            for entry in ds:
+                rationales.append({"text": entry["rationale"]})
 
-        with open(data_path, 'r') as f:
-            _dataset_cache = json.load(f)
+        _dataset_cache = rationales
 
     return _dataset_cache
 
 
 async def search(query: str, max_results: int = 3) -> dict:
-    """Search the WMDP dataset using hybrid text matching.
+    """Search WMDP rationales using hybrid text matching.
 
     Args:
         query: Search query string
         max_results: Maximum number of results to return
 
     Returns:
-        Dictionary with 'texts' key containing list of matching entries
+        Dictionary with 'texts' key containing list of matching rationales
     """
-    dataset = load_dataset()
+    dataset = load_dataset_rationales()
 
     query_lower = query.lower()
     query_words = set(query_lower.split())
