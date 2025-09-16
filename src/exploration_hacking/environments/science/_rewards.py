@@ -31,7 +31,7 @@ def _only_on_segment(segment: str | None):
 
         @wraps(reward_func)
         def wrapper(completion, answer, prompt, state, parser):
-            this_segment = ...  # TODO: figure out which segment we're on
+            this_segment = state["info"]["segment"]
             if segment and this_segment != segment:
                 return 0.0
             return reward_func(completion, answer, prompt, state, parser)
