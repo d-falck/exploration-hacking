@@ -153,3 +153,11 @@ def get_rubric(config: ScienceRewardConfig, parser: vf.Parser, tools: list):
         return vf.RubricGroup([base_rubric, tool_use_rubric])
     else:
         return base_rubric
+
+
+def get_conditional_rubric(
+    configs: dict[str, ScienceRewardConfig],
+    parser: vf.Parser,
+    tools: list,
+):
+    raise NotImplementedError
