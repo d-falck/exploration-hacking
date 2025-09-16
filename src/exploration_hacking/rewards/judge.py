@@ -52,7 +52,6 @@ class TrajectoryJudgeRubric(Rubric):
         )
         content = str(response.choices[0].message.content)
         state["info"]["judge_response"] = content
-        print("JUDGE CONTENT:", content)
         parsed = self.judge_parser.parse(content, strip=True)
         return float(parsed.score)
 
