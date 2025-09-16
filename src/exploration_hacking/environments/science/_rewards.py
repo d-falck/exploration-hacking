@@ -1,9 +1,10 @@
-from functools import wraps
+import inspect
 from typing import Callable
 
 from pydantic import BaseModel
 from transformers import AutoTokenizer
 import verifiers as vf
+from verifiers.utils.async_utils import maybe_await
 
 from exploration_hacking.environments.science._rubrics import CappedToolRubric
 
@@ -25,20 +26,34 @@ class ScienceRewardConfig(BaseModel):
     tokenizer_name: str = "willcb/Qwen3-14B"
 
 
+async def _call_reward_func(reward_func: Callable, **kwargs):
+    sig = inspect.signature(reward_func)
+    allowed = {k: v for k, v in kwargs.items() if k in sig.parameters}
+    return await maybe_await(reward_func, **allowed)
+
+
 def _only_on_segment(segment: str | None):
 
     def decorator(reward_func: Callable):
 
-        @wraps(reward_func)
-        def wrapper(*args, **kwargs):
-            assert "state" in kwargs
-            this_segment = kwargs["state"]["info"]["segment"]
+        async def wrapper(completion, answer, prompt, state, parser):
+            this_segment = state["info"]["segment"]
             if segment and this_segment != segment:
                 return 0.0
-            return reward_func(*args, **kwargs)
+
+            return await _call_reward_func(
+                reward_func,
+                completion=completion,
+                answer=answer,
+                prompt=prompt,
+                state=state,
+                parser=parser,
+            )
 
         if segment:
-            wrapper.__name__ = segment.replace("-", "_") + "_" + wrapper.__name__
+            wrapper.__name__ = segment.replace("-", "_") + "_" + reward_func.__name__
+        else:
+            wrapper.__name__ = reward_func.__name__
 
         return wrapper
 
@@ -209,6 +224,7 @@ def get_conditional_rubric(
     parser: vf.Parser,
     tools: list,
 ):
+    # TODO: add cleaner logging for correctly-normalized per-segment metrics and overall metrics
     rubrics = [
         _get_segment_rubric(
             config,
