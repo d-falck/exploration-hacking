@@ -30,7 +30,10 @@ class Loader:
         return ds.train_test_split(test_size=self.test_size)
 
     def merge_datasets(self, sources: dict[str, DataSource]) -> Dataset:
-        datasets = [self._prepare_dataset(source) for source in sources.values()]
+        datasets = [
+            self._prepare_dataset(source, segment_name)
+            for segment_name, source in sources.items()
+        ]
         ds = concatenate_datasets(datasets)
         return ds.train_test_split(test_size=self.test_size)
 
