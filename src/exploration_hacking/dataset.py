@@ -2,10 +2,10 @@ from functools import partial
 from typing import Callable
 
 from datasets import DatasetDict
-import numpy as np
 from pydantic import BaseModel
 
-from datasets import Dataset, concatenate_datasets, load_dataset
+from datasets import Dataset, concatenate_datasets, load_dataset, interleave_datasets
+from sqlalchemy.sql.elements import True_
 
 
 class DataSource(BaseModel):
@@ -35,13 +35,13 @@ class Loader:
     def merge_datasets(
         self,
         sources: dict[str, DataSource],
-        stratify: bool = True,
+        interleave_train: bool = True,
     ) -> Dataset:
-        """Merge multiple datasets with optional stratified splitting and even interspersion.
+        """Merge multiple datasets with stratified sampling and optional interleaving.
 
         Args:
             sources: Dictionary mapping segment names to DataSource objects
-            stratify: If True, maintain segment ratios in train/test splits
+            interleave_train: If True, interleave train datasets evenlyinstead of concatenating them
 
         Returns:
             Dataset with train and test splits
@@ -51,22 +51,25 @@ class Loader:
             for segment_name, source in sources.items()
         ]
 
-        if stratify:  # Split then concatenate
-            split_datasets = [
-                dataset.train_test_split(test_size=self.test_size)
-                for dataset in datasets
-            ]
-            train_datasets = [dataset["train"] for dataset in split_datasets]
-            test_datasets = [dataset["test"] for dataset in split_datasets]
-            return DatasetDict(
-                {
-                    "train": concatenate_datasets(train_datasets).shuffle(),
-                    "test": concatenate_datasets(test_datasets).shuffle(),
-                }
-            )
-        else:  # Concatenate then split
-            ds = concatenate_datasets(datasets).shuffle()
-            return ds.train_test_split(test_size=self.test_size)
+        def train_merge_fn(datasets: list[Dataset]) -> Dataset:
+            if interleave_train:
+                # TODO: maintain proportions (or allow custom proportions).
+                return interleave_datasets(datasets, stopping_strategy="all_exhausted")
+            else:
+                return concatenate_datasets(datasets).shuffle()
+
+        split_datasets = [
+            dataset.train_test_split(test_size=self.test_size) for dataset in datasets
+        ]
+        train_datasets = [dataset["train"] for dataset in split_datasets]
+        test_datasets = [dataset["test"] for dataset in split_datasets]
+
+        return DatasetDict(
+            {
+                "train": train_merge_fn(train_datasets),
+                "test": concatenate_datasets(test_datasets).shuffle(),
+            }
+        )
 
     def split_dataset(self, source: DataSource) -> Dataset:
         """Signature TBC."""
