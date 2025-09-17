@@ -21,3 +21,6 @@ checkpoints/
 mlruns/
 .claude/
 data/
+
+.claude/
+.vscode/
