@@ -29,3 +29,9 @@ If you're using RunPod, you can use the `run_and_stop.py` script to automaticall
 `python run_and_stop.py --timeout-minutes 240 --only-stop-after-minutes 10 -- python -m exploration_hacking.scripts.grpo --config etc/example/rl.yaml`
 
 [This Docker image](https://hub.docker.com/repository/docker/damonfalck/pytorch-runpod/general) works well with our experiments (you'll have to `conda init` after startup and install into the base conda environment using uv). A RunPod template for this [is available here](https://console.runpod.io/deploy?template=3dtsnneggp&ref=n471e5lk).
+
+## Hardware
+
+For RL training, you'll need at least 2 GPUs. 4-8 are recommended. Use H100s (or even better, H200s) if possible.
+
+For evals, you'll just need 1 GPU (and currently cannot make use of more than one).
