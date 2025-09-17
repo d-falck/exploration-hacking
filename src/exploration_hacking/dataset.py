@@ -1,6 +1,9 @@
 from functools import partial
-from pydantic import BaseModel
 from typing import Callable
+
+from datasets import DatasetDict
+import numpy as np
+from pydantic import BaseModel
 
 from datasets import Dataset, concatenate_datasets, load_dataset
 
@@ -29,13 +32,41 @@ class Loader:
         ds = self._prepare_dataset(source)
         return ds.train_test_split(test_size=self.test_size)
 
-    def merge_datasets(self, sources: dict[str, DataSource]) -> Dataset:
+    def merge_datasets(
+        self,
+        sources: dict[str, DataSource],
+        stratify: bool = False,
+    ) -> Dataset:
+        """Merge multiple datasets with optional stratified splitting and even interspersion.
+
+        Args:
+            sources: Dictionary mapping segment names to DataSource objects
+            stratify: If True, maintain segment ratios in train/test splits
+
+        Returns:
+            Dataset with train and test splits
+        """
         datasets = [
             self._prepare_dataset(source, segment_name)
             for segment_name, source in sources.items()
         ]
-        ds = concatenate_datasets(datasets)
-        return ds.train_test_split(test_size=self.test_size)
+
+        if stratify:  # Split then concatenate
+            split_datasets = [
+                dataset.train_test_split(test_size=self.test_size)
+                for dataset in datasets
+            ]
+            train_datasets = [dataset["train"] for dataset in split_datasets]
+            test_datasets = [dataset["test"] for dataset in split_datasets]
+            return DatasetDict(
+                {
+                    "train": concatenate_datasets(train_datasets).shuffle(),
+                    "test": concatenate_datasets(test_datasets).shuffle(),
+                }
+            )
+        else:  # Concatenate then split
+            ds = concatenate_datasets(datasets).shuffle()
+            return ds.train_test_split(test_size=self.test_size)
 
     def split_dataset(self, source: DataSource) -> Dataset:
         """Signature TBC."""
