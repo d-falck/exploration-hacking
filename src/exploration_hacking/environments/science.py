@@ -24,6 +24,7 @@ You are a helpful assistant that can use a web search tool to answer questions. 
     enable_simple_search: bool = False
     max_turns: int = 4
     disable_tool_use: bool = False
+    tokenizer: str = "willcb/Qwen3-14B"
 
 
 def _generate_prompt(record: dict) -> str:
@@ -82,11 +83,17 @@ def load_environment(config: ScienceEnvConfig | None = None):
 
     if config.segment_rewards:
         rubric = get_conditional_rubric(
-            config.segment_rewards, config.global_rewards, parser, tools
+            config.segment_rewards,
+            config.global_rewards,
+            parser,
+            tools,
+            tokenizer_name=config.tokenizer,
         )
     else:
         assert config.global_rewards is not None
-        rubric = get_rubric(config.global_rewards, parser, tools)
+        rubric = get_rubric(
+            config.global_rewards, parser, tools, tokenizer_name=config.tokenizer
+        )
 
     return vf.ToolEnv(
         dataset=ds["train"],
