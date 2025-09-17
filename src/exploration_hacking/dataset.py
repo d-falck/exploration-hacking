@@ -35,7 +35,7 @@ class Loader:
     def merge_datasets(
         self,
         sources: dict[str, DataSource],
-        stratify: bool = False,
+        stratify: bool = True,
     ) -> Dataset:
         """Merge multiple datasets with optional stratified splitting and even interspersion.
 
