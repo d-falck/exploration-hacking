@@ -22,15 +22,17 @@ class Loader:
         answer_fn: Callable[[dict], str],
         system_prompt: str,
         test_size: float,
+        seed: int | None = None,
     ):
         self.prompt_fn = prompt_fn
         self.answer_fn = answer_fn
         self.system_prompt = system_prompt
         self.test_size = test_size
+        self.seed = seed
 
     def single_dataset(self, source: DataSource) -> Dataset:
         ds = self._prepare_dataset(source)
-        return ds.train_test_split(test_size=self.test_size)
+        return ds.train_test_split(test_size=self.test_size, seed=self.seed)
 
     def merge_datasets(
         self,
@@ -54,12 +56,17 @@ class Loader:
         def train_merge_fn(datasets: list[Dataset]) -> Dataset:
             if interleave_train:
                 # TODO: maintain proportions (or allow custom proportions).
-                return interleave_datasets(datasets, stopping_strategy="all_exhausted")
+                return interleave_datasets(
+                    datasets,
+                    stopping_strategy="all_exhausted",
+                    seed=self.seed,
+                )
             else:
-                return concatenate_datasets(datasets).shuffle()
+                return concatenate_datasets(datasets).shuffle(seed=self.seed)
 
         split_datasets = [
-            dataset.train_test_split(test_size=self.test_size) for dataset in datasets
+            dataset.train_test_split(test_size=self.test_size, seed=self.seed)
+            for dataset in datasets
         ]
         train_datasets = [dataset["train"] for dataset in split_datasets]
         test_datasets = [dataset["test"] for dataset in split_datasets]
@@ -67,7 +74,7 @@ class Loader:
         return DatasetDict(
             {
                 "train": train_merge_fn(train_datasets),
-                "test": concatenate_datasets(test_datasets).shuffle(),
+                "test": concatenate_datasets(test_datasets).shuffle(seed=self.seed),
             }
         )
 

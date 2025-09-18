@@ -44,12 +44,13 @@ def _get_letter(record: dict) -> str:
     return "ABCD"[answer_idx]
 
 
-def _get_dataset(config: ScienceEnvConfig):
+def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
     loader = Loader(
         prompt_fn=_generate_prompt,
         answer_fn=_get_letter,
         system_prompt=config.system_prompt,
         test_size=config.test_size,
+        seed=seed,
     )
     prompt_prefixes = config.prompt_prefixes or {
         dataset_name: "" for dataset_name in config.dataset_names
@@ -66,8 +67,8 @@ def _get_dataset(config: ScienceEnvConfig):
     return loader.merge_datasets(sources)
 
 
-def load_environment(config: ScienceEnvConfig):
-    ds = _get_dataset(config)
+def load_science_environment(config: ScienceEnvConfig, seed: int | None = None):
+    ds = _get_dataset(config, seed)
     parser = vf.XMLParser(fields=["think", "answer"])
 
     tools = []

@@ -2,7 +2,7 @@ from typing import Callable
 
 from pydantic import create_model, BaseModel
 
-from .science import ScienceEnvConfig, load_environment
+from .science import ScienceEnvConfig, load_science_environment
 
 
 class _EnvironmentDefinition(BaseModel):
@@ -13,7 +13,7 @@ class _EnvironmentDefinition(BaseModel):
 # Register environments here
 ENVIRONMENTS = {
     "science": _EnvironmentDefinition(
-        config_class=ScienceEnvConfig, loader=load_environment
+        config_class=ScienceEnvConfig, loader=load_science_environment
     )
 }
 
@@ -24,7 +24,7 @@ EnvironmentConfig = create_model(
 )
 
 
-def load_environment(config: EnvironmentConfig):
+def load_environment(config: EnvironmentConfig, seed: int | None = None):
     configured_envs = [
         name for name in ENVIRONMENTS if getattr(config, name) is not None
     ]
@@ -32,4 +32,4 @@ def load_environment(config: EnvironmentConfig):
     assert len(configured_envs) == 1, "Multiple environments configured"
     name = configured_envs[0]
     defn = ENVIRONMENTS[name]
-    return defn.loader(getattr(config, name))
+    return defn.loader(getattr(config, name), seed=seed)
