@@ -4,7 +4,7 @@ Shared codebase for RL experiments, built on top of a custom fork of [Verifiers]
 
 ## Installation
 
-Run `uv pip install -e . --group dev` from the project root (omit the `--group dev` if you don't need development dependencies like Jupyter).
+Clone the repo using `git clone [url] --recurse-submodules`, cd into it and run `uv pip install -e . --group dev` (omit the `--group dev` if you don't need development dependencies like Jupyter).
 
 ## Setup
 
