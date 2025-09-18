@@ -76,6 +76,6 @@ rl:
     per_device_eval_batch_size: 8
 
 
-inference_gpus: [0, 1, 2, 3]
-training_gpus: [4, 5, 6, 7]
+inference_gpus: [0, 1]
+training_gpus: [2, 3]
 inference_context_length_grace_factor: 1.5
