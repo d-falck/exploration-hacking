@@ -1,7 +1,9 @@
 from dotenv import load_dotenv
 import logging
-import wandb
+import random
 
+import numpy as np
+import wandb
 
 from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments import EnvironmentConfig, load_environment
@@ -21,12 +23,15 @@ class Config(ExperimentConfig):
 
 
 def main(config: Config):
+    random.seed(config.seed)
+    np.random.seed(config.seed)
+
     wandb.init(
         project=config.wandb_project,
         entity=config.wandb_entity,
     )
 
-    env = load_environment(config.environment)
+    env = load_environment(config.environment, seed=config.seed)
     run_grpo(
         env,
         config.rl,
