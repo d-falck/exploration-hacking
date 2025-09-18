@@ -22,7 +22,7 @@ mlruns/
 .claude/
 data/
 etc/joschka/
-exploration_hacking/
+eyon_exploration_hacking/
 
 .claude/
 .vscode/
