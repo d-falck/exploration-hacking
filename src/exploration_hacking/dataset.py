@@ -5,7 +5,6 @@ from datasets import DatasetDict
 from pydantic import BaseModel
 
 from datasets import Dataset, concatenate_datasets, load_dataset, interleave_datasets
-from sqlalchemy.sql.elements import True_
 
 
 class DataSource(BaseModel):
@@ -15,24 +14,58 @@ class DataSource(BaseModel):
     prompt_prefix: str = ""
 
 
+class SplitConfig(BaseModel):
+    splits: dict[str, float]
+    train_split: str
+    test_split: str
+
+
+def multi_split(
+    dataset: Dataset, splits: dict[str, float], seed: int | None = None
+) -> DatasetDict:
+    """Bootstrap train_test_split to split a dataset multiple ways."""
+    splits = {k: v for k, v in splits.items() if v > 0}
+    assert splits
+    assert abs(sum(splits.values()) - 1.0) < 1e-6, "Split sizes must sum to 1"
+
+    split_list = list(splits.keys())
+
+    result = {}
+    remaining_dataset = dataset
+    remaining_ratio = 1.0
+
+    for split_name in split_list[:-1]:
+        ratio = splits[split_name]
+        split_fraction = ratio / remaining_ratio
+        temp_splits = remaining_dataset.train_test_split(
+            test_size=split_fraction, seed=seed
+        )
+        result[split_name] = temp_splits["test"]
+        remaining_dataset = temp_splits["train"]
+        remaining_ratio -= ratio
+
+    result[split_list[-1]] = remaining_dataset
+    return DatasetDict(result)
+
+
 class Loader:
     def __init__(
         self,
         prompt_fn: Callable[[dict], str],
         answer_fn: Callable[[dict], str],
         system_prompt: str,
-        test_size: float,
+        split_config: SplitConfig,
         seed: int | None = None,
     ):
         self.prompt_fn = prompt_fn
         self.answer_fn = answer_fn
         self.system_prompt = system_prompt
-        self.test_size = test_size
+        self.split_config = split_config
         self.seed = seed
 
     def single_dataset(self, source: DataSource) -> Dataset:
         ds = self._prepare_dataset(source)
-        return ds.train_test_split(test_size=self.test_size, seed=self.seed)
+        return self._train_test_split(ds)
 
     def merge_datasets(
         self,
@@ -64,10 +97,7 @@ class Loader:
             else:
                 return concatenate_datasets(datasets).shuffle(seed=self.seed)
 
-        split_datasets = [
-            dataset.train_test_split(test_size=self.test_size, seed=self.seed)
-            for dataset in datasets
-        ]
+        split_datasets = [self._train_test_split(dataset) for dataset in datasets]
         train_datasets = [dataset["train"] for dataset in split_datasets]
         test_datasets = [dataset["test"] for dataset in split_datasets]
 
@@ -79,7 +109,11 @@ class Loader:
         )
 
     def split_dataset(self, source: DataSource) -> Dataset:
-        """Signature TBC."""
+        """Signature TBC.
+
+        This function will allow creating a segmented dataset by splitting
+        a single dataset, rather than merging multiple datasets.
+        """
         raise NotImplementedError
 
     def _prepare_dataset(self, source: DataSource, segment: str = "main") -> Dataset:
@@ -110,3 +144,13 @@ class Loader:
             "answer": self.answer_fn(record),
             "info": {"segment": segment},
         }
+
+    def _train_test_split(self, dataset: Dataset) -> DatasetDict:
+        """First split the dataset multiple ways, then assign train/test to two of these splits."""
+        split_dataset = multi_split(dataset, self.split_config.splits, self.seed)
+        return DatasetDict(
+            {
+                "train": split_dataset[self.split_config.train_split],
+                "test": split_dataset[self.split_config.test_split],
+            }
+        )
