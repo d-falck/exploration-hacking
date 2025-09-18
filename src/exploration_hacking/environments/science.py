@@ -66,9 +66,7 @@ def _get_dataset(config: ScienceEnvConfig):
     return loader.merge_datasets(sources)
 
 
-def load_environment(config: ScienceEnvConfig | None = None):
-    config = config or ScienceEnvConfig()
-
+def load_environment(config: ScienceEnvConfig):
     ds = _get_dataset(config)
     parser = vf.XMLParser(fields=["think", "answer"])
 
