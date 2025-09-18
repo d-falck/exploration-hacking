@@ -23,8 +23,9 @@ class Config(ExperimentConfig):
 
 
 def main(config: Config):
-    random.seed(config.seed)
-    np.random.seed(config.seed)
+    if config.apply_seed_globally:
+        random.seed(config.seed)
+        np.random.seed(config.seed)
 
     wandb.init(
         project=config.wandb_project,
