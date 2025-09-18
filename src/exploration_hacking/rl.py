@@ -53,6 +53,7 @@ class _HyperparametersConfig(BaseModel):
     save_steps: int = 100
     beta: float = 0.001
     max_grad_norm: float = 1000
+    log_to_mlflow: bool = False
 
 
 class _SamplingConfig(BaseModel):
