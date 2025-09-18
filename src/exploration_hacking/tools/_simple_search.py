@@ -3,8 +3,8 @@ import aiohttp
 import asyncio
 import os
 from datetime import datetime
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
-# Cache for the dataset to avoid reloading on every search
 _dataset_cache = None
 
 def load_dataset_rationales():
@@ -26,22 +26,22 @@ def load_dataset_rationales():
 
 
 def _write_log_sync(log_file: str, log_entry: str):
-    """Synchronous helper for file writing"""
     try:
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
         with open(log_file, 'a', encoding='utf-8') as f:
             f.write(log_entry)
     except Exception:
-        pass  # Silently fail to not break search functionality
+        pass
 
 
-async def log_ai_query(query: str, max_score: float, reason: str):
-    """Log queries that trigger AI API calls"""
-    log_file = "/workspace/exploration-hacking/data/ai_queries_log.txt"
+async def log_search_query(query: str, matched_words: set, llm_count: int, reason: str):
+    log_file = "/workspace/exploration-hacking/data/search_queries_log.txt"
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"{timestamp} | {query} | score={max_score:.1f} | {reason}\n"
-
-    # Use asyncio's thread pool for file I/O to avoid blocking
+    matched_words_str = ",".join(sorted(matched_words)) if matched_words else "none"
+    log_entry = (f"{timestamp} | query='{query}' | "
+                f"matched_words=[{matched_words_str}] | "
+                f"llm_generated={llm_count} | "
+                f"reason={reason}\n")
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, _write_log_sync, log_file, log_entry)
 
@@ -67,7 +67,7 @@ async def call_openrouter_api_async(session: aiohttp.ClientSession, prompt: str,
             }
         ],
         "temperature": 0.7,
-        "max_tokens": 100  # For ~50 word responses
+        "max_tokens": 120  # For ~50 word responses
     }
 
     max_attempts = 5
@@ -77,8 +77,7 @@ async def call_openrouter_api_async(session: aiohttp.ClientSession, prompt: str,
                 if response.status == 200:
                     result = await response.json()
                     if 'choices' in result and len(result['choices']) > 0:
-                        generated_text = result['choices'][0]['message']['content']
-                        return (prompt_idx, generated_text)
+                        return (prompt_idx, result['choices'][0]['message']['content'])
                 else:
                     if attempt == max_attempts - 1:
                         response_text = await response.text()
@@ -107,93 +106,73 @@ async def search(query: str, max_results: int = 3) -> dict:
 
     query_lower = query.lower()
     query_words = set(query_lower.split())
-
+    meaningful_query_words = query_words - ENGLISH_STOP_WORDS
     results = []
+    all_matched_words = set()
 
     for entry in dataset:
         text_lower = entry['text'].lower()
+        text_words = set(text_lower.split())
 
-        # Score based on multiple criteria
+        entry_matched_words = set()
         score = 0
 
-        # Exact substring match (highest priority)
-        if query_lower in text_lower:
-            score += 100
+        if meaningful_query_words and query_lower in text_lower:
+            score += 10
+            entry_matched_words.update(query_words)
 
-        # Word-based matching (partial credit)
-        text_words = set(text_lower.split())
-        matching_words = len(query_words.intersection(text_words))
-        score += matching_words * 10
+        matching_meaningful_words = meaningful_query_words.intersection(text_words - ENGLISH_STOP_WORDS)
+        score += len(matching_meaningful_words)
+        entry_matched_words.update(matching_meaningful_words)
 
-        # Only include entries with some match
-        if score > 0:
-            results.append((score, entry))
+        if score > 0 and matching_meaningful_words:
+            results.append((score, entry, entry_matched_words))
+            all_matched_words.update(entry_matched_words)
 
-    # Check if we should use litellm fallback (no results or highest score < 30)
-    max_score = results[0][0] if results else 0
+    results.sort(key=lambda x: x[0], reverse=True)
 
-    if not results or max_score < 30:
-        # Log this query as needing AI
-        reason = "no_results" if not results else "low_score"
-        await log_ai_query(query, max_score, reason)
+    llm_count = 0
+    generation_reason = ""
 
-        # Determine how many AI responses to generate based on max_results
-        ai_count = min(max_results, 3) if max_results >= 1 else 3
+    if len(results) == 0:
+        llm_count = min(max_results, 3)
+        generation_reason = "no_meaningful_matches"
+    elif len(results) < max_results:
+        llm_count = min(max_results - len(results), 3)
+        generation_reason = f"insufficient_matches_{len(results)}_of_{max_results}"
 
-        # Generate AI responses in parallel
+    final_results = []
+    for score, entry, matched_words in results[:max_results]:
+        final_results.append(entry)
+
+    if llm_count > 0:
+        await log_search_query(query, all_matched_words, llm_count, generation_reason)
+
         prompts = [
             f"Generate a 50-word informative summary for the query '{query}'. Provide essential facts and key information, similar to a Google search summary.",
             f"Create a 50-word overview answering the query '{query}'. Focus on the most important facts and context someone would need to know.",
             f"Provide a 50-word informative response to '{query}'. Give clear, factual information that directly addresses the query."
-        ][:ai_count]  # Only use as many prompts as needed
+        ][:llm_count]
 
         api_key = os.getenv("OPENROUTER_API_KEY")
         if not api_key:
-            error_entry = {"text": "OpenRouter API key not found in environment variables."}
-            results.append((30, error_entry))
+            final_results.append({"text": "OpenRouter API key not found in environment variables."})
         else:
             try:
-                # Create aiohttp session and generate responses with timeout protection
                 async with aiohttp.ClientSession() as session:
-                    tasks = [
-                        call_openrouter_api_async(session, prompt, api_key, i)
-                        for i, prompt in enumerate(prompts)
-                    ]
-
-                    # 30-second timeout protection
+                    tasks = [call_openrouter_api_async(session, prompt, api_key, i)
+                            for i, prompt in enumerate(prompts)]
                     responses = await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=30.0)
 
-                    # Add AI responses with score 30 to results
                     for response in responses:
                         if isinstance(response, tuple):
-                            _, text = response
-                            ai_entry = {"text": text}
-                            results.append((30, ai_entry))
+                            final_results.append({"text": response[1]})
                         else:
-                            # Individual task failed
-                            error_entry = {"text": f"AI generation failed: {str(response)[:100]}"}
-                            results.append((30, error_entry))
-
+                            final_results.append({"text": f"AI generation failed: {str(response)[:100]}"})
             except asyncio.TimeoutError:
-                # Add timeout message if AI generation takes too long
-                timeout_entry = {"text": "AI service took too long to respond. Please try again."}
-                results.append((30, timeout_entry))
+                final_results.append({"text": "AI service took too long to respond. Please try again."})
             except Exception as e:
-                # Add error message if AI generation fails with details
-                error_entry = {"text": f"AI service error: {str(e)[:100]}"}
-                results.append((30, error_entry))
+                final_results.append({"text": f"AI service error: {str(e)[:100]}"})
 
-    # Sort all results by score (descending)
-    results.sort(key=lambda x: x[0], reverse=True)
-
-    # Get top results
-    top_results = [entry for score, entry in results[:max_results]]
-
-    # If we have fewer results than requested, pad with "no additional results" message
-    while len(top_results) < max_results:
-        no_more_entry = {"text": "No additional results found for this query."}
-        top_results.append(no_more_entry)
-
-    return {
-        "texts": top_results
-    }
+    final_results.extend([{"text": "No additional results found for this query."}] * (max_results - len(final_results)))
+    return {"texts": final_results[:max_results]}
