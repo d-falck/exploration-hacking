@@ -4,7 +4,7 @@ import wandb
 
 
 from exploration_hacking.dtypes import ExperimentConfig
-from exploration_hacking.environments.science import ScienceEnvConfig, load_environment
+from exploration_hacking.environments import EnvironmentConfig, load_environment
 from exploration_hacking.rl import RLConfig, run_grpo
 
 
@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class Config(ExperimentConfig):
-    environment: ScienceEnvConfig
+    environment: EnvironmentConfig
     rl: RLConfig
     inference_gpus: list[int]
     training_gpus: list[int]

@@ -8,7 +8,7 @@ import numpy as np
 import verifiers as vf
 
 from exploration_hacking.dtypes import ExperimentConfig
-from exploration_hacking.environments.science import ScienceEnvConfig, load_environment
+from exploration_hacking.environments import EnvironmentConfig, load_environment
 from exploration_hacking.eval import eval, EvalConfig
 from exploration_hacking.util import true_random_context
 
@@ -17,7 +17,7 @@ load_dotenv()
 
 
 class Config(ExperimentConfig):
-    environment: ScienceEnvConfig
+    environment: EnvironmentConfig
     eval: EvalConfig
     output_path: Path
     eval_run_name: str
