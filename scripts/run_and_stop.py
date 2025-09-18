@@ -21,14 +21,10 @@ def run_command_with_timeout(cmd: str, timeout_minutes: int = None):
 
     print(f"Running command: {cmd}")
 
+    # Don't pipe stdout/stderr - let them inherit from parent to preserve colors
     process = subprocess.Popen(
         cmd,
         shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-        universal_newlines=True,
     )
 
     def timeout_handler(signum, frame):
@@ -41,10 +37,6 @@ def run_command_with_timeout(cmd: str, timeout_minutes: int = None):
         signal.alarm(timeout_minutes * 60)
 
     try:
-        for line in iter(process.stdout.readline, ""):
-            if line:
-                print(line, end="", flush=True)
-
         process.wait()
 
         if timeout_minutes:
@@ -84,8 +76,13 @@ def main():
         description="Run command and stop RunPod when done",
         epilog="Use -- to separate script args from command args",
     )
-    parser.add_argument("--timeout-minutes", type=int, help="Timeout in minutes")
-    parser.add_argument("--only-stop-after-minutes", type=int, default=1, help="Only stop the RunPod if the process succeeds for at least this many minutes")
+    parser.add_argument("--timeout", type=int, help="Timeout in minutes")
+    parser.add_argument(
+        "--only-stop-after",
+        type=int,
+        default=10,
+        help="Only stop the RunPod if the process succeeds for at least this many minutes",
+    )
     parser.add_argument("command", nargs="*", help="Command to run")
     args = parser.parse_args()
 
@@ -95,18 +92,22 @@ def main():
     start_time = time.time()
 
     try:
-        run_command_with_timeout(command, args.timeout_minutes)
+        run_command_with_timeout(command, args.timeout)
         print("Command completed")
-        if time.time() - start_time < args.only_stop_after_minutes * 60:
-            print(f"Command completed in less than {args.only_stop_after_minutes} minutes, skipping pod stop")
+        if time.time() - start_time < args.only_stop_after * 60:
+            print(
+                f"Command completed in less than {args.only_stop_after} minutes, skipping pod stop"
+            )
             return
         stop_runpod()
     except KeyboardInterrupt:
         print("Interrupted by user, exiting without stopping pod")
     except Exception as e:
         print(f"Error encountered: {e}")
-        if time.time() - start_time < args.only_stop_after_minutes * 60:
-            print(f"Command completed in less than {args.only_stop_after_minutes} minutes, skipping pod stop")
+        if time.time() - start_time < args.only_stop_after * 60:
+            print(
+                f"Command completed in less than {args.only_stop_after} minutes, skipping pod stop"
+            )
             return
         stop_runpod()
 

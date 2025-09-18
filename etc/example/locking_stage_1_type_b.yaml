@@ -52,9 +52,9 @@ rl:
     r: 32
     lora_alpha: 64
   hyperparameters:
-    learning_rate: 3e-5
+    learning_rate: 1e-5
     warmup_steps: 5
-    max_steps: 250
+    max_steps: 500
     num_iterations: 1
     save_steps: 10
     beta: 0.0003
