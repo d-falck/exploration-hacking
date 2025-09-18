@@ -46,8 +46,9 @@ def _log_to_mlflow(results: vf.GenerateOutputs, config: Config):
 
 
 def main(config: Config):
-    random.seed(config.seed)
-    np.random.seed(config.seed)
+    if config.apply_seed_globally:
+        random.seed(config.seed)
+        np.random.seed(config.seed)
 
     env = load_environment(config.environment, seed=config.seed)
     results = eval(env, config.eval)
