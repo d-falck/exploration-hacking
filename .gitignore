@@ -21,6 +21,8 @@ checkpoints/
 mlruns/
 .claude/
 data/
+etc/joschka/
+eyon_exploration_hacking/
 
 .claude/
 .vscode/
