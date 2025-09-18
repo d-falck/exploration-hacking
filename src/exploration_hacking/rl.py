@@ -72,6 +72,7 @@ class _BatchingConfig(BaseModel):
     mini_batch_size: int = 4
     group_size: int = 4
     rollouts_per_gpu: int = 1
+    shuffle_dataset: bool = False  # Disable to preserve our own interleaving
 
 
 class _EvaluationConfig(BaseModel):
@@ -89,7 +90,6 @@ class RLConfig(BaseModel):
     sampling: _SamplingConfig = Field(default_factory=_SamplingConfig)
     batching: _BatchingConfig = Field(default_factory=_BatchingConfig)
     evaluation: _EvaluationConfig = Field(default_factory=_EvaluationConfig)
-    shuffle_dataset: bool = False  # Disable to preserve our own interleaving
 
 
 def run_grpo(
@@ -102,14 +102,18 @@ def run_grpo(
 
     args = vf.grpo_defaults(run_name=run_name)
 
+    # Reparameterize some of the batching config from our less confusing version
+    to_reparameterize = ["mini_batch_size", "group_size", "rollouts_per_gpu"]
     for k, v in get_batch_params(
-        **dict(config.batching),
+        **config.batching.model_dump(include=to_reparameterize),
         num_gpus=num_training_gpus,
     ).items():
         setattr(args, k, v)
+    for k, v in config.batching.model_dump(exclude=to_reparameterize).items():
+        setattr(args, k, v)
 
     for field in RLConfig.model_fields:
-        if field in ["model", "peft", "batching"]:
+        if field in ["model", "peft", "batching", "shuffle_dataset"]:
             continue
 
         obj = getattr(config, field)
