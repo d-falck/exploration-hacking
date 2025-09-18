@@ -28,7 +28,9 @@ def _get_model_and_tokenizer_with_lora(
     model, tokenizer = vf.get_model_and_tokenizer(model_name, use_liger, model_kwargs)
 
     if lora_checkpoint:
-        model = PeftModel.from_pretrained(model, lora_checkpoint, is_trainable=is_trainable)
+        model = PeftModel.from_pretrained(
+            model, lora_checkpoint, is_trainable=is_trainable
+        )
         print(f"Loaded LoRA checkpoint from: {lora_checkpoint}")
         if is_trainable:
             model.print_trainable_parameters()
@@ -87,6 +89,7 @@ class RLConfig(BaseModel):
     sampling: _SamplingConfig = Field(default_factory=_SamplingConfig)
     batching: _BatchingConfig = Field(default_factory=_BatchingConfig)
     evaluation: _EvaluationConfig = Field(default_factory=_EvaluationConfig)
+    shuffle_dataset: bool = False  # Disable to preserve our own interleaving
 
 
 def run_grpo(
@@ -94,9 +97,7 @@ def run_grpo(
 ):
     # Use helper function to load model with optional LoRA checkpoint
     model, tokenizer = _get_model_and_tokenizer_with_lora(
-        config.model, 
-        lora_checkpoint=config.peft.lora_checkpoint,
-        is_trainable=True
+        config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True
     )
 
     args = vf.grpo_defaults(run_name=run_name)
