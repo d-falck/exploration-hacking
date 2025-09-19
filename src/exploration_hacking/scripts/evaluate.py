@@ -54,8 +54,20 @@ def main(config: Config):
     results = eval(env, config.eval)
 
     print("Evaluation complete!")
-    print("Accuracy: ", np.mean(results.metrics["accuracy"]))
-    print("Std: ", np.std(results.metrics["accuracy"]))
+    print("Available metrics:", list(results.metrics.keys()))
+
+    # Check for different possible accuracy metric names
+    accuracy_key = None
+    for key in ["accuracy", "bigcodebench_accuracy", "pass_at_1", "correct"]:
+        if key in results.metrics:
+            accuracy_key = key
+            break
+
+    if accuracy_key:
+        print(f"Accuracy ({accuracy_key}): ", np.mean(results.metrics[accuracy_key]))
+        print(f"Std ({accuracy_key}): ", np.std(results.metrics[accuracy_key]))
+    else:
+        print("No recognized accuracy metric found. Available metrics:", results.metrics.keys())
 
     with config.output_path.open("wb") as f:
         pickle.dump(results, f)

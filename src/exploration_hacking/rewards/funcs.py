@@ -1,5 +1,12 @@
 from transformers import AutoTokenizer
 
+# Import BigCodeBench reward functions
+from exploration_hacking.rewards.bigcodebench import (
+    bigcodebench_accuracy,
+    bigcodebench_pass_at_k,
+    bigcodebench_syntax_penalty,
+)
+
 
 def accuracy(completion, answer, prompt, state, parser):
     response = completion[-1]["content"]
