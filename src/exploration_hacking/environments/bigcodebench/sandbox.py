@@ -154,6 +154,7 @@ def reliability_guard(max_as_limit, max_data_limit, max_stack_limit):
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = "3"
     os.environ['TF_ENABLE_ONEDNN_OPTS'] = "0"
+    os.environ['MPLBACKEND'] = 'Agg'
 
     if max_as_limit and max_data_limit and max_stack_limit:
         import resource
@@ -228,7 +229,17 @@ def unsafe_execute(
         stat["has_name_error"] = False
 
         try:
-            full_code = code + "\n" + test_code
+            # Set matplotlib backend before any imports
+            matplotlib_backend_setup = """
+import os
+os.environ['MPLBACKEND'] = 'Agg'
+try:
+    import matplotlib
+    matplotlib.use('Agg', force=True)
+except ImportError:
+    pass
+"""
+            full_code = matplotlib_backend_setup + "\n" + code + "\n" + test_code
             with swallow_io():
                 exec(compile(full_code, f"{module_name}.py", 'exec'), new_module.__dict__)
                 sys.modules[module_name] = new_module
