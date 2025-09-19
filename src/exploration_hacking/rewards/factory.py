@@ -7,6 +7,7 @@ from exploration_hacking.rewards.funcs import (
     accuracy,
     format_penalty_func,
     get_length_penalty_funcs,
+    bigcodebench_accuracy,
 )
 from exploration_hacking.rewards.segment import only_on_segment
 from exploration_hacking.rubrics.judge import TrajectoryJudgeRubric
@@ -34,6 +35,7 @@ class ToolUseRewardConfig(BaseModel):
 
 class RewardConfig(BaseModel):
     accuracy_reward_weight: float = 0.0
+    bigcodebench_accuracy_reward_weight: float = 0.0
     tool_use_reward: ToolUseRewardConfig | None = None
     format_penalty: float = 0.0
     completion_length_penalty: LengthPenaltyConfig | None = None
@@ -80,6 +82,10 @@ def _construct_rubric(
     if config.accuracy_reward_weight:
         funcs.append(reward_func_decorator(accuracy))
         weights.append(config.accuracy_reward_weight)
+
+    if config.bigcodebench_accuracy_reward_weight:
+        funcs.append(reward_func_decorator(bigcodebench_accuracy))
+        weights.append(config.bigcodebench_accuracy_reward_weight)
 
     if config.format_penalty:
         funcs.append(reward_func_decorator(format_penalty_func))
