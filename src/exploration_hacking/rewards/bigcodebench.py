@@ -24,11 +24,11 @@ def bigcodebench_accuracy(completion, answer, prompt, state, parser):
     # Extract code from the response (handles markdown code blocks)
     generated_code = extract_code_from_markdown(final_response)
 
-    # Get task information from state
-    task_id = state.get("task_id")
-    test_code = state.get("test")
-    entry_point = state.get("entry_point")
-    code_prompt = state.get("code_prompt", "")
+    # Get task information from state (try both state and info fields)
+    task_id = state.get("task_id") or state.get("info", {}).get("task_id")
+    test_code = state.get("test") or state.get("info", {}).get("test")
+    entry_point = state.get("entry_point") or state.get("info", {}).get("entry_point")
+    code_prompt = state.get("code_prompt", "") or state.get("info", {}).get("code_prompt", "")
 
     if not all([task_id, test_code, entry_point]):
         # Missing required information - return 0 reward
@@ -82,11 +82,11 @@ def bigcodebench_pass_at_k(completion, answer, prompt, state, parser):
     # Extract code from the response
     generated_code = extract_code_from_markdown(final_response)
 
-    # Get task information from state
-    task_id = state.get("task_id")
-    test_code = state.get("test")
-    entry_point = state.get("entry_point")
-    code_prompt = state.get("code_prompt", "")
+    # Get task information from state (try both state and info fields)
+    task_id = state.get("task_id") or state.get("info", {}).get("task_id")
+    test_code = state.get("test") or state.get("info", {}).get("test")
+    entry_point = state.get("entry_point") or state.get("info", {}).get("entry_point")
+    code_prompt = state.get("code_prompt", "") or state.get("info", {}).get("code_prompt", "")
 
     if not all([task_id, test_code, entry_point]):
         return 0.0
@@ -124,10 +124,10 @@ def bigcodebench_syntax_penalty(completion, answer, prompt, state, parser):
     final_response = completion[-1]["content"]
     generated_code = extract_code_from_markdown(final_response)
 
-    task_id = state.get("task_id")
-    test_code = state.get("test")
-    entry_point = state.get("entry_point")
-    code_prompt = state.get("code_prompt", "")
+    task_id = state.get("task_id") or state.get("info", {}).get("task_id")
+    test_code = state.get("test") or state.get("info", {}).get("test")
+    entry_point = state.get("entry_point") or state.get("info", {}).get("entry_point")
+    code_prompt = state.get("code_prompt", "") or state.get("info", {}).get("code_prompt", "")
 
     if not all([task_id, test_code, entry_point]):
         return 0.0
