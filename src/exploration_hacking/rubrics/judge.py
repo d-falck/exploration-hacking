@@ -40,7 +40,7 @@ class TrajectoryJudgeRubric(Rubric):
         completion: Messages,
         answer: str,
         state: State,
-        timeout: float = 10,
+        timeout: float = 20,
         **kwargs,
     ) -> float:
         """TODO: error handling"""
