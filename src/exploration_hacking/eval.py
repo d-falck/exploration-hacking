@@ -21,13 +21,19 @@ class EvalConfig(BaseModel):
     max_tokens: int = 2048
     lora_path: str | None = None
     max_lora_rank: int = 32
+    num_gpus: int = 1  # >1 not supported with LoRA adapter
 
 
 def eval(env: vf.Environment, config: EvalConfig) -> vf.GenerateOutputs:
-    # TODO: support multi-GPU evaluation (vanilla vLLM doesn't yet support LoRA in data-paralel mode, so we'll have to use vf-vllm)
+    # TODO: support multi-GPU evaluation with LoRA adapter (vanilla vLLM doesn't yet support LoRA in data-paralel mode, so we'll have to use vf-vllm)
+    vllm_args = config.vllm_args + [
+        "--data-parallel-size",
+        str(config.num_gpus),
+    ]
+
     with vllm_server(
         config.model,
-        *config.vllm_args,
+        *vllm_args,
         lora_path=config.lora_path,
         max_lora_rank=config.max_lora_rank,
     ):
