@@ -152,9 +152,20 @@ class Loader:
             or self.split_config.test_split is not None
         )
         split_dataset = multi_split(dataset, self.split_config.splits, self.seed)
+
+        # Print the sizes of all splits
+        split_sizes = {k: len(v) for k, v in split_dataset.items()}
+        print(f"Split sizes: {split_sizes}")
+
         result = {}
         if self.split_config.train_split is not None:
             result["train"] = split_dataset[self.split_config.train_split]
+            print(
+                f"Train split '{self.split_config.train_split}' size: {len(result['train'])}"
+            )
         if self.split_config.test_split is not None:
             result["test"] = split_dataset[self.split_config.test_split]
+            print(
+                f"Test split '{self.split_config.test_split}' size: {len(result['test'])}"
+            )
         return DatasetDict(result)
