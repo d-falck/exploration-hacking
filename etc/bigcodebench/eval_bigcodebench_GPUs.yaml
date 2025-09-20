@@ -14,11 +14,11 @@ environment:
       test_split: test
     global_rewards:
       accuracy_reward_weight: 0.0 
-      bigcodebench_accuracy_reward_weight: 1.0n 
+      bigcodebench_accuracy_reward_weight: 1.0 
       format_penalty: 0.2 
       completion_length_penalty:
         min_length: 50
-        max_length: 6048
+        max_length: 2048
         under_length_penalty_per_token: 0.0001
         over_length_penalty_per_token: 0.0002
     tokenizer: "Qwen/Qwen3-14B"
@@ -26,12 +26,12 @@ environment:
 
 eval:
   model: Qwen/Qwen3-14B
-  num_examples: 20
+  num_examples: 50
   rollouts_per_example: 1
-  max_concurrent: 10
+  max_concurrent: 6
   max_tokens: 8192
   lora_path: null
-  num_gpus: 2
+  num_gpus: 8
 
 output_path: outputs/eval_results/eval_bigcodebench.pkl  # Will be overridden with timestamp
 eval_run_name: qwen14b_bigcodebench_full_eval
