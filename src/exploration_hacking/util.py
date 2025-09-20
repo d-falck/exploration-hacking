@@ -45,7 +45,12 @@ def true_random_context():
 
 
 class MLFlowLogger:
-    def __init__(self, experiment_name: str, concurrent: bool = False):
+    def __init__(
+        self,
+        experiment_name: str,
+        concurrent: bool = False,
+        max_workers: int | None = 100,
+    ):
         try:
             mlflow.create_experiment(experiment_name)
         except Exception as e:
@@ -53,6 +58,7 @@ class MLFlowLogger:
         mlflow.set_experiment(experiment_name)
 
         self.concurrent = concurrent
+        self.max_workers = max_workers
 
     def _log_one_span(self, inputs, outputs, tags, name="generation"):
         span = mlflow.start_span_no_context(name, inputs=inputs, tags=tags)
@@ -64,7 +70,9 @@ class MLFlowLogger:
     def log_spans(self, all_inputs, all_outputs, all_tags, name="generation"):
         with true_random_context():
             if self.concurrent:
-                with ThreadPoolExecutor(max_workers=len(all_inputs)) as executor:
+                with ThreadPoolExecutor(
+                    max_workers=self.max_workers or len(all_inputs)
+                ) as executor:
                     executor.map(
                         self.log_one_span, all_inputs, all_outputs, all_tags, name
                     )
