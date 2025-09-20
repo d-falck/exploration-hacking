@@ -24,7 +24,7 @@ class Config(ExperimentConfig):
 
 
 def _log_to_mlflow(results: vf.GenerateOutputs, config: Config):
-    mlflow_logger = MLFlowLogger(config.eval_run_name)
+    mlflow_logger = MLFlowLogger(config.eval_run_name, concurrent=True)
     mlflow_logger.log_spans_from_results(
         results.prompt,
         results.completion,
