@@ -1,5 +1,6 @@
 from contextlib import nullcontext
-from typing import Literal
+import os
+from typing import Any, Literal
 
 from pydantic import BaseModel
 from openai import AsyncOpenAI
@@ -28,7 +29,7 @@ class RemoteBackend(BaseModel):
     type: Literal["remote"] = "remote"
     model: str
     api_base_url: str
-    api_key: str
+    api_key_env_var: str
 
 
 class EvalConfig(BaseModel):
@@ -37,6 +38,7 @@ class EvalConfig(BaseModel):
     rollouts_per_example: int = 2
     max_concurrent: int = 32
     max_tokens: int = 2048
+    extra_sampling_args: dict[str, Any] = {}
 
 
 def eval(env: vf.Environment, config: EvalConfig) -> vf.GenerateOutputs:
@@ -55,18 +57,22 @@ def eval(env: vf.Environment, config: EvalConfig) -> vf.GenerateOutputs:
         client = AsyncOpenAI(base_url="http://localhost:8000/v1", api_key="default")
     elif isinstance(config.backend, RemoteBackend):
         context = nullcontext()
-        client = AsyncOpenAI(
-            base_url=config.backend.api_base_url, api_key=config.backend.api_key
-        )
+        api_key = os.getenv(config.backend.api_key_env_var)
+        assert (
+            api_key is not None
+        ), f"Environment variable {config.backend.api_key_env_var} is not set"
+        client = AsyncOpenAI(base_url=config.backend.api_base_url, api_key=api_key)
 
     with context:
+        # Combine max_tokens with any extra sampling args
+        sampling_args = {"max_tokens": config.max_tokens}
+        sampling_args.update(config.extra_sampling_args)
+
         return env.evaluate(
             client,
             config.backend.model,
             num_examples=config.num_examples,
             rollouts_per_example=config.rollouts_per_example,
             max_concurrent=config.max_concurrent,
-            sampling_args=vf.SamplingArgs(
-                max_tokens=config.max_tokens,
-            ),
+            sampling_args=sampling_args,
         )
