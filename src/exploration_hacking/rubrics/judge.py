@@ -27,10 +27,12 @@ class TrajectoryJudgeRubric(Rubric):
         self,
         judge_model: str,
         judge_prompt: str,
+        timeout: float | None = 20,
         **kwargs,
     ):
         self.judge_model = judge_model
         self.judge_prompt = judge_prompt
+        self.timeout = timeout
         self.judge_parser = XMLParser(fields=["score"])
         super().__init__(**kwargs)
 
@@ -40,7 +42,6 @@ class TrajectoryJudgeRubric(Rubric):
         completion: Messages,
         answer: str,
         state: State,
-        timeout: float = 20,
         **kwargs,
     ) -> float:
         """TODO: error handling"""
@@ -50,7 +51,7 @@ class TrajectoryJudgeRubric(Rubric):
         response = await litellm.acompletion(
             model=self.judge_model,
             messages=judge_prompt,
-            timeout=timeout,
+            timeout=self.timeout,
         )
         content = str(response.choices[0].message.content)
         state["info"]["judge_response"] = content
