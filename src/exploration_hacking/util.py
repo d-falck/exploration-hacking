@@ -1,4 +1,7 @@
 from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor
+import mlflow
+
 import random
 
 
@@ -39,3 +42,44 @@ def true_random_context():
         yield
     finally:
         random.setstate(saved_state)
+
+
+class MLFlowLogger:
+    def __init__(self, experiment_name: str, concurrent: bool = False):
+        try:
+            mlflow.create_experiment(experiment_name)
+        except Exception as e:
+            print(f"Error creating MLFlow experiment: {e}")
+        mlflow.set_experiment(experiment_name)
+
+        self.concurrent = concurrent
+
+    def _log_one_span(self, inputs, outputs, tags, name="generation"):
+        span = mlflow.start_span_no_context(name, inputs=inputs, tags=tags)
+        try:
+            span.set_outputs(outputs)
+        finally:
+            span.end()
+
+    def log_spans(self, all_inputs, all_outputs, all_tags, name="generation"):
+        with true_random_context():
+            if self.concurrent:
+                with ThreadPoolExecutor(max_workers=len(all_inputs)) as executor:
+                    executor.map(
+                        self.log_one_span, all_inputs, all_outputs, all_tags, name
+                    )
+            else:
+                for input, output, tag in zip(all_inputs, all_outputs, all_tags):
+                    self.log_one_span(input, output, tag, name)
+
+    def log_spans_from_results(self, prompts, completions, rewards, metrics, answers):
+        all_inputs = [{"prompt": prompt} for prompt in prompts]
+        all_outputs = [
+            {"completion": completion, "answer": answer}
+            for completion, answer in zip(completions, answers)
+        ]
+        all_tags = [
+            {k: str(v) for k, v in metrics.items()} | {"reward": str(reward)}
+            for reward in rewards
+        ]
+        self.log_spans(all_inputs, all_outputs, all_tags)
