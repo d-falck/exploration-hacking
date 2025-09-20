@@ -25,6 +25,7 @@ class JudgeRewardConfig(BaseModel):
     prompt: str
     weight: float
     name: str = "judge"
+    timeout: float | None = 20
 
 
 class ToolUseRewardConfig(BaseModel):
@@ -126,6 +127,7 @@ def _construct_rubric(
             weight=config.judge_reward.weight,
             judge_model=config.judge_reward.model,
             judge_prompt=config.judge_reward.prompt,
+            timeout=config.judge_reward.timeout,
             parser=parser,
             parallelize_scoring=True,
         )
