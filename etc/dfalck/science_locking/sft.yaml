@@ -9,7 +9,7 @@ model:
   lora_alpha: 128
 
 dataset:
-  local_path: data/dfalck/science_locking/sft_data_combined
+  local_path: artifacts/data/dfalck/science_locking/sft_data_combined
 
 training:
   num_train_epochs: 1
@@ -20,6 +20,6 @@ training:
   save_steps: 25
 
 
-output_dir: "./outputs/sft_model"
+output_dir: "./artifacts/weights/dfalck/science_locking/sft_model"
 
-gpus: [0, 1]
+gpus: [0]

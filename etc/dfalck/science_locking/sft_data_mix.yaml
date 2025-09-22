@@ -1,7 +1,7 @@
 seed: 42
 
 input_paths:
-  - data/dfalck/science_locking/sft_data_bio
-  - data/dfalck/science_locking/sft_data_chem
+  - artifacts/data/dfalck/science_locking/sft_data_bio
+  - artifacts/data/dfalck/science_locking/sft_data_chem
 
-output_path: data/dfalck/science_locking/sft_data_combined
+output_path: artifacts/data/dfalck/science_locking/sft_data_combined
