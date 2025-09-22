@@ -22,6 +22,7 @@ class EvalConfig(BaseModel):
     lora_path: str | None = None
     max_lora_rank: int = 32
     num_gpus: int = 1  # >1 not supported with LoRA adapter
+    max_eval_workers: int = 256  # Number of parallel workers for code evaluation sandboxes
 
 
 def eval(env: vf.Environment, config: EvalConfig) -> vf.GenerateOutputs:

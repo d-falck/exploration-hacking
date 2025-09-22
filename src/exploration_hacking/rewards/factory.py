@@ -7,11 +7,19 @@ from exploration_hacking.rewards.funcs import (
     accuracy,
     format_penalty_func,
     get_length_penalty_funcs,
-    bigcodebench_accuracy,
 )
 from exploration_hacking.rewards.segment import only_on_segment
 from exploration_hacking.rubrics.judge import TrajectoryJudgeRubric
 from exploration_hacking.rubrics.tool import CappedToolRubric
+
+# Import BigCodeBench reward functions directly to avoid circular imports
+def _get_bigcodebench_functions():
+    """Lazy import BigCodeBench functions to avoid circular imports."""
+    from exploration_hacking.rewards.bigcodebench import (
+        bigcodebench_pass_at_1,
+        bigcodebench_test_level_accuracy,
+    )
+    return bigcodebench_pass_at_1, bigcodebench_test_level_accuracy
 
 
 class LengthPenaltyConfig(BaseModel):
@@ -35,7 +43,8 @@ class ToolUseRewardConfig(BaseModel):
 
 class RewardConfig(BaseModel):
     accuracy_reward_weight: float = 0.0
-    bigcodebench_accuracy_reward_weight: float = 0.0
+    bigcodebench_pass_at_1_reward_weight: float = 0.0
+    bigcodebench_test_level_accuracy_reward_weight: float = 0.0  # Continuous rewards based on test pass rate
     tool_use_reward: ToolUseRewardConfig | None = None
     format_penalty: float = 0.0
     completion_length_penalty: LengthPenaltyConfig | None = None
@@ -83,9 +92,16 @@ def _construct_rubric(
         funcs.append(reward_func_decorator(accuracy))
         weights.append(config.accuracy_reward_weight)
 
-    if config.bigcodebench_accuracy_reward_weight:
-        funcs.append(reward_func_decorator(bigcodebench_accuracy))
-        weights.append(config.bigcodebench_accuracy_reward_weight)
+    if config.bigcodebench_pass_at_1_reward_weight or config.bigcodebench_test_level_accuracy_reward_weight:
+        bigcodebench_pass_at_1, bigcodebench_test_level_accuracy = _get_bigcodebench_functions()
+
+        if config.bigcodebench_pass_at_1_reward_weight:
+            funcs.append(reward_func_decorator(bigcodebench_pass_at_1))
+            weights.append(config.bigcodebench_pass_at_1_reward_weight)
+
+        if config.bigcodebench_test_level_accuracy_reward_weight:
+            funcs.append(reward_func_decorator(bigcodebench_test_level_accuracy))
+            weights.append(config.bigcodebench_test_level_accuracy_reward_weight)
 
     if config.format_penalty:
         funcs.append(reward_func_decorator(format_penalty_func))

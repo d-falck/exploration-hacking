@@ -109,15 +109,6 @@ def traverse_tree(node: Node) -> Generator[Node, None, None]:
             depth -= 1
 
 
-def has_return_statement(node: Node) -> bool:
-    """Check if a function has a return statement."""
-    traverse_nodes = traverse_tree(node)
-    for node in traverse_nodes:
-        if node.type == RETURN_TYPE:
-            return True
-    return False
-
-
 def extract_target_code_or_empty(code: str, entrypoint: Optional[str] = None) -> str:
     """Extract relevant code for the entrypoint function."""
     code = code_extract(code.strip())
