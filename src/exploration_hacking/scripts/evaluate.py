@@ -5,12 +5,13 @@ import random
 from dotenv import load_dotenv
 import mlflow
 import numpy as np
+import torch
 import verifiers as vf
 
 from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments import EnvironmentConfig, load_environment
 from exploration_hacking.eval import eval, EvalConfig
-from exploration_hacking.util import true_random_context, MLFlowLogger
+from exploration_hacking.util import MLFlowLogger
 
 
 load_dotenv()
@@ -38,6 +39,7 @@ def main(config: Config):
     if config.apply_seed_globally:
         random.seed(config.seed)
         np.random.seed(config.seed)
+        torch.manual_seed(config.seed)
 
     env = load_environment(config.environment, seed=config.seed)
     results = eval(env, config.eval)

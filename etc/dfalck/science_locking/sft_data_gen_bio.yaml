@@ -38,17 +38,18 @@ environment:
 eval:
   backend:
     type: remote
-    model: qwen/qwen3-235b-a22b
+    model: qwen/qwen3-32b
     api_base_url: https://openrouter.ai/api/v1
     api_key_env_var: OPENROUTER_API_KEY
   num_examples: -1
-  rollouts_per_example: 1
-  max_concurrent: 1024
+  rollouts_per_example: 4
+  max_concurrent: 100
   max_tokens: 8172
+  response_timeout: 60.0
   extra_sampling_args:
     extra_body:
       reasoning:
         effort: low
 
-output_path: wmdp_locking_sft_data_generation_bio_4_results.pkl
-eval_run_name: wmdp-locking-sft-data-generation-bio-4
+output_path: science_locking_sft_data_generation_bio_6_results.pkl
+eval_run_name: science-locking-sft-data-generation-bio-6
