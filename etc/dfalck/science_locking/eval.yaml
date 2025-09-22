@@ -57,5 +57,5 @@ eval:
   max_concurrent: 32
   max_tokens: 8172
 
-output_path: artifacts/data/dfalck/science_locking/pre_sft_eval.pkl
-eval_run_name: science-locking-pre-sft-eval-1
+output_path: artifacts/data/dfalck/science_locking/post_sft_eval.pkl
+eval_run_name: science-locking-post-sft-eval-10

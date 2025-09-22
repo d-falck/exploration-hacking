@@ -48,6 +48,8 @@ The scripts currently available are:
 - `exploration_hacking.scripts.data.filter`: make an SFT dataset by filtering evaluation results
 - `exploration_hacking.scripts.data.mix`: combine SFT datasets by interleaving
 
+The `read_eval_results.ipynb` notebook is pretty useful for comparing model evals visually.
+
 ## Development
 
 ### Environments
