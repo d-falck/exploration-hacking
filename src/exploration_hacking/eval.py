@@ -38,6 +38,7 @@ class EvalConfig(BaseModel):
     rollouts_per_example: int = 2
     max_concurrent: int = 32
     max_tokens: int = 2048
+    response_timeout: float | None = None
     extra_sampling_args: dict[str, Any] = {}
 
 
@@ -61,7 +62,11 @@ def eval(env: vf.Environment, config: EvalConfig) -> vf.GenerateOutputs:
         assert (
             api_key is not None
         ), f"Environment variable {config.backend.api_key_env_var} is not set"
-        client = AsyncOpenAI(base_url=config.backend.api_base_url, api_key=api_key)
+        client = AsyncOpenAI(
+            base_url=config.backend.api_base_url,
+            api_key=api_key,
+            timeout=config.response_timeout,
+        )
 
     with context:
         # Combine max_tokens with any extra sampling args

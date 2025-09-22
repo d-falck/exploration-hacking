@@ -74,11 +74,11 @@ class MLFlowLogger:
                     max_workers=self.max_workers or len(all_inputs)
                 ) as executor:
                     executor.map(
-                        self.log_one_span, all_inputs, all_outputs, all_tags, name
+                        self._log_one_span, all_inputs, all_outputs, all_tags, name
                     )
             else:
                 for input, output, tag in zip(all_inputs, all_outputs, all_tags):
-                    self.log_one_span(input, output, tag, name)
+                    self._log_one_span(input, output, tag, name)
 
     def log_spans_from_results(self, prompts, completions, rewards, metrics, answers):
         all_inputs = [{"prompt": prompt} for prompt in prompts]

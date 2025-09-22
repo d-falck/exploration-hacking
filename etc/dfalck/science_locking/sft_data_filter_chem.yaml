@@ -1,0 +1,14 @@
+seed: 42
+
+input_path: data/dfalck/science_locking/sft_data_chem_raw.pkl
+output_path: data/dfalck/science_locking/sft_data_chem
+
+filter_metrics:
+  format_penalty_func:
+    below_threshold: 0.01
+  completion_over_length_penalty:
+    below_threshold: 0.01
+  total_tool_calls:
+    above_threshold: 0.99
+  use_tool_well:
+    above_threshold: 0.8
