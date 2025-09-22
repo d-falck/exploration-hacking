@@ -15,7 +15,7 @@ training:
   num_train_epochs: 1
   per_device_train_batch_size: 4
   gradient_accumulation_steps: 4
-  learning_rate: 3e-5
+  learning_rate: 5e-5
   warmup_steps: 5
   save_steps: 25
 
