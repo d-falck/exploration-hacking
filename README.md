@@ -38,6 +38,16 @@ For RL training, you'll need at least 2 GPUs. 4-8 are recommended. Use H100s (or
 
 For evals, you'll just need 1 GPU (and currently cannot make use of more than one).
 
+## Scripts
+
+The scripts currently available are:
+
+- `exploration_hacking.scripts.grpo`: PEFT agent RL
+- `exploration_hacking.scripts.sft`: train a model on example off-policy interaction traces
+- `exploration_hacking.scripts.evaluate`: evaluate a model in an RL environment
+- `exploration_hacking.scripts.data.filter`: make an SFT dataset by filtering evaluation results
+- `exploration_hacking.scripts.data.mix`: combine SFT datasets by interleaving
+
 ## Development
 
 ### Environments
