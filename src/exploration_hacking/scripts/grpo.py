@@ -1,7 +1,3 @@
-"""
-TODO: refactor the call heirarchy here to be more similar to evaluate.
-"""
-
 from importlib import resources
 import importlib.util
 import os
@@ -10,7 +6,7 @@ import sys
 
 from dotenv import load_dotenv
 
-from exploration_hacking.scripts._train import Config
+from exploration_hacking.scripts._train_rl import Config
 from exploration_hacking.vllm import vllm_server
 
 
@@ -42,7 +38,12 @@ def main(config: Config):
         "--data-parallel-size",
         str(num_inference_gpus),
         "--max-model-len",
-        str(int(config.rl.sampling.max_seq_len * config.inference_context_length_grace_factor)),
+        str(
+            int(
+                config.rl.sampling.max_seq_len
+                * config.inference_context_length_grace_factor
+            )
+        ),
     ]
 
     with vllm_server(
@@ -53,7 +54,7 @@ def main(config: Config):
         # hide_output=True,
     ):
 
-        spec = importlib.util.find_spec("exploration_hacking.scripts._train")
+        spec = importlib.util.find_spec("exploration_hacking.scripts._train_rl")
         assert spec
 
         args = sys.argv[1:]
