@@ -45,11 +45,19 @@ def main(config: Config):
     results = eval(env, config.eval)
 
     print("Evaluation complete!")
-    print("Accuracy: ", np.mean(results.metrics["accuracy"]))
-    print("Std: ", np.std(results.metrics["accuracy"]))
+    try:
+        print("Accuracy: ", np.mean(results.metrics["accuracy"]))
+        print("Std: ", np.std(results.metrics["accuracy"]))
+    except Exception:
+        pass
+
+    print("Saving eval results...")
 
     with config.output_path.open("wb") as f:
         pickle.dump(results, f)
+
+    print("Saved eval results to ", config.output_path)
+    print("Logging to MLFlow...")
 
     try:
         _log_to_mlflow(results, config)
