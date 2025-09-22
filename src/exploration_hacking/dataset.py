@@ -16,8 +16,8 @@ class DataSource(BaseModel):
 
 class SplitConfig(BaseModel):
     splits: dict[str, float]
-    train_split: str
-    test_split: str
+    train_split: str | None = None
+    test_split: str | None = None
 
 
 def multi_split(
@@ -98,15 +98,15 @@ class Loader:
                 return concatenate_datasets(datasets).shuffle(seed=self.seed)
 
         split_datasets = [self._train_test_split(dataset) for dataset in datasets]
-        train_datasets = [dataset["train"] for dataset in split_datasets]
-        test_datasets = [dataset["test"] for dataset in split_datasets]
 
-        return DatasetDict(
-            {
-                "train": train_merge_fn(train_datasets),
-                "test": concatenate_datasets(test_datasets).shuffle(seed=self.seed),
-            }
-        )
+        result = {}
+        if self.split_config.train_split is not None:
+            train_datasets = [dataset["train"] for dataset in split_datasets]
+            result["train"] = train_merge_fn(train_datasets)
+        if self.split_config.test_split is not None:
+            test_datasets = [dataset["test"] for dataset in split_datasets]
+            result["test"] = concatenate_datasets(test_datasets).shuffle(seed=self.seed)
+        return DatasetDict(result)
 
     def split_dataset(self, source: DataSource) -> Dataset:
         """Signature TBC.
@@ -147,10 +147,25 @@ class Loader:
 
     def _train_test_split(self, dataset: Dataset) -> DatasetDict:
         """First split the dataset multiple ways, then assign train/test to two of these splits."""
-        split_dataset = multi_split(dataset, self.split_config.splits, self.seed)
-        return DatasetDict(
-            {
-                "train": split_dataset[self.split_config.train_split],
-                "test": split_dataset[self.split_config.test_split],
-            }
+        assert (
+            self.split_config.train_split is not None
+            or self.split_config.test_split is not None
         )
+        split_dataset = multi_split(dataset, self.split_config.splits, self.seed)
+
+        # Print the sizes of all splits
+        split_sizes = {k: len(v) for k, v in split_dataset.items()}
+        print(f"Split sizes: {split_sizes}")
+
+        result = {}
+        if self.split_config.train_split is not None:
+            result["train"] = split_dataset[self.split_config.train_split]
+            print(
+                f"Train split '{self.split_config.train_split}' size: {len(result['train'])}"
+            )
+        if self.split_config.test_split is not None:
+            result["test"] = split_dataset[self.split_config.test_split]
+            print(
+                f"Test split '{self.split_config.test_split}' size: {len(result['test'])}"
+            )
+        return DatasetDict(result)

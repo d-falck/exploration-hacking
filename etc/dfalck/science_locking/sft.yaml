@@ -1,0 +1,25 @@
+wandb_project: science-locking-sft
+wandb_entity: dfalck-team
+seed: 42
+apply_seed_globally: true
+
+model:
+  model_name: willcb/Qwen3-14B
+  lora_rank: 64
+  lora_alpha: 128
+
+dataset:
+  local_path: artifacts/data/dfalck/science_locking/sft_data_combined
+
+training:
+  num_train_epochs: 1
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 5e-5
+  warmup_steps: 5
+  save_steps: 25
+
+
+output_dir: "./artifacts/weights/dfalck/science_locking/sft_model"
+
+gpus: [0]

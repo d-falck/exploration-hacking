@@ -9,12 +9,13 @@ import os
 from dotenv import load_dotenv
 import mlflow
 import numpy as np
+import torch
 import verifiers as vf
 
 from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments import EnvironmentConfig, load_environment
 from exploration_hacking.eval import eval, EvalConfig
-from exploration_hacking.util import true_random_context
+from exploration_hacking.util import MLFlowLogger
 
 # Set tokenizers parallelism before loading tokenizers to avoid fork warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"

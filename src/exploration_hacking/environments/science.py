@@ -25,6 +25,7 @@ You are a helpful assistant that can use a web search tool to answer questions. 
     max_turns: int = 4
     disable_tool_use: bool = False
     tokenizer: str = "willcb/Qwen3-14B"
+    inline_reasoning: bool = False
 
 
 def _generate_prompt(record: dict) -> str:
@@ -94,11 +95,17 @@ def load_science_environment(config: ScienceEnvConfig, seed: int | None = None):
             config.global_rewards, parser, tools, tokenizer_name=config.tokenizer
         )
 
-    return vf.ToolEnv(
-        dataset=ds["train"],
-        eval_dataset=ds["test"],
+    kwargs = dict(
         tools=tools,
         rubric=rubric,
         parser=parser,
         max_turns=config.max_turns,
+        inline_reasoning=config.inline_reasoning,
     )
+
+    if "train" in ds:
+        kwargs["dataset"] = ds["train"]
+    if "test" in ds:
+        kwargs["eval_dataset"] = ds["test"]
+
+    return vf.ToolEnv(**kwargs)

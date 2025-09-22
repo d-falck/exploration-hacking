@@ -1,0 +1,16 @@
+seed: 42
+
+input_path: remote_eval_results.pkl
+output_path: filtered_dataset
+
+filter:
+  metrics:
+    total_length:
+      below_threshold: 8192
+    format_penalty:
+      below_threshold: 0.001  # effectively 0
+      above_threshold: -0.001  # effectively 0
+    tool_use_count:
+      above_threshold: 0.999  # at least 1
+    judge_score:
+      above_threshold: 0.8

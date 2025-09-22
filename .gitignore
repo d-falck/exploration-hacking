@@ -11,18 +11,20 @@ wheels/
 
 # Manual
 unsloth_compiled_cache/
-wandb/
+/wandb/
 artifacts/
 .env
 grpo_trainer_lora_model/
-outputs/
+/outputs/
 *.log
-checkpoints/
-mlruns/
+/checkpoints/
+/mlruns/
 .claude/
-data/
+/data/
 etc/joschka/
 eyon_exploration_hacking/
 
 .claude/
 .vscode/
+
+/weights/

@@ -3,6 +3,7 @@ import logging
 import random
 
 import numpy as np
+import torch
 import wandb
 
 from exploration_hacking.dtypes import ExperimentConfig
@@ -26,6 +27,7 @@ def main(config: Config):
     if config.apply_seed_globally:
         random.seed(config.seed)
         np.random.seed(config.seed)
+        torch.manual_seed(config.seed)
 
     wandb.init(
         project=config.wandb_project,
