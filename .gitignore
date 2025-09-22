@@ -26,3 +26,6 @@ eyon_exploration_hacking/
 
 .claude/
 .vscode/
+
+weights/
+artifacts/
