@@ -1,0 +1,61 @@
+seed: 3407
+wandb_project: bigcodebench-grpo-verifiers
+wandb_entity: dfalck-team
+
+environment:
+  bigcodebench:
+    dataset_names:
+      - bcb-full  # Changed from 'default' to 'bcb-full'. Options: bcb-full, bcb-a, bcb-b
+    system_prompt: |
+      You are a helpful assistant that generates concise solutions to coding problems. Your reasoning should be concise and to the point. Please provide a self-contained Python script that solves the following problem in a markdown code block.
+    split:
+      splits:
+        train: 0.8
+        test: 0.2
+      train_split: train
+      test_split: test
+    global_rewards:
+      accuracy_reward_weight: 0.0
+      bigcodebench_pass_at_1_reward_weight: 0.0
+      bigcodebench_test_level_accuracy_reward_weight: 1.0
+      format_penalty: 0.0
+      completion_length_penalty:
+        min_length: 0
+        max_length: 10000
+        under_length_penalty_per_token: 0.0
+        over_length_penalty_per_token: 0.0
+    tokenizer: "Qwen/Qwen3-14B"
+    max_turns: 1
+
+rl:
+  model: Qwen/Qwen3-14B
+  peft:
+    r: 64
+    lora_alpha: 128
+  hyperparameters:
+    learning_rate: 2e-5
+    warmup_steps: 5
+    max_steps: 1000
+    num_iterations: 1
+    save_steps: 10
+    beta: 0.0003
+    max_grad_norm: 0.01
+  sampling:
+    temperature: 1.2
+    top_p: 0.95
+    top_k: null
+    max_prompt_length: 1500
+    max_seq_len: 10000
+    max_tokens: 10000
+  batching:
+    mini_batch_size: 16
+    group_size: 18
+    rollouts_per_gpu: 6
+  evaluation:
+    eval_strategy: steps
+    eval_steps: 20
+    per_device_eval_batch_size: 6
+
+inference_gpus: [0, 1]
+training_gpus: [2, 3]
+inference_context_length_grace_factor: 1.2
