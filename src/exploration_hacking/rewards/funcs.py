@@ -1,11 +1,6 @@
 from transformers import AutoTokenizer
 
-# Import BigCodeBench reward functions
-from exploration_hacking.rewards.bigcodebench import (
-    bigcodebench_accuracy,
-    bigcodebench_pass_at_k,
-    bigcodebench_syntax_penalty,
-)
+# BigCodeBench reward functions are imported directly in factory.py to avoid circular imports
 
 
 def accuracy(completion, answer, prompt, state, parser):

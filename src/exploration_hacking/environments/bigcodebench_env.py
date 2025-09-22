@@ -10,7 +10,7 @@ from exploration_hacking.rewards.factory import (
 )
 
 class BigcodebenchEnvConfig(BaseModel):
-    dataset_names: list[str] = ["bigcodebench"]
+    dataset_names: list[str] = ["bcb-full"]  # Options: bcb-full, bcb-a, bcb-b
     prompt_prefixes: dict[str, str] | None = None
     system_prompt: str = """
 You are a helpful assistant that generates solutions to coding problems. Please provide a self-contained Python script that solves the following problem in a markdown code block.
@@ -55,15 +55,25 @@ def _get_dataset(config: BigcodebenchEnvConfig, seed: int | None = None):
     prompt_prefixes = config.prompt_prefixes or {
         dataset_name: "" for dataset_name in config.dataset_names
     }
-    sources = {
-        dataset_name: DataSource(
-            path="bigcode/bigcodebench",
-            name=dataset_name,
-            split="v0.1.4",
-            prompt_prefix=prompt_prefixes[dataset_name],
-        )
-        for dataset_name in config.dataset_names
-    }
+    sources = {}
+    for dataset_name in config.dataset_names:
+        # Map dataset names to the correct subset names
+        if dataset_name in ["bcb-full", "bcb-a", "bcb-b"]:
+            # Use new Joschka/bigcodebench dataset with correct subset
+            sources[dataset_name] = DataSource(
+                path="Joschka/bigcodebench",
+                name=dataset_name,
+                split="train",  # All subsets use 'train' split
+                prompt_prefix=prompt_prefixes[dataset_name],
+            )
+        else:
+            # Default to bcb-full if unspecified
+            sources[dataset_name] = DataSource(
+                path="Joschka/bigcodebench",
+                name="bcb-full",
+                split="train",
+                prompt_prefix=prompt_prefixes[dataset_name],
+            )
     return loader.merge_datasets(sources)
 
 
