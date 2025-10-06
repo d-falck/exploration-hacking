@@ -51,11 +51,33 @@ class MLFlowLogger:
         concurrent: bool = False,
         max_workers: int | None = 100,
     ):
+        # Try to create experiment with original name
+        final_experiment_name = experiment_name
         try:
             mlflow.create_experiment(experiment_name)
         except Exception as e:
-            print(f"Error creating MLFlow experiment: {e}")
-        mlflow.set_experiment(experiment_name)
+            error_msg = str(e)
+            # Check for MLflow's RESOURCE_ALREADY_EXISTS error
+            if "RESOURCE_ALREADY_EXISTS" in error_msg or "already exists" in error_msg.lower():
+                counter = 1
+                while counter < 100:  # Safety limit
+                    final_experiment_name = f"{experiment_name}_{counter}"
+                    try:
+                        mlflow.create_experiment(final_experiment_name)
+                        print(f"Experiment '{experiment_name}' already exists. Created: {final_experiment_name}")
+                        break
+                    except Exception as e2:
+                        if "RESOURCE_ALREADY_EXISTS" in str(e2) or "already exists" in str(e2).lower():
+                            counter += 1
+                            continue
+                        else:
+                            print(f"Error creating MLFlow experiment: {e2}")
+                            final_experiment_name = experiment_name  # Fall back to original
+                            break
+            else:
+                print(f"Error creating MLFlow experiment: {e}")
+        
+        mlflow.set_experiment(final_experiment_name)
 
         self.concurrent = concurrent
         self.max_workers = max_workers
@@ -70,24 +92,36 @@ class MLFlowLogger:
     def log_spans(self, all_inputs, all_outputs, all_tags, name="generation"):
         with true_random_context():
             if self.concurrent:
+                names = [name] * len(all_inputs)
                 with ThreadPoolExecutor(
                     max_workers=self.max_workers or len(all_inputs)
                 ) as executor:
                     executor.map(
-                        self._log_one_span, all_inputs, all_outputs, all_tags, name
+                        self._log_one_span, all_inputs, all_outputs, all_tags, names
                     )
             else:
                 for input, output, tag in zip(all_inputs, all_outputs, all_tags):
                     self._log_one_span(input, output, tag, name)
 
-    def log_spans_from_results(self, prompts, completions, rewards, metrics, answers):
+    def log_spans_from_results(self, prompts, completions, rewards, metrics, answers, infos=None):
         all_inputs = [{"prompt": prompt} for prompt in prompts]
-        all_outputs = [
-            {"completion": completion, "answer": answer}
-            for completion, answer in zip(completions, answers)
-        ]
+        all_outputs = []
+        
+        for i, (completion, answer) in enumerate(zip(completions, answers)):
+            output = {"completion": completion, "answer": answer}
+            
+            # Add judge response if present in info
+            if infos and i < len(infos):
+                info = infos[i]
+                if isinstance(info, dict):
+                    judge_response = info.get("judge_response")
+                    if judge_response:
+                        output["judge_response"] = judge_response
+            
+            all_outputs.append(output)
+        
         all_tags = [
-            {k: str(v) for k, v in metrics.items()} | {"reward": str(reward)}
-            for reward in rewards
+            {k: str(v[i]) for k, v in metrics.items()} | {"reward": str(reward)}
+            for i, reward in enumerate(rewards)
         ]
         self.log_spans(all_inputs, all_outputs, all_tags)
