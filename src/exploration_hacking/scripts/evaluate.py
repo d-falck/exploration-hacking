@@ -32,6 +32,7 @@ def _log_to_mlflow(results: vf.GenerateOutputs, config: Config):
         results.reward,
         results.metrics,
         results.answer,
+        results.info,
     )
 
 
