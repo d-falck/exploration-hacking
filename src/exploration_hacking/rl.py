@@ -62,7 +62,7 @@ class _SamplingConfig(BaseModel):
     max_tokens: int = 1024  # Per response
     temperature: float = 0.6
     top_p: float = 0.95
-    top_k: int | None = 20
+    top_k: int | None = None
 
 
 class _BatchingConfig(BaseModel):
@@ -78,7 +78,7 @@ class _BatchingConfig(BaseModel):
 
 class _EvaluationConfig(BaseModel):
     eval_strategy: str = "steps"
-    eval_steps: int = 100
+    eval_steps: int = 50000
     per_device_eval_batch_size: int = 1  # TODO: increase?
 
 
