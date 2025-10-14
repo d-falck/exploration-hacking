@@ -146,7 +146,7 @@ def run_grpo(
         peft_config=peft_config,
     )
 
-    if trainer.accelerator.is_main_process:
+    if trainer.accelerator.is_main_process and config.hyperparameters.log_to_mlflow:
         import mlflow
 
         mlflow.create_experiment(run_name)
