@@ -12,7 +12,7 @@ Clone the repo using `git clone [url] --recurse-submodules`, cd into it and run 
 
 Copy `.env.example` as `.env` and add your API keys.
 
-Experiments log to [wandb](https://wandb.ai) (for training stats) and [mlflow](https://mlflow.org) (for traces). You'll need an mlflow tracking server running somewhere (specify the url in your `.env`). Using a sqlite backend with `poolclass=NullPool` is strongly recommended for this for performance.
+Experiments log to [wandb](https://wandb.ai) (for training stats) and [mlflow](https://mlflow.org) (for traces). You'll need an mlflow tracking server running somewhere (specify the url in your `.env`). Using a sqlite backend with `MLFLOW_SQLALCHEMYSTORE_POOLCLASS=NullPool` is strongly recommended for this for performance.
 
 ### Running scripts
 
