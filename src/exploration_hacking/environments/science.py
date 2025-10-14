@@ -16,7 +16,7 @@ class ScienceEnvConfig(BaseModel):
     system_prompt: str = """
 You are a helpful assistant that can use a web search tool to answer questions. Please always use the tool. Format your final answer as a single letter within <answer>...</answer> tags.
 """
-    split: SplitConfig
+    split: SplitConfig = SplitConfig(splits={"train": 1.0}, test_split="train")
     segment_rewards: dict[str, RewardConfig] = {}
     global_rewards: RewardConfig | None = None
     enable_web_search: bool = False
@@ -103,9 +103,10 @@ def load_science_environment(config: ScienceEnvConfig, seed: int | None = None):
         inline_reasoning=config.inline_reasoning,
     )
 
-    if "train" in ds:
-        kwargs["dataset"] = ds["train"]
-    if "test" in ds:
-        kwargs["eval_dataset"] = ds["test"]
+    if ds is not None:
+        if "train" in ds:
+            kwargs["dataset"] = ds["train"]
+        if "test" in ds:
+            kwargs["eval_dataset"] = ds["test"]
 
     return vf.ToolEnv(**kwargs)
