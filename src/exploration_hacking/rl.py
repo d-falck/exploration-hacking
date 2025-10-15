@@ -7,7 +7,7 @@ import verifiers as vf
 from peft import PeftModel
 import wandb
 
-from exploration_hacking.util import get_batch_params
+from exploration_hacking.util import get_batch_params, MLFlowLogger
 
 
 def _get_model_and_tokenizer_with_lora(
@@ -58,7 +58,6 @@ class _HyperparametersConfig(BaseModel):
     save_steps: int = 100
     beta: float = 0.001
     max_grad_norm: float = 1000
-    log_to_mlflow: bool = False
 
 
 class _SamplingConfig(BaseModel):
@@ -96,6 +95,7 @@ class RLConfig(BaseModel):
     sampling: _SamplingConfig = Field(default_factory=_SamplingConfig)
     batching: _BatchingConfig = Field(default_factory=_BatchingConfig)
     evaluation: _EvaluationConfig = Field(default_factory=_EvaluationConfig)
+    log_to_mlflow: bool = False
 
 
 @contextmanager
@@ -109,56 +109,31 @@ def _true_random_context():
         random.setstate(saved_state)
 
 
+_mlflow_logger = None
+
+
 def _log_traces_to_mlflow(
     all_prompts, all_completions, all_reward_dict, all_states, global_step
 ):
+    global _mlflow_logger
+    assert _mlflow_logger is not None
+
     print(f"Logging {len(all_prompts)} traces to MLFlow..")
-    import mlflow
-
-    with _true_random_context():
-
-        def log_generation(prompt, completion, reward_dict, state):
-            inputs = {"prompt": prompt}
-            tags = {k: str(v) for k, v in reward_dict.items()}
-            tags |= {"step": str(global_step)}
-            tags |= {"wandb_run_id": wandb.run.id}
-
-            # Add segment to tags if available
-            segment = state.get("info", {}).get("segment")
-            if segment:
-                tags["segment"] = segment
-
-            span = mlflow.start_span_no_context(
-                name="generation", inputs=inputs, tags=tags
-            )
-            try:
-                outputs = {"completion": completion}
-
-                # Add judge response if present
-                judge_response = state.get("info", {}).get("judge_response")
-                if judge_response:
-                    outputs["judge_response"] = judge_response
-
-                span.set_outputs(outputs)
-            finally:
-                span.end()
-
-        n = len(all_prompts)
-        with ThreadPoolExecutor(max_workers=n) as executor:
-
-            for i in range(n):
-                prompt = all_prompts[i]
-                completion = all_completions[i]
-                reward_dict = {k: str(v[i]) for k, v in all_reward_dict.items()}
-                state = all_states[i]
-
-                executor.submit(log_generation, prompt, completion, reward_dict, state)
+    _mlflow_logger.log_spans_from_results(
+        all_prompts,
+        all_completions,
+        metrics=all_reward_dict,
+        infos=[state.get("info", {}) for state in all_states],
+        step=global_step,
+    )
     print(f"MLFlow logging complete.")
 
 
 def run_grpo(
     env: vf.Environment, config: RLConfig, run_name: str, num_training_gpus: int
 ):
+    global _mlflow_logger
+
     # Use helper function to load model with optional LoRA checkpoint
     model, tokenizer = _get_model_and_tokenizer_with_lora(
         config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True
@@ -177,7 +152,7 @@ def run_grpo(
         setattr(args, k, v)
 
     for field in RLConfig.model_fields:
-        if field in ["model", "peft", "batching", "shuffle_dataset"]:
+        if field in ["model", "peft", "batching", "shuffle_dataset", "log_to_mlflow"]:
             continue
 
         obj = getattr(config, field)
@@ -210,10 +185,7 @@ def run_grpo(
         textual_data_callback=_log_traces_to_mlflow,
     )
 
-    if trainer.accelerator.is_main_process and config.hyperparameters.log_to_mlflow:
-        import mlflow
-
-        mlflow.create_experiment(run_name)
-        mlflow.set_experiment(run_name)
+    if trainer.accelerator.is_main_process and config.log_to_mlflow:
+        _mlflow_logger = MLFlowLogger(run_name, concurrent=True)
 
     trainer.train()

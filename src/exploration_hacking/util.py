@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 import mlflow
+import wandb
 
 import random
 
@@ -58,25 +59,35 @@ class MLFlowLogger:
         except Exception as e:
             error_msg = str(e)
             # Check for MLflow's RESOURCE_ALREADY_EXISTS error
-            if "RESOURCE_ALREADY_EXISTS" in error_msg or "already exists" in error_msg.lower():
+            if (
+                "RESOURCE_ALREADY_EXISTS" in error_msg
+                or "already exists" in error_msg.lower()
+            ):
                 counter = 1
                 while counter < 100:  # Safety limit
                     final_experiment_name = f"{experiment_name}_{counter}"
                     try:
                         mlflow.create_experiment(final_experiment_name)
-                        print(f"Experiment '{experiment_name}' already exists. Created: {final_experiment_name}")
+                        print(
+                            f"Experiment '{experiment_name}' already exists. Created: {final_experiment_name}"
+                        )
                         break
                     except Exception as e2:
-                        if "RESOURCE_ALREADY_EXISTS" in str(e2) or "already exists" in str(e2).lower():
+                        if (
+                            "RESOURCE_ALREADY_EXISTS" in str(e2)
+                            or "already exists" in str(e2).lower()
+                        ):
                             counter += 1
                             continue
                         else:
                             print(f"Error creating MLFlow experiment: {e2}")
-                            final_experiment_name = experiment_name  # Fall back to original
+                            final_experiment_name = (
+                                experiment_name  # Fall back to original
+                            )
                             break
             else:
                 print(f"Error creating MLFlow experiment: {e}")
-        
+
         mlflow.set_experiment(final_experiment_name)
 
         self.concurrent = concurrent
@@ -103,25 +114,48 @@ class MLFlowLogger:
                 for input, output, tag in zip(all_inputs, all_outputs, all_tags):
                     self._log_one_span(input, output, tag, name)
 
-    def log_spans_from_results(self, prompts, completions, rewards, metrics, answers, infos=None):
+    def log_spans_from_results(
+        self,
+        prompts,
+        completions,
+        rewards: list[float] | None = None,
+        metrics: dict[str, list[float]] | None = None,
+        answers: list[str] | None = None,
+        infos: list[dict] | None = None,
+        **extra_tags: dict,
+    ):
         all_inputs = [{"prompt": prompt} for prompt in prompts]
         all_outputs = []
-        
-        for i, (completion, answer) in enumerate(zip(completions, answers)):
-            output = {"completion": completion, "answer": answer}
-            
-            # Add judge response if present in info
-            if infos and i < len(infos):
-                info = infos[i]
-                if isinstance(info, dict):
-                    judge_response = info.get("judge_response")
-                    if judge_response:
-                        output["judge_response"] = judge_response
-            
+
+        for i, completion in enumerate(completions):
+            output = {"completion": completion}
+
+            if answers:
+                output["answer"] = answers[i]
+
+            if infos:
+                judge_response = infos[i].get("judge_response")
+                if judge_response:
+                    output["judge_response"] = judge_response
+
             all_outputs.append(output)
-        
-        all_tags = [
-            {k: str(v[i]) for k, v in metrics.items()} | {"reward": str(reward)}
-            for i, reward in enumerate(rewards)
-        ]
+
+        all_tags = []
+        for i in range(len(all_outputs)):
+            tags = {k: str(v[i]) for k, v in metrics.items()}
+            tags |= extra_tags
+
+            if rewards:
+                tags["reward"] = str(rewards[i])
+
+            if wandb.run:
+                tags["wandb_run_id"] = wandb.run.id
+
+            if infos:
+                segment = infos[i].get("segment")
+                if segment:
+                    tags["segment"] = segment
+
+            all_tags.append(tags)
+
         self.log_spans(all_inputs, all_outputs, all_tags)
