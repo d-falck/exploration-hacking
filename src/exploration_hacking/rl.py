@@ -1,6 +1,11 @@
+from concurrent.futures import ThreadPoolExecutor
+import random
+from contextlib import contextmanager
+
 from pydantic import BaseModel, Field
 import verifiers as vf
 from peft import PeftModel
+import wandb
 
 from exploration_hacking.util import get_batch_params
 
@@ -93,6 +98,64 @@ class RLConfig(BaseModel):
     evaluation: _EvaluationConfig = Field(default_factory=_EvaluationConfig)
 
 
+@contextmanager
+def _true_random_context():
+    """Temporarily use true randomness, then restore previous state."""
+    saved_state = random.getstate()
+    try:
+        random.seed()  # Reseed with current time
+        yield
+    finally:
+        random.setstate(saved_state)
+
+
+def _log_traces_to_mlflow(
+    all_prompts, all_completions, all_reward_dict, all_states, global_step
+):
+    print(f"Logging {len(all_prompts)} traces to MLFlow..")
+    import mlflow
+
+    with _true_random_context():
+
+        def log_generation(prompt, completion, reward_dict, state):
+            inputs = {"prompt": prompt}
+            tags = {k: str(v) for k, v in reward_dict.items()}
+            tags |= {"step": str(global_step)}
+            tags |= {"wandb_run_id": wandb.run.id}
+
+            # Add segment to tags if available
+            segment = state.get("info", {}).get("segment")
+            if segment:
+                tags["segment"] = segment
+
+            span = mlflow.start_span_no_context(
+                name="generation", inputs=inputs, tags=tags
+            )
+            try:
+                outputs = {"completion": completion}
+
+                # Add judge response if present
+                judge_response = state.get("info", {}).get("judge_response")
+                if judge_response:
+                    outputs["judge_response"] = judge_response
+
+                span.set_outputs(outputs)
+            finally:
+                span.end()
+
+        n = len(all_prompts)
+        with ThreadPoolExecutor(max_workers=n) as executor:
+
+            for i in range(n):
+                prompt = all_prompts[i]
+                completion = all_completions[i]
+                reward_dict = {k: str(v[i]) for k, v in all_reward_dict.items()}
+                state = all_states[i]
+
+                executor.submit(log_generation, prompt, completion, reward_dict, state)
+    print(f"MLFlow logging complete.")
+
+
 def run_grpo(
     env: vf.Environment, config: RLConfig, run_name: str, num_training_gpus: int
 ):
@@ -144,6 +207,7 @@ def run_grpo(
         env=env,
         args=args,
         peft_config=peft_config,
+        textual_data_callback=_log_traces_to_mlflow,
     )
 
     if trainer.accelerator.is_main_process and config.hyperparameters.log_to_mlflow:
