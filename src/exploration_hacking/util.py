@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
+import multiprocessing as mp
 import mlflow
 import wandb
 
@@ -51,6 +52,7 @@ class MLFlowLogger:
         experiment_name: str,
         concurrent: bool = False,
         max_workers: int | None = 100,
+        use_process: bool = False,
     ):
         # Try to create experiment with original name
         final_experiment_name = experiment_name
@@ -89,16 +91,41 @@ class MLFlowLogger:
                 print(f"Error creating MLFlow experiment: {e}")
 
         mlflow.set_experiment(final_experiment_name)
+        self.experiment_name = final_experiment_name
 
         self.concurrent = concurrent
         self.max_workers = max_workers
+        self.use_process = use_process
+        
+        # Process-based logging setup
+        if self.use_process:
+            self.queue = mp.Queue()
+            self.worker = mp.Process(target=self._worker_loop, daemon=True)
+            self.worker.start()
 
-    def _log_one_span(self, inputs, outputs, tags, name="generation"):
+    def _worker_loop(self):
+        """Worker process that logs spans from queue."""
+        mlflow.set_experiment(self.experiment_name)
+        while True:
+            item = self.queue.get()
+            if item is None:  # Stop signal
+                break
+            inputs, outputs, tags, name = item
+            self._do_log_span(inputs, outputs, tags, name)
+    
+    def _do_log_span(self, inputs, outputs, tags, name="generation"):
+        """Actually log the span to MLflow."""
         span = mlflow.start_span_no_context(name, inputs=inputs, tags=tags)
         try:
             span.set_outputs(outputs)
         finally:
             span.end()
+    
+    def _log_one_span(self, inputs, outputs, tags, name="generation"):
+        if self.use_process:
+            self.queue.put((inputs, outputs, tags, name))
+        else:
+            self._do_log_span(inputs, outputs, tags, name)
 
     def log_spans(self, all_inputs, all_outputs, all_tags, name="generation"):
         with true_random_context():
@@ -159,3 +186,11 @@ class MLFlowLogger:
             all_tags.append(tags)
 
         self.log_spans(all_inputs, all_outputs, all_tags)
+    
+    def close(self):
+        """Stop the background worker if using process mode."""
+        if self.use_process:
+            self.queue.put(None)  # Stop signal
+            self.worker.join(timeout=5)
+            if self.worker.is_alive():
+                self.worker.terminate()
