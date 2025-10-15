@@ -58,18 +58,20 @@ async def summarize_page(url: str, query: str) -> str:
         return f"Error getting the summary: {response}"
 
 
-async def search_simple(query: str, max_results: int = 3) -> list[dict]:
+async def search_simple(query: str, max_results: int = 2) -> list[dict]:
     """Search WMDP rationales from Joschka/wmdp dataset.
 
     Args:
         query: Search query string
-        max_results: Maximum number of results to return
+        max_results: Maximum number of results to return, up to 2
 
     Returns:
         List of n=max_results rationale texts from all WMDP configurations
     """
-    json = await simple_search(query)
+    max_results = min(max_results, 2)
+    
+    results = await simple_search(query, max_results)
     return [
         {"text": x["text"]}
-        for x in json["texts"][:max_results]
+        for x in results
     ]
