@@ -186,6 +186,10 @@ def run_grpo(
     )
 
     if trainer.accelerator.is_main_process and config.log_to_mlflow:
-        _mlflow_logger = MLFlowLogger(run_name, concurrent=True)
+        _mlflow_logger = MLFlowLogger(run_name, concurrent=True, use_process=True)
 
-    trainer.train()
+    try:
+        trainer.train()
+    finally:
+        if _mlflow_logger:
+            _mlflow_logger.close()
