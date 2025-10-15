@@ -1,9 +1,7 @@
 """
 Run a command and stop the RunPod when done.
 
-Usage:
-  python run_and_stop.py --timeout-minutes 30 -- python train.py --epochs 10
-  python run_and_stop.py -- python train.py --epochs 10
+Usage: see README.md
 """
 
 import os
