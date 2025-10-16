@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 import multiprocessing as mp
 import mlflow
 import wandb
+import os
 
 import random
 
@@ -111,10 +112,14 @@ class MLFlowLogger:
             if item is None:  # Stop signal
                 break
             inputs, outputs, tags, name = item
-            self._do_log_span(inputs, outputs, tags, name)
+            try:
+                self._do_log_span(inputs, outputs, tags, name)
+            except Exception as e:
+                print(f"Error logging span {name} with tags {tags}: {e}")
     
     def _do_log_span(self, inputs, outputs, tags, name="generation"):
         """Actually log the span to MLflow."""
+        print(f"Logging span {name} with tags {tags}")
         span = mlflow.start_span_no_context(name, inputs=inputs, tags=tags)
         try:
             span.set_outputs(outputs)
