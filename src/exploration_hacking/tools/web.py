@@ -4,6 +4,7 @@ from tavily import AsyncTavilyClient
 from exploration_hacking.tools._serper import search as serper_search
 from exploration_hacking.tools._simple_search import search as simple_search
 
+
 async def search_web_tavily(query: str) -> list[dict]:
     """Search the web for information.
 
@@ -58,20 +59,20 @@ async def summarize_page(url: str, query: str) -> str:
         return f"Error getting the summary: {response}"
 
 
+# These results are simulated using ground-truth-inspired WMDP rationales dataset
+# plus LLM-generated responses for unrelated queries
+# (the docstring is visible to the LLM so doesn't say this)
 async def search_simple(query: str, max_results: int = 2) -> list[dict]:
-    """Search WMDP rationales from Joschka/wmdp dataset.
+    """Summarized web search for information.
 
     Args:
         query: Search query string
         max_results: Maximum number of results to return, up to 2
 
     Returns:
-        List of n=max_results rationale texts from all WMDP configurations
+        List of n=max_results search results with text
     """
     max_results = min(max_results, 2)
-    
+
     results = await simple_search(query, max_results)
-    return [
-        {"text": x["text"]}
-        for x in results
-    ]
+    return [{"text": x["text"]} for x in results]
