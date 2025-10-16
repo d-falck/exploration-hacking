@@ -14,10 +14,21 @@ import time
 _SHUTDOWN_GRACE_PERIOD_SECONDS = 60
 
 
-def run_command_with_timeout(cmd: str, timeout_minutes: int = None):
+def run_command_with_timeout(cmd: str, timeout_minutes: int = None, log_file: str = None):
     """Run command and stream output, with optional timeout in minutes."""
 
-    print(f"Running command: {cmd}")
+    if log_file:
+        # Ensure log directory exists
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        
+        # Use tee to duplicate output to both console and log file
+        print(f"Running command: {cmd}")
+        print(f"Logging output to: {log_file}")
+        cmd = f"({cmd}) 2>&1 | tee -a {log_file}"
+    else:
+        print(f"Running command: {cmd}")
 
     # Don't pipe stdout/stderr - let them inherit from parent to preserve colors
     process = subprocess.Popen(
@@ -81,6 +92,13 @@ def main():
         default=10,
         help="Only stop the RunPod if the process succeeds for at least this many minutes",
     )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        nargs='?',
+        const=f"./artifacts/logs/run_and_stop_{time.strftime('%Y%m%d_%H%M%S')}.log",
+        help="Log output to file (appends if file exists). If no path given, uses ./artifacts/logs/run_and_stop_TIMESTAMP.log",
+    )
     parser.add_argument("command", nargs="*", help="Command to run")
     args = parser.parse_args()
 
@@ -90,7 +108,7 @@ def main():
     start_time = time.time()
 
     try:
-        run_command_with_timeout(command, args.timeout)
+        run_command_with_timeout(command, args.timeout, args.log_file)
         print("Command completed")
         if time.time() - start_time < args.only_stop_after * 60:
             print(
