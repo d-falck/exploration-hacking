@@ -12,6 +12,8 @@ from exploration_hacking.vllm import vllm_server
 
 load_dotenv()
 
+# Set max eval workers for BigCodeBench parallel evaluation
+os.environ["MAX_EVAL_WORKERS"] = "64"
 
 # TODO: not all of these may be necessary; NCCL_CUMEM_ENABLE seems to be the main one. Come back and check.
 os.environ["NCCL_P2P_DISABLE"] = "1"

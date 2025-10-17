@@ -6,6 +6,19 @@ Shared codebase for RL experiments, built on top of a custom fork of [Verifiers]
 
 Clone the repo using `git clone [url] --recurse-submodules`, cd into it and run `uv pip install -e . --group dev` (omit the `--group dev` if you don't need development dependencies like Jupyter).
 
+### BigCodeBench Setup
+
+If you plan to run BigCodeBench evaluations, you'll need additional dependencies for the test sandbox:
+
+```bash
+# Install BigCodeBench dependencies (73 packages)
+./scripts/setup_bigcodebench.sh
+# OR manually:
+uv pip install -e . --group bigcodebench
+```
+
+**Important**: Always run BigCodeBench evaluations from an activated virtual environment, as the test subprocesses inherit the parent's Python environment to access these dependencies.
+
 ## Usage
 
 ### Setup
@@ -23,6 +36,16 @@ Use config files like e.g.
 You can override arguments manually if you wish:
 
 `python -m exploration_hacking.scripts.grpo --config etc/example/rl.yaml --rl.learning-rate 1e-4`
+
+#### Running Evaluations
+
+For BigCodeBench evaluations:
+
+```bash
+python -m exploration_hacking.scripts.evaluate --config etc/bigcodebench/eval_bigcodebench.yaml
+```
+
+Results are saved with timestamps in `outputs/eval_results/` as both `.pkl` and `.json` files.
 
 ### Using RunPod
 
