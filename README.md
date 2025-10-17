@@ -25,7 +25,7 @@ uv pip install -e . --group bigcodebench
 
 Copy `.env.example` as `.env` and add your API keys.
 
-Experiments log to [wandb](https://wandb.ai) (for training stats) and [mlflow](https://mlflow.org) (for traces). You'll need an mlflow tracking server running somewhere (specify the url in your `.env`). Using a sqlite backend with `poolclass=NullPool` is strongly recommended for this for performance.
+Experiments log to [wandb](https://wandb.ai) (for training stats) and [mlflow](https://mlflow.org) (for traces). You'll need an mlflow tracking server running somewhere (specify the url in your `.env`). Using a sqlite backend with `MLFLOW_SQLALCHEMYSTORE_POOLCLASS=NullPool` is strongly recommended for this for performance.
 
 ### Running scripts
 
@@ -51,7 +51,7 @@ Results are saved with timestamps in `outputs/eval_results/` as both `.pkl` and 
 
 If you're using RunPod, you can use the `scripts/run_and_stop.py` script to automatically terminate your node after completion:
 
-`python scripts/run_and_stop.py --timeout 240 --only-stop-after 5 -- python -m exploration_hacking.scripts.grpo --config etc/example/rl.yaml`
+`python scripts/run_and_stop.py --timeout 240 --only-stop-after 5 --log-file -- python -m exploration_hacking.scripts.grpo --config etc/example/rl.yaml`
 
 [This Docker image](https://hub.docker.com/repository/docker/damonfalck/pytorch-runpod/general) works well with our experiments (you'll have to `conda init` after startup and install into the base conda environment using uv). A RunPod template for this [is available here](https://console.runpod.io/deploy?template=3dtsnneggp&ref=n471e5lk).
 

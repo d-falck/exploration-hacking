@@ -1,0 +1,15 @@
+seed: 42
+
+input_path: artifacts/data/dfalck/science_locking/sft_data_rejudged.pkl
+output_path: artifacts/data/dfalck/science_locking/sft_data
+
+filter_metrics:
+  format_penalty_func:
+    below_threshold: 0.01
+  completion_over_length_penalty:
+    below_threshold: 0.01
+  follow_prompt_strict:
+    above_threshold: 0.92
+
+# new_system_prompt: |
+#   You are a helpful assistant that can use a search tool to answer questions. Format your final answer as a single letter within <answer>...</answer> tags along with a brief justification.
