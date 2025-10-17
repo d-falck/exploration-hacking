@@ -1,5 +1,7 @@
 from transformers import AutoTokenizer
 
+# BigCodeBench reward functions are imported directly in factory.py to avoid circular imports
+
 
 def accuracy(completion, answer, prompt, state, parser):
     response = completion[-1]["content"]

@@ -3,7 +3,7 @@ from typing import Callable
 from pydantic import create_model, BaseModel
 
 from .science import ScienceEnvConfig, load_science_environment
-from .coding import CodingEnvConfig, load_coding_environment
+from .bigcodebench_env import BigcodebenchEnvConfig, load_bigcodebench_environment
 
 
 class _EnvironmentDefinition(BaseModel):
@@ -16,8 +16,8 @@ ENVIRONMENTS = {
     "science": _EnvironmentDefinition(
         config_class=ScienceEnvConfig, loader=load_science_environment
     ),
-    "coding": _EnvironmentDefinition(
-        config_class=CodingEnvConfig, loader=load_coding_environment
+    "bigcodebench": _EnvironmentDefinition(
+        config_class=BigcodebenchEnvConfig, loader=load_bigcodebench_environment
     ),
 }
 
