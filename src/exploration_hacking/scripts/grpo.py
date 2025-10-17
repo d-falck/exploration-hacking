@@ -20,6 +20,7 @@ os.environ["TORCH_NCCL_ENABLE_MONITORING"] = "0"
 os.environ["TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC"] = "0"
 os.environ["TORCH_NCCL_BLOCKING_WAIT"] = "1"
 os.environ["NCCL_CUMEM_ENABLE"] = "1"
+os.environ["NCCL_NVLS_ENABLE"] = "0"
 
 
 _VLLM_ARGS = [
