@@ -162,25 +162,15 @@ class Config(ExperimentConfig):
 
 
 def _log_to_mlflow(results: vf.GenerateOutputs, config: Config):
-    with true_random_context():
-        try:
-            mlflow.create_experiment(config.eval_run_name)
-        except Exception as e:
-            print(f"Error creating MLFlow experiment: {e}")
-
-        mlflow.set_experiment(config.eval_run_name)
-
-        for i in range(len(results.prompt)):
-            inputs = {"prompt": results.prompt[i]}
-            tags = {k: str(v[i]) for k, v in results.metrics.items()}
-            tags |= {"reward": str(results.reward[i])}
-            span = mlflow.start_span_no_context("generation", inputs=inputs, tags=tags)
-            try:
-                span.set_outputs(
-                    {"completion": results.completion[i], "answer": results.answer[i]}
-                )
-            finally:
-                span.end()
+    mlflow_logger = MLFlowLogger(config.eval_run_name, concurrent=True)
+    mlflow_logger.log_spans_from_results(
+        results.prompt,
+        results.completion,
+        results.reward,
+        results.metrics,
+        results.answer,
+        results.info,
+    )
 
 
 def _save_json_results(results: vf.GenerateOutputs, config: Config, timing_data: TimingData = None):
