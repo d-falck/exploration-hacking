@@ -1,8 +1,13 @@
+from concurrent.futures import ThreadPoolExecutor
+import random
+from contextlib import contextmanager
+
 from pydantic import BaseModel, Field
 import verifiers as vf
 from peft import PeftModel
+import wandb
 
-from exploration_hacking.util import get_batch_params
+from exploration_hacking.util import get_batch_params, MLFlowLogger
 
 
 def _get_model_and_tokenizer_with_lora(
@@ -53,7 +58,6 @@ class _HyperparametersConfig(BaseModel):
     save_steps: int = 100
     beta: float = 0.001
     max_grad_norm: float = 1000
-    log_to_mlflow: bool = False
 
 
 class _SamplingConfig(BaseModel):
@@ -62,7 +66,7 @@ class _SamplingConfig(BaseModel):
     max_tokens: int = 1024  # Per response
     temperature: float = 0.6
     top_p: float = 0.95
-    top_k: int | None = 20
+    top_k: int | None = None
 
 
 class _BatchingConfig(BaseModel):
@@ -78,7 +82,7 @@ class _BatchingConfig(BaseModel):
 
 class _EvaluationConfig(BaseModel):
     eval_strategy: str = "steps"
-    eval_steps: int = 100
+    eval_steps: int = 50000
     per_device_eval_batch_size: int = 1  # TODO: increase?
 
 
@@ -91,11 +95,45 @@ class RLConfig(BaseModel):
     sampling: _SamplingConfig = Field(default_factory=_SamplingConfig)
     batching: _BatchingConfig = Field(default_factory=_BatchingConfig)
     evaluation: _EvaluationConfig = Field(default_factory=_EvaluationConfig)
+    log_to_mlflow: bool = False
+
+
+@contextmanager
+def _true_random_context():
+    """Temporarily use true randomness, then restore previous state."""
+    saved_state = random.getstate()
+    try:
+        random.seed()  # Reseed with current time
+        yield
+    finally:
+        random.setstate(saved_state)
+
+
+_mlflow_logger = None
+
+
+def _log_traces_to_mlflow(
+    all_prompts, all_completions, all_reward_dict, all_states, global_step
+):
+    global _mlflow_logger
+    assert _mlflow_logger is not None
+
+    print(f"Logging {len(all_prompts)} traces to MLFlow..")
+    _mlflow_logger.log_spans_from_results(
+        all_prompts,
+        all_completions,
+        metrics=all_reward_dict,
+        infos=[state.get("info", {}) for state in all_states],
+        step=global_step,
+    )
+    print(f"MLFlow logging complete.")
 
 
 def run_grpo(
     env: vf.Environment, config: RLConfig, run_name: str, num_training_gpus: int
 ):
+    global _mlflow_logger
+
     # Use helper function to load model with optional LoRA checkpoint
     model, tokenizer = _get_model_and_tokenizer_with_lora(
         config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True
@@ -114,7 +152,7 @@ def run_grpo(
         setattr(args, k, v)
 
     for field in RLConfig.model_fields:
-        if field in ["model", "peft", "batching", "shuffle_dataset"]:
+        if field in ["model", "peft", "batching", "shuffle_dataset", "log_to_mlflow"]:
             continue
 
         obj = getattr(config, field)
@@ -144,12 +182,14 @@ def run_grpo(
         env=env,
         args=args,
         peft_config=peft_config,
+        textual_data_callback=_log_traces_to_mlflow,
     )
 
-    if trainer.accelerator.is_main_process:
-        import mlflow
+    if trainer.accelerator.is_main_process and config.log_to_mlflow:
+        _mlflow_logger = MLFlowLogger(run_name, concurrent=True, use_process=True)
 
-        mlflow.create_experiment(run_name)
-        mlflow.set_experiment(run_name)
-
-    trainer.train()
+    try:
+        trainer.train()
+    finally:
+        if _mlflow_logger:
+            _mlflow_logger.close()
