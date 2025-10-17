@@ -1,4 +1,5 @@
 import litellm
+from tenacity import retry, stop_after_attempt, retry_if_exception_type
 
 from verifiers.parsers.xml_parser import XMLParser
 from verifiers.rubrics.rubric import Rubric
@@ -36,7 +37,17 @@ class TrajectoryJudgeRubric(Rubric):
         self.judge_parser = XMLParser(fields=["score"])
         super().__init__(**kwargs)
 
-    async def judge(
+    @retry(
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((
+            litellm.Timeout, 
+            litellm.APIError,
+            litellm.APIConnectionError,
+            ValueError
+        )),
+        reraise=True,
+    )
+    async def _judge_with_retry(
         self,
         prompt: Messages,
         completion: Messages,
@@ -44,10 +55,9 @@ class TrajectoryJudgeRubric(Rubric):
         state: State,
         **kwargs,
     ) -> float:
-        """TODO: error handling"""
-
+        """Internal judge method with retry logic."""
         judge_prompt = self._get_judge_prompt(prompt, completion)
-
+        
         response = await litellm.acompletion(
             model=self.judge_model,
             messages=judge_prompt,
@@ -56,7 +66,26 @@ class TrajectoryJudgeRubric(Rubric):
         content = str(response.choices[0].message.content)
         state["info"]["judge_response"] = content
         parsed = self.judge_parser.parse(content, strip=True)
+        
+        if parsed.score is None:
+            raise ValueError(f"Failed to parse score from judge response: {content[:200]}...")
+        
         return float(parsed.score)
+
+    async def judge(
+        self,
+        prompt: Messages,
+        completion: Messages,
+        answer: str,
+        state: State,
+        **kwargs,
+    ) -> float:
+        """Judge with retry on timeout errors and parsing failures."""
+        try:
+            return await self._judge_with_retry(prompt, completion, answer, state, **kwargs)
+        except Exception as e:
+            self.logger.error(f"Error in judge after all retries: {type(e).__name__}: {e}")
+            raise
 
     def _get_judge_prompt(self, prompt: Messages, completion: Messages) -> str:
         judge_prompt = _PROMPT_TEMPLATE.format(

@@ -1,6 +1,9 @@
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
+import multiprocessing as mp
 import mlflow
+import wandb
+import os
 
 import random
 
@@ -50,44 +53,149 @@ class MLFlowLogger:
         experiment_name: str,
         concurrent: bool = False,
         max_workers: int | None = 100,
+        use_process: bool = False,
     ):
+        # Try to create experiment with original name
+        final_experiment_name = experiment_name
         try:
             mlflow.create_experiment(experiment_name)
         except Exception as e:
-            print(f"Error creating MLFlow experiment: {e}")
-        mlflow.set_experiment(experiment_name)
+            error_msg = str(e)
+            # Check for MLflow's RESOURCE_ALREADY_EXISTS error
+            if (
+                "RESOURCE_ALREADY_EXISTS" in error_msg
+                or "already exists" in error_msg.lower()
+            ):
+                counter = 1
+                while counter < 100:  # Safety limit
+                    final_experiment_name = f"{experiment_name}_{counter}"
+                    try:
+                        mlflow.create_experiment(final_experiment_name)
+                        print(
+                            f"Experiment '{experiment_name}' already exists. Created: {final_experiment_name}"
+                        )
+                        break
+                    except Exception as e2:
+                        if (
+                            "RESOURCE_ALREADY_EXISTS" in str(e2)
+                            or "already exists" in str(e2).lower()
+                        ):
+                            counter += 1
+                            continue
+                        else:
+                            print(f"Error creating MLFlow experiment: {e2}")
+                            final_experiment_name = (
+                                experiment_name  # Fall back to original
+                            )
+                            break
+            else:
+                print(f"Error creating MLFlow experiment: {e}")
+
+        mlflow.set_experiment(final_experiment_name)
+        self.experiment_name = final_experiment_name
 
         self.concurrent = concurrent
         self.max_workers = max_workers
+        self.use_process = use_process
+        
+        # Process-based logging setup
+        if self.use_process:
+            self.queue = mp.Queue()
+            self.worker = mp.Process(target=self._worker_loop, daemon=True)
+            self.worker.start()
 
-    def _log_one_span(self, inputs, outputs, tags, name="generation"):
+    def _worker_loop(self):
+        """Worker process that logs spans from queue."""
+        mlflow.set_experiment(self.experiment_name)
+        while True:
+            item = self.queue.get()
+            if item is None:  # Stop signal
+                break
+            inputs, outputs, tags, name = item
+            try:
+                self._do_log_span(inputs, outputs, tags, name)
+            except Exception as e:
+                print(f"Error logging span {name} with tags {tags}: {e}")
+    
+    def _do_log_span(self, inputs, outputs, tags, name="generation"):
+        """Actually log the span to MLflow."""
+        print(f"Logging span {name} with tags {tags}")
         span = mlflow.start_span_no_context(name, inputs=inputs, tags=tags)
         try:
             span.set_outputs(outputs)
         finally:
             span.end()
+    
+    def _log_one_span(self, inputs, outputs, tags, name="generation"):
+        if self.use_process:
+            self.queue.put((inputs, outputs, tags, name))
+        else:
+            self._do_log_span(inputs, outputs, tags, name)
 
     def log_spans(self, all_inputs, all_outputs, all_tags, name="generation"):
         with true_random_context():
             if self.concurrent:
+                names = [name] * len(all_inputs)
                 with ThreadPoolExecutor(
                     max_workers=self.max_workers or len(all_inputs)
                 ) as executor:
                     executor.map(
-                        self._log_one_span, all_inputs, all_outputs, all_tags, name
+                        self._log_one_span, all_inputs, all_outputs, all_tags, names
                     )
             else:
                 for input, output, tag in zip(all_inputs, all_outputs, all_tags):
                     self._log_one_span(input, output, tag, name)
 
-    def log_spans_from_results(self, prompts, completions, rewards, metrics, answers):
+    def log_spans_from_results(
+        self,
+        prompts,
+        completions,
+        rewards: list[float] | None = None,
+        metrics: dict[str, list[float]] | None = None,
+        answers: list[str] | None = None,
+        infos: list[dict] | None = None,
+        **extra_tags: dict,
+    ):
         all_inputs = [{"prompt": prompt} for prompt in prompts]
-        all_outputs = [
-            {"completion": completion, "answer": answer}
-            for completion, answer in zip(completions, answers)
-        ]
-        all_tags = [
-            {k: str(v) for k, v in metrics.items()} | {"reward": str(reward)}
-            for reward in rewards
-        ]
+        all_outputs = []
+
+        for i, completion in enumerate(completions):
+            output = {"completion": completion}
+
+            if answers:
+                output["answer"] = answers[i]
+
+            if infos:
+                judge_response = infos[i].get("judge_response")
+                if judge_response:
+                    output["judge_response"] = judge_response
+
+            all_outputs.append(output)
+
+        all_tags = []
+        for i in range(len(all_outputs)):
+            tags = {k: str(v[i]) for k, v in metrics.items()}
+            tags |= extra_tags
+
+            if rewards:
+                tags["reward"] = str(rewards[i])
+
+            if wandb.run:
+                tags["wandb_run_id"] = wandb.run.id
+
+            if infos:
+                segment = infos[i].get("segment")
+                if segment:
+                    tags["segment"] = segment
+
+            all_tags.append(tags)
+
         self.log_spans(all_inputs, all_outputs, all_tags)
+    
+    def close(self):
+        """Stop the background worker if using process mode."""
+        if self.use_process:
+            self.queue.put(None)  # Stop signal
+            self.worker.join(timeout=5)
+            if self.worker.is_alive():
+                self.worker.terminate()
