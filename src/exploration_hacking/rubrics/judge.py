@@ -1,3 +1,4 @@
+import re
 import litellm
 from tenacity import retry, stop_after_attempt, retry_if_exception_type
 
@@ -29,11 +30,13 @@ class TrajectoryJudgeRubric(Rubric):
         judge_model: str,
         judge_prompt: str,
         timeout: float | None = 20,
+        hide_cot: bool = False,
         **kwargs,
     ):
         self.judge_model = judge_model
         self.judge_prompt = judge_prompt
         self.timeout = timeout
+        self.hide_cot = hide_cot
         self.judge_parser = XMLParser(fields=["score"])
         super().__init__(**kwargs)
 
@@ -87,11 +90,28 @@ class TrajectoryJudgeRubric(Rubric):
             self.logger.error(f"Error in judge after all retries: {type(e).__name__}: {e}")
             raise
 
+    def _strip_cot(self, messages: Messages) -> Messages:
+        """Strip <think>...</think> tags from messages."""
+        if isinstance(messages, str):
+            return re.sub(r'<think>.*?</think>', '', messages, flags=re.DOTALL).strip()
+        elif isinstance(messages, list):
+            stripped = []
+            for msg in messages:
+                if isinstance(msg, dict) and 'content' in msg:
+                    new_msg = msg.copy()
+                    new_msg['content'] = re.sub(r'<think>.*?</think>', '', msg['content'], flags=re.DOTALL).strip()
+                    stripped.append(new_msg)
+                else:
+                    stripped.append(msg)
+            return stripped
+        return messages
+
     def _get_judge_prompt(self, prompt: Messages, completion: Messages) -> str:
+        completion_to_judge = self._strip_cot(completion) if self.hide_cot else completion
         judge_prompt = _PROMPT_TEMPLATE.format(
             judge_prompt=self.judge_prompt,
             prompt=prompt,
-            completion=completion,
+            completion=completion_to_judge,
         )
         return [
             {"role": "system", "content": _SYSTEM_PROMPT},
