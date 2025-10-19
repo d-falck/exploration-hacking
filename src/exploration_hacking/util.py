@@ -47,6 +47,39 @@ def true_random_context():
         random.setstate(saved_state)
 
 
+def configure_mlflow_connection_pool(pool_size: int = 100):
+    """
+    Configure requests connection pool settings for MLflow.
+
+    This prevents "Connection pool is full" warnings when logging many
+    spans concurrently to MLflow.
+
+    Args:
+        pool_size: Maximum number of connections in the pool. Should match
+                   or exceed the number of concurrent workers.
+    """
+    import requests.adapters
+    from urllib3.util.retry import Retry
+
+    # Set connection pool size via environment variables
+    os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "3")
+    os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "120")
+
+    # Patch HTTPAdapter to use larger connection pools
+    # Store original if not already stored to avoid double-patching
+    if not hasattr(requests.adapters.HTTPAdapter, '_original_init'):
+        requests.adapters.HTTPAdapter._original_init = requests.adapters.HTTPAdapter.__init__
+
+    def patched_init(self, *args, **kwargs):
+        kwargs.setdefault('pool_connections', pool_size)
+        kwargs.setdefault('pool_maxsize', pool_size)
+        kwargs.setdefault('max_retries', Retry(total=3, backoff_factor=0.5))
+        kwargs.setdefault('pool_block', False)
+        return requests.adapters.HTTPAdapter._original_init(self, *args, **kwargs)
+
+    requests.adapters.HTTPAdapter.__init__ = patched_init
+
+
 class MLFlowLogger:
     def __init__(
         self,
@@ -55,6 +88,10 @@ class MLFlowLogger:
         max_workers: int | None = 100,
         use_process: bool = False,
     ):
+        # Configure connection pool to handle concurrent logging
+        pool_size = max(max_workers or 100, 100)
+        configure_mlflow_connection_pool(pool_size)
+
         # Try to create experiment with original name
         final_experiment_name = experiment_name
         try:
