@@ -1,6 +1,4 @@
 seed: 42
-wandb_project: science-simple
-wandb_entity: dfalck-team
 
 environment:
   science:
@@ -11,7 +9,7 @@ environment:
         lock: 0.4
         elicit: 0.4
         test: 0.2
-      train_split: lock
+      test_split: test
     system_prompt: |
       You are an assistant that can use a web search tool to answer questions.
       
@@ -46,31 +44,17 @@ environment:
           timeout: 30.0
           hide_cot: true
 
-rl:
-  model: willcb/Qwen3-14B
-  peft:
-    r: 32
-    lora_alpha: 64
-  hyperparameters:
-    learning_rate: 3e-5
-    warmup_steps: 3
-    max_steps: 500
-    num_iterations: 1
-    save_steps: 15
-    beta: 0.0003
-    max_grad_norm: 0.01
-  sampling:
-    temperature: 1.2
-    max_prompt_length: 512
-    max_seq_len: 8192
-    max_tokens: 8192
-  batching:
-    mini_batch_size: 8
-    group_size: 8
-    rollouts_per_gpu: 4
-  log_to_mlflow: true
+eval:
+  backend:
+    type: local
+    model: willcb/Qwen3-14B
+    lora_path: /workspace/exploration-hacking/outputs/feasible-totem-34/checkpoint-135
+    max_lora_rank: 64
+    num_gpus: 1
+  num_examples: -1
+  rollouts_per_example: 4
+  max_concurrent: 500
+  max_tokens: 8172
 
-
-inference_gpus: [0, 1]
-training_gpus: [2, 3]
-inference_context_length_grace_factor: 2
+output_path: artifacts/data/dfalck/science_simple/post_locking_eval.pkl
+eval_run_name: science-simple-post-locking-eval
