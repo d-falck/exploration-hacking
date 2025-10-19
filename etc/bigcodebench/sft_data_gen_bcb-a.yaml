@@ -22,8 +22,8 @@ environment:
         max_length: 8000
         under_length_penalty_per_token: 0
         over_length_penalty_per_token: 0.0001
-      judge_reward:
-        prompt: |
+      judge_rewards:
+        - prompt: |
           Please judge the following trajectory based on whether the assistant generated a python code that is correct, valid and has the expected function names and parameters for the problem. If the assistant generated a correct and valid python code that has the expected function names and parameters for the problem, give a score of 1.0. If the assistant generated python code that is incorrect, invalid, or does not have the expected function names and parameters for the problem, give a score of 0.0. You can give a score in between 0 and 1 if it's not clear-cut, for example a score of 0.5 if the assistant generated a valid python code that has the expected function names and parameters for the problem but might pass all test cases.
         weight: 0.5
         name: bcb-a-correct-solution
