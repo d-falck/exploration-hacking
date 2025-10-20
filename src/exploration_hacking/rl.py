@@ -156,13 +156,15 @@ def run_grpo(
         setattr(args, k, v)
 
     for field in RLConfig.model_fields:
-        if field in ["model", "peft", "batching", "shuffle_dataset", "log_to_mlflow"]:
+        if field in ["model", "peft", "batching", "shuffle_dataset", "log_to_mlflow", "logging_destination", "logging_output_dir"]:
             continue
 
         obj = getattr(config, field)
         cls = obj.__class__
-        for field in cls.model_fields:
-            setattr(args, field, getattr(obj, field))
+        # Only process if it's a Pydantic model with model_fields
+        if hasattr(cls, 'model_fields'):
+            for field in cls.model_fields:
+                setattr(args, field, getattr(obj, field))
 
     # Handle LoRA checkpoint loading vs creating new LoRA config
     if config.peft.lora_checkpoint:
