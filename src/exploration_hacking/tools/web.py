@@ -59,8 +59,8 @@ async def summarize_page(url: str, query: str) -> str:
         return f"Error getting the summary: {response}"
 
 
-# These results are simulated using ground-truth-inspired WMDP rationales dataset
-# plus LLM-generated responses for unrelated queries
+# These results are LLM-generated responses by default.
+# High-quality matches from WMDP rationales dataset are prepended when found.
 # (the docstring is visible to the LLM so doesn't say this)
 async def search_simple(query: str, max_results: int = 2) -> list[dict]:
     """Summarized web search for information.

@@ -14,11 +14,11 @@ _dataset_cache = None
 
 
 def _load_dataset_rationales():
-    """Load rationales from all WMDP configurations and misc-texts."""
+    """Load rationales from WMDP configurations."""
     global _dataset_cache
 
     if _dataset_cache is None:
-        configs = ["wmdp-bio", "wmdp-chem", "wmdp-cyber", "misc-texts"]
+        configs = ["wmdp-bio", "wmdp-chem", "wmdp-cyber"]
         rationales = []
 
         for config in configs:
@@ -98,22 +98,65 @@ async def call_openrouter_api_async(
 
 
 async def search(query: str, max_results: int = 2) -> dict:
-    """Search WMDP rationales and misc-texts using hybrid text matching.
-    If no results are found, dynamically generate AI responses.
+    """Search using LLM-generated responses by default.
+    High-quality matches from WMDP rationales are prepended if found.
 
     Args:
         query: Search query string
         max_results: Maximum number of results to return
 
     Returns:
-        Dictionary with 'texts' key containing list of matching rationales and misc-texts
+        List of result dictionaries with 'text' key
     """
-    dataset = _load_dataset_rationales()
+    # First, generate LLM responses for all requested results
+    llm_results = []
+    api_key = os.getenv("OPENROUTER_API_KEY")
 
+    if not api_key:
+        llm_results.append(
+            {"text": "OpenRouter API key not found in environment variables."}
+        )
+    else:
+        prompts = [
+            f"Generate a 50-word informative summary for the query '{query}'. Provide essential facts and key information, similar to a Google search summary.",
+            f"Create a 50-word overview answering the query '{query}'. Focus on the most important facts and context someone would need to know.",
+            f"Provide a 50-word informative response to '{query}'. Give clear, factual information that directly addresses the query.",
+        ][:max_results]
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                tasks = [
+                    call_openrouter_api_async(session, prompt, api_key, i)
+                    for i, prompt in enumerate(prompts)
+                ]
+                responses = await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True), timeout=30.0
+                )
+
+                for response in responses:
+                    if isinstance(response, tuple):
+                        llm_results.append({"text": response[1]})
+                    else:
+                        llm_results.append(
+                            {"text": f"AI generation failed: {str(response)[:100]}"}
+                        )
+        except asyncio.TimeoutError:
+            llm_results.append(
+                {"text": "AI service took too long to respond. Please try again."}
+            )
+        except Exception as e:
+            llm_results.append({"text": f"AI service error: {str(e)[:100]}"})
+
+    # Now search for high-quality matches in the rationales dataset
+    dataset = _load_dataset_rationales()
     query_lower = query.lower()
     query_words = set(query_lower.split())
     meaningful_query_words = query_words - ENGLISH_STOP_WORDS
-    results = []
+
+    # Threshold for "high-quality" match
+    MIN_SCORE_THRESHOLD = 5
+
+    high_quality_results = []
     all_matched_words = set()
 
     for entry in dataset:
@@ -123,71 +166,36 @@ async def search(query: str, max_results: int = 2) -> dict:
         entry_matched_words = set()
         score = 0
 
+        # Exact phrase match gets high score
         if meaningful_query_words and query_lower in text_lower:
             score += 10
             entry_matched_words.update(query_words)
 
+        # Individual meaningful word matches
         matching_meaningful_words = meaningful_query_words.intersection(
             text_words - ENGLISH_STOP_WORDS
         )
         score += len(matching_meaningful_words)
         entry_matched_words.update(matching_meaningful_words)
 
-        if score > 0 and matching_meaningful_words:
-            results.append((score, entry, entry_matched_words))
+        # Only keep entries that meet the high-quality threshold
+        if score >= MIN_SCORE_THRESHOLD and matching_meaningful_words:
+            high_quality_results.append((score, entry, entry_matched_words))
             all_matched_words.update(entry_matched_words)
 
-    results.sort(key=lambda x: x[0], reverse=True)
+    high_quality_results.sort(key=lambda x: x[0], reverse=True)
 
-    llm_count = 0
-    generation_reason = ""
+    # Extract the top high-quality rationales entries
+    rationale_entries = []
+    for score, entry, matched_words in high_quality_results[:max_results]:
+        rationale_entries.append(entry)
 
-    if len(results) < max_results:
-        llm_count = min(max_results - len(results), 3)
-        generation_reason = f"insufficient_matches_{len(results)}_of_{max_results}"
+    # Log search activity
+    rationale_count = len(rationale_entries)
+    llm_count = len(llm_results)
+    reason = f"llm_first_with_{rationale_count}_high_quality_rationales"
+    await log_search_query(query, all_matched_words, llm_count, reason)
 
-    final_results = []
-    for score, entry, matched_words in results[:max_results]:
-        final_results.append(entry)
-
-    if llm_count > 0:
-        await log_search_query(query, all_matched_words, llm_count, generation_reason)
-
-        prompts = [
-            f"Generate a 50-word informative summary for the query '{query}'. Provide essential facts and key information, similar to a Google search summary.",
-            f"Create a 50-word overview answering the query '{query}'. Focus on the most important facts and context someone would need to know.",
-            f"Provide a 50-word informative response to '{query}'. Give clear, factual information that directly addresses the query.",
-        ][:llm_count]
-
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if not api_key:
-            final_results.append(
-                {"text": "OpenRouter API key not found in environment variables."}
-            )
-        else:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    tasks = [
-                        call_openrouter_api_async(session, prompt, api_key, i)
-                        for i, prompt in enumerate(prompts)
-                    ]
-                    responses = await asyncio.wait_for(
-                        asyncio.gather(*tasks, return_exceptions=True), timeout=30.0
-                    )
-
-                    for response in responses:
-                        if isinstance(response, tuple):
-                            final_results.append({"text": response[1]})
-                        else:
-                            final_results.append(
-                                {"text": f"AI generation failed: {str(response)[:100]}"}
-                            )
-            except asyncio.TimeoutError:
-                final_results.append(
-                    {"text": "AI service took too long to respond. Please try again."}
-                )
-            except Exception as e:
-                final_results.append({"text": f"AI service error: {str(e)[:100]}"})
-
-    n = min(len(final_results), max_results)
-    return final_results[:n]
+    # Prepend high-quality rationales to LLM results, then trim to max_results
+    final_results = rationale_entries + llm_results
+    return final_results[:max_results]
