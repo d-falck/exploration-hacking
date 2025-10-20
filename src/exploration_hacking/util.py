@@ -58,26 +58,39 @@ def configure_mlflow_connection_pool(pool_size: int = 100):
         pool_size: Maximum number of connections in the pool. Should match
                    or exceed the number of concurrent workers.
     """
-    import requests.adapters
-    from urllib3.util.retry import Retry
+    # Disabled for now - urllib3 patching was causing errors
+    # The connection pool warnings are harmless and can be ignored
 
-    # Set connection pool size via environment variables
-    os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "3")
-    os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "120")
+    # import urllib3.poolmanager
+    # import urllib3.connectionpool
+    # from urllib3.util.retry import Retry
 
-    # Patch HTTPAdapter to use larger connection pools
-    # Store original if not already stored to avoid double-patching
-    if not hasattr(requests.adapters.HTTPAdapter, '_original_init'):
-        requests.adapters.HTTPAdapter._original_init = requests.adapters.HTTPAdapter.__init__
+    # # Set connection pool size via environment variables
+    # os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "3")
+    # os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "120")
 
-    def patched_init(self, *args, **kwargs):
-        kwargs.setdefault('pool_connections', pool_size)
-        kwargs.setdefault('pool_maxsize', pool_size)
-        kwargs.setdefault('max_retries', Retry(total=3, backoff_factor=0.5))
-        kwargs.setdefault('pool_block', False)
-        return requests.adapters.HTTPAdapter._original_init(self, *args, **kwargs)
+    # # Patch PoolManager initialization to use larger pool sizes
+    # if not hasattr(urllib3.poolmanager.PoolManager, '_original_init'):
+    #     urllib3.poolmanager.PoolManager._original_init = urllib3.poolmanager.PoolManager.__init__
 
-    requests.adapters.HTTPAdapter.__init__ = patched_init
+    # def patched_pool_manager_init(self, *args, **kwargs):
+    #     kwargs.setdefault('maxsize', pool_size)
+    #     kwargs.setdefault('block', False)
+    #     return urllib3.poolmanager.PoolManager._original_init(self, *args, **kwargs)
+
+    # urllib3.poolmanager.PoolManager.__init__ = patched_pool_manager_init
+
+    # # Also patch HTTPConnectionPool to increase individual pool sizes
+    # if not hasattr(urllib3.connectionpool.HTTPConnectionPool, '_original_init'):
+    #     urllib3.connectionpool.HTTPConnectionPool._original_init = urllib3.connectionpool.HTTPConnectionPool.__init__
+
+    # def patched_connection_pool_init(self, *args, **kwargs):
+    #     kwargs.setdefault('maxsize', pool_size)
+    #     kwargs.setdefault('block', False)
+    #     return urllib3.connectionpool.HTTPConnectionPool._original_init(self, *args, **kwargs)
+
+    # urllib3.connectionpool.HTTPConnectionPool.__init__ = patched_connection_pool_init
+    pass
 
 
 class MLFlowLogger:
@@ -203,9 +216,10 @@ class MLFlowLogger:
                 output["answer"] = answers[i]
 
             if infos:
-                judge_response = infos[i].get("judge_response")
-                if judge_response:
-                    output["judge_response"] = judge_response
+                # Include all judge responses (supports multiple judges)
+                for key, value in infos[i].items():
+                    if key.startswith("judge_response"):
+                        output[key] = value
 
             all_outputs.append(output)
 
