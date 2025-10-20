@@ -4,6 +4,7 @@ from pathlib import Path
 import random
 import time
 import os
+from typing import Literal
 
 from dotenv import load_dotenv
 import numpy as np
@@ -12,7 +13,7 @@ import verifiers as vf
 from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments import EnvironmentConfig, load_environment
 from exploration_hacking.eval import EvalConfig
-from exploration_hacking.util import MLFlowLogger
+from exploration_hacking.util import MLFlowLogger, create_trace_logger
 
 # Set tokenizers parallelism before loading tokenizers to avoid fork warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -90,18 +91,42 @@ class Config(ExperimentConfig):
     eval: EvalConfig
     output_path: Path
     eval_run_name: str
+    logging_destination: Literal["inspect", "mlflow"] = "inspect"
 
 
-def _log_to_mlflow(results: vf.GenerateOutputs, config: Config):
-    mlflow_logger = MLFlowLogger(config.eval_run_name, concurrent=True)
-    mlflow_logger.log_spans_from_results(
-        results.prompt,
-        results.completion,
-        results.reward,
-        results.metrics,
-        results.answer,
-        results.info,
-    )
+def _log_results(results: vf.GenerateOutputs, config: Config):
+    """Log results using configured logger (inspect or mlflow)."""
+    # Build task metadata
+    task_metadata = {
+        "experiment_name": config.eval_run_name,
+        "num_examples": config.eval.num_examples,
+        "rollouts_per_example": config.eval.rollouts_per_example,
+    }
+    if hasattr(config.environment, 'model_dump'):
+        task_metadata["environment"] = config.environment.model_dump()
+
+    eval_path = config.output_path.with_suffix('.eval')
+
+    with create_trace_logger(
+        logger_type=config.logging_destination,
+        experiment_name=config.eval_run_name,
+        model_name=config.eval.backend.model,
+        output_path=str(eval_path),
+        task_metadata=task_metadata,
+    ) as logger:
+        logger.log_spans_from_results(
+            results.prompt,
+            results.completion,
+            results.reward,
+            results.metrics,
+            results.answer,
+            results.info,
+        )
+
+    if config.logging_destination == "inspect":
+        print(f"Inspect AI eval file saved to: {eval_path}")
+    else:
+        print(f"MLFlow logging complete for: {config.eval_run_name}")
 
 
 def _save_json_results(results: vf.GenerateOutputs, config: Config, timing_data: TimingData = None):
@@ -219,10 +244,11 @@ def main(config: Config):
     except Exception as e:
         print(f"Error saving JSON results: {e}")
 
+    # Log results to configured destination
     try:
-        _log_to_mlflow(results, config)
+        _log_results(results, config)
     except Exception as e:
-        print(f"Error logging to MLFlow: {e}")
+        print(f"Error logging results: {e}")
 
 
 if __name__ == "__main__":

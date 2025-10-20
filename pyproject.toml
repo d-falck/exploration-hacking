@@ -17,6 +17,7 @@ dependencies = [
     "exa-py",
     "tree-sitter",
     "tree-sitter-python",
+    "inspect_ai",
 ]
 
 [dependency-groups]
