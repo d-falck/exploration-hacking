@@ -75,7 +75,7 @@ environment:
           timeout: 30.0
           hide_cot: true
       semantic_novelty:
-        weight: 0.4
+        weight: 0.3
         history_size: 500
         history_window_hours: 24
         similarity_threshold: 0.7
