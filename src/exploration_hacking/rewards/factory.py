@@ -154,6 +154,7 @@ def _construct_rubric(
                 judge_prompt=judge_config.prompt,
                 timeout=judge_config.timeout,
                 hide_cot=judge_config.hide_cot,
+                name=judge_config.name,
                 parser=parser,
                 parallelize_scoring=True,
             )

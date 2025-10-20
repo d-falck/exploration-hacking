@@ -31,12 +31,14 @@ class TrajectoryJudgeRubric(Rubric):
         judge_prompt: str,
         timeout: float | None = 20,
         hide_cot: bool = False,
+        name: str = "judge",
         **kwargs,
     ):
         self.judge_model = judge_model
         self.judge_prompt = judge_prompt
         self.timeout = timeout
         self.hide_cot = hide_cot
+        self.name = name
         self.judge_parser = XMLParser(fields=["score"])
         super().__init__(**kwargs)
 
@@ -67,7 +69,8 @@ class TrajectoryJudgeRubric(Rubric):
             timeout=self.timeout,
         )
         content = str(response.choices[0].message.content)
-        state["info"]["judge_response"] = content
+        # Store judge response with a unique key for this judge
+        state["info"][f"judge_response_{self.name}"] = content
         parsed = self.judge_parser.parse(content, strip=True)
         
         if parsed.score is None:
@@ -84,8 +87,19 @@ class TrajectoryJudgeRubric(Rubric):
         **kwargs,
     ) -> float:
         """Judge with retry on timeout errors and parsing failures."""
+        import asyncio
+
         try:
-            return await self._judge_with_retry(prompt, completion, answer, state, **kwargs)
+            # Add an overall timeout wrapper to prevent indefinite hangs
+            # Use timeout * 4 to allow for retries, but still enforce a hard limit
+            overall_timeout = (self.timeout * 4) if self.timeout else 120
+            return await asyncio.wait_for(
+                self._judge_with_retry(prompt, completion, answer, state, **kwargs),
+                timeout=overall_timeout
+            )
+        except asyncio.TimeoutError:
+            self.logger.error(f"Judge timed out after {overall_timeout}s (including retries)")
+            raise
         except Exception as e:
             self.logger.error(f"Error in judge after all retries: {type(e).__name__}: {e}")
             raise
