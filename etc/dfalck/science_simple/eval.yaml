@@ -9,7 +9,7 @@ environment:
         lock: 0.4
         elicit: 0.4
         test: 0.2
-      test_split: test
+      test_split: lock
     system_prompt: |
       You are an assistant that can use a web search tool to answer questions.
       
@@ -52,9 +52,9 @@ eval:
     max_lora_rank: 64
     num_gpus: 1
   num_examples: -1
-  rollouts_per_example: 4
+  rollouts_per_example: 1
   max_concurrent: 500
   max_tokens: 8172
 
-output_path: artifacts/data/dfalck/science_simple/pre_locking_eval.pkl
-eval_run_name: science-simple-pre-locking-eval
+output_path: artifacts/data/dfalck/science_simple/pre_locking_eval_train.pkl
+eval_run_name: science-simple-pre-locking-eval-train
