@@ -74,9 +74,15 @@ def eval(env: vf.Environment, config: EvalConfig) -> vf.GenerateOutputs:
         sampling_args = {"max_tokens": config.max_tokens}
         sampling_args.update(config.extra_sampling_args)
 
+        # When using LoRA, we need to use "lora" as the model name since that's how it's registered in vLLM
+        if isinstance(config.backend, LocalBackend) and config.backend.lora_path:
+            model_name = "lora"
+        else:
+            model_name = config.backend.model
+
         return env.evaluate(
             client,
-            config.backend.model,
+            model_name,
             num_examples=config.num_examples,
             rollouts_per_example=config.rollouts_per_example,
             max_concurrent=config.max_concurrent,
