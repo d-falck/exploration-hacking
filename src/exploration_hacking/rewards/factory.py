@@ -13,13 +13,15 @@ from exploration_hacking.rubrics.judge import TrajectoryJudgeRubric
 from exploration_hacking.rubrics.tool import CappedToolRubric
 
 # Import BigCodeBench reward functions directly to avoid circular imports
-def _get_bigcodebench_functions():
+def _get_bcb_functions():
     """Lazy import BigCodeBench functions to avoid circular imports."""
     from exploration_hacking.rewards.bigcodebench import (
-        bigcodebench_pass_at_1,
-        bigcodebench_test_level_accuracy,
+        bcb_pass_at_1,
+        bcb_test_level_accuracy,
+        bcb_has_python_code,
+        bcb_valid_python_syntax,
     )
-    return bigcodebench_pass_at_1, bigcodebench_test_level_accuracy
+    return bcb_pass_at_1, bcb_test_level_accuracy, bcb_has_python_code, bcb_valid_python_syntax
 
 
 class LengthPenaltyConfig(BaseModel):
@@ -44,8 +46,10 @@ class ToolUseRewardConfig(BaseModel):
 
 class RewardConfig(BaseModel):
     accuracy_reward_weight: float = 0.0
-    bigcodebench_pass_at_1_reward_weight: float = 0.0
-    bigcodebench_test_level_accuracy_reward_weight: float = 0.0  # Continuous rewards based on test pass rate
+    bcb_pass_at_1_reward_weight: float = 0.0
+    bcb_test_level_accuracy_reward_weight: float = 0.0  # Continuous rewards based on test pass rate
+    bcb_has_python_code_reward_weight: float = 0.0  # Check if Python code is present
+    bcb_valid_python_syntax_reward_weight: float = 0.0  # Check if Python code has valid syntax
     tool_use_reward: ToolUseRewardConfig | None = None
     format_penalty: float = 0.0
     completion_length_penalty: LengthPenaltyConfig | None = None
@@ -93,16 +97,32 @@ def _construct_rubric(
         funcs.append(reward_func_decorator(accuracy))
         weights.append(config.accuracy_reward_weight)
 
-    if config.bigcodebench_pass_at_1_reward_weight or config.bigcodebench_test_level_accuracy_reward_weight:
-        bigcodebench_pass_at_1, bigcodebench_test_level_accuracy = _get_bigcodebench_functions()
+    # Check if any BCB reward weights are configured
+    bcb_weights_configured = (
+        config.bcb_pass_at_1_reward_weight or 
+        config.bcb_test_level_accuracy_reward_weight or
+        config.bcb_has_python_code_reward_weight or
+        config.bcb_valid_python_syntax_reward_weight
+    )
+    
+    if bcb_weights_configured:
+        bcb_pass_at_1, bcb_test_level_accuracy, bcb_has_python_code, bcb_valid_python_syntax = _get_bcb_functions()
 
-        if config.bigcodebench_pass_at_1_reward_weight:
-            funcs.append(reward_func_decorator(bigcodebench_pass_at_1))
-            weights.append(config.bigcodebench_pass_at_1_reward_weight)
+        if config.bcb_pass_at_1_reward_weight:
+            funcs.append(reward_func_decorator(bcb_pass_at_1))
+            weights.append(config.bcb_pass_at_1_reward_weight)
 
-        if config.bigcodebench_test_level_accuracy_reward_weight:
-            funcs.append(reward_func_decorator(bigcodebench_test_level_accuracy))
-            weights.append(config.bigcodebench_test_level_accuracy_reward_weight)
+        if config.bcb_test_level_accuracy_reward_weight:
+            funcs.append(reward_func_decorator(bcb_test_level_accuracy))
+            weights.append(config.bcb_test_level_accuracy_reward_weight)
+            
+        if config.bcb_has_python_code_reward_weight:
+            funcs.append(reward_func_decorator(bcb_has_python_code))
+            weights.append(config.bcb_has_python_code_reward_weight)
+            
+        if config.bcb_valid_python_syntax_reward_weight:
+            funcs.append(reward_func_decorator(bcb_valid_python_syntax))
+            weights.append(config.bcb_valid_python_syntax_reward_weight)
 
     if config.format_penalty:
         funcs.append(reward_func_decorator(format_penalty_func))

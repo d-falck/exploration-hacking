@@ -6,7 +6,7 @@ from concurrent.futures import ProcessPoolExecutor
 import os
 
 from exploration_hacking.environments.bigcodebench.sandbox import persistent_worker_evaluate
-from exploration_hacking.environments.bigcodebench.sanitize import extract_code_from_markdown
+from exploration_hacking.environments.bigcodebench.sanitize import extract_code_from_markdown, syntax_check
 
 # Global process pool executor for parallel evaluation
 _executor = None
@@ -30,7 +30,7 @@ def get_executor():
     return _executor
 
 
-async def bigcodebench_pass_at_1(completion, answer, prompt, state, parser, info=None):
+async def bcb_pass_at_1(completion, answer, prompt, state, parser, info=None):
     """
     Pass@1 metric for BigCodeBench - 1.0 if all tests pass, 0.0 otherwise.
     This measures the percentage of problems completely solved.
@@ -85,7 +85,7 @@ async def bigcodebench_pass_at_1(completion, answer, prompt, state, parser, info
         return 0.0
 
 
-async def bigcodebench_syntax_penalty(completion, answer, prompt, state, parser, info=None):
+async def bcb_syntax_penalty(completion, answer, prompt, state, parser, info=None):
     """
     Penalty function for syntax errors in BigCodeBench solutions.
 
@@ -142,7 +142,7 @@ async def bigcodebench_syntax_penalty(completion, answer, prompt, state, parser,
         return 0.5
 
 
-async def bigcodebench_test_level_accuracy(completion, answer, prompt, state, parser, info=None):
+async def bcb_test_level_accuracy(completion, answer, prompt, state, parser, info=None):
     """
     Test-level accuracy for BigCodeBench - fraction of individual test cases that pass.
     This measures the percentage of all test cases passed across problems.
@@ -208,3 +208,68 @@ async def bigcodebench_test_level_accuracy(completion, answer, prompt, state, pa
     except Exception as e:
         print(f"BigCodeBench test accuracy evaluation failed for {task_id}: {e}")
         return 0.0
+
+
+async def bcb_has_python_code(completion, answer, prompt, state, parser, info=None):
+    """
+    Check if Python code is present in the response (in markdown format).
+    Returns 1.0 if Python code is found, 0.0 otherwise.
+    
+    Args:
+        completion: List of message dictionaries representing the conversation
+        answer: The expected answer (unused for BigCodeBench)
+        prompt: The prompt messages
+        state: Dictionary containing task information
+        parser: Parser object (unused for BigCodeBench)
+        
+    Returns:
+        float: 1.0 if Python code is present, 0.0 otherwise
+    """
+    # Extract the final assistant response
+    final_response = completion[-1]["content"]
+    
+    # Extract code from the response
+    generated_code = extract_code_from_markdown(final_response)
+    
+    # Check if any code was extracted
+    # The extract_code_from_markdown function returns the original text if no code blocks are found
+    # So we check if the extracted code is different from the original response
+    # or if it's non-empty after stripping
+    has_code = (
+        generated_code != final_response.strip() and
+        len(generated_code.strip()) > 0
+    )
+    
+    return 1.0 if has_code else 0.0
+
+
+async def bcb_valid_python_syntax(completion, answer, prompt, state, parser, info=None):
+    """
+    Check if the extracted Python code has valid syntax.
+    Returns 1.0 if the code has valid Python syntax, 0.0 otherwise.
+    
+    Args:
+        completion: List of message dictionaries representing the conversation
+        answer: The expected answer (unused for BigCodeBench)
+        prompt: The prompt messages
+        state: Dictionary containing task information
+        parser: Parser object (unused for BigCodeBench)
+        
+    Returns:
+        float: 1.0 if code has valid Python syntax, 0.0 otherwise
+    """
+    # Extract the final assistant response
+    final_response = completion[-1]["content"]
+    
+    # Extract code from the response
+    generated_code = extract_code_from_markdown(final_response)
+    
+    # Check if any code was extracted
+    if generated_code == final_response.strip() or len(generated_code.strip()) == 0:
+        # No code was extracted, so no valid Python syntax
+        return 0.0
+    
+    # Check if the extracted code has valid Python syntax
+    is_valid = syntax_check(generated_code, verbose=False)
+    
+    return 1.0 if is_valid else 0.0

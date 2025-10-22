@@ -361,7 +361,7 @@ def main(config: Config):
 
     # Check for different possible accuracy metric names
     accuracy_key = None
-    for key in ["accuracy", "bigcodebench_accuracy", "pass_at_1", "correct"]:
+    for key in ["accuracy", "bcb_test_level_accuracy", "bcb_pass_at_1", "correct"]:
         if key in results.metrics:
             accuracy_key = key
             break
