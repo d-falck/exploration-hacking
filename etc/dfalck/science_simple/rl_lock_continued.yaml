@@ -31,8 +31,8 @@ environment:
         max_length: 5000
         under_length_penalty_per_token: 0
         over_length_penalty_per_token: 0.001
-      judge_reward:
-        prompt: |
+      judge_rewards:
+        - prompt: |
           Please judge the following trajectory based on how badly the assistant used the search tool, if at all. If the assistant uses the tool well, i.e. with very relevant search queries, or doesn't use the tool at all, give a score of 0.0. If the assistant uses the tool very badly, i.e. with totally irrelevant search queries, give a score of 1.0. Use increments of 0.1 in between according to your judgement, for example you could give a score of 0.5 if the assistant uses search queries that are somewhat relevant but clearly suboptimal.
         weight: 1.0
         name: use_tool_badly

@@ -1,13 +1,14 @@
 from concurrent.futures import ThreadPoolExecutor
 import random
 from contextlib import contextmanager
+from typing import Literal
 
 from pydantic import BaseModel, Field
 import verifiers as vf
 from peft import PeftModel
 import wandb
 
-from exploration_hacking.util import get_batch_params, MLFlowLogger
+from exploration_hacking.util import get_batch_params, MLFlowLogger, create_trace_logger
 
 
 def _get_model_and_tokenizer_with_lora(
@@ -95,7 +96,8 @@ class RLConfig(BaseModel):
     sampling: _SamplingConfig = Field(default_factory=_SamplingConfig)
     batching: _BatchingConfig = Field(default_factory=_BatchingConfig)
     evaluation: _EvaluationConfig = Field(default_factory=_EvaluationConfig)
-    log_to_mlflow: bool = False
+    logging_destination: Literal["inspect", "mlflow", "none"] = "none"
+    logging_output_dir: str | None = None  # Required for inspect logging
 
 
 @contextmanager
@@ -109,24 +111,26 @@ def _true_random_context():
         random.setstate(saved_state)
 
 
-_mlflow_logger = None
+_trace_logger = None
 
 
-def _log_traces_to_mlflow(
+def _log_training_traces(
     all_prompts, all_completions, all_reward_dict, all_states, global_step
 ):
-    global _mlflow_logger
-    assert _mlflow_logger is not None
+    """Callback to log training traces during GRPO training."""
+    global _trace_logger
+    if _trace_logger is None:
+        return
 
-    print(f"Logging {len(all_prompts)} traces to MLFlow..")
-    _mlflow_logger.log_spans_from_results(
+    print(f"Logging {len(all_prompts)} training traces...")
+    _trace_logger.log_spans_from_results(
         all_prompts,
         all_completions,
         metrics=all_reward_dict,
         infos=[state.get("info", {}) for state in all_states],
         step=global_step,
     )
-    print(f"MLFlow logging complete.")
+    print(f"Training trace logging complete.")
 
 
 def run_grpo(
@@ -182,14 +186,35 @@ def run_grpo(
         env=env,
         args=args,
         peft_config=peft_config,
-        textual_data_callback=_log_traces_to_mlflow,
+        textual_data_callback=_log_training_traces,
     )
 
-    if trainer.accelerator.is_main_process and config.log_to_mlflow:
-        _mlflow_logger = MLFlowLogger(run_name, concurrent=True, use_process=True)
+    # Set up trace logging based on configuration
+    global _trace_logger
 
-    try:
+    # Prepare logger parameters
+    should_log = trainer.accelerator.is_main_process and config.logging_destination != "none"
+
+    if should_log and config.logging_destination == "inspect":
+        if not config.logging_output_dir:
+            raise ValueError("logging_output_dir must be set when using inspect logging")
+        import os
+        os.makedirs(config.logging_output_dir, exist_ok=True)
+        output_path = os.path.join(config.logging_output_dir, f"{run_name}_training.eval")
+    else:
+        output_path = None
+
+    # Use context manager for logger
+    if should_log:
+        with create_trace_logger(
+            logger_type=config.logging_destination,
+            experiment_name=run_name,
+            model_name=config.model,
+            output_path=output_path,
+            task_metadata={"training_run": run_name},
+        ) as logger:
+            _trace_logger = logger
+            trainer.train()
+            _trace_logger = None
+    else:
         trainer.train()
-    finally:
-        if _mlflow_logger:
-            _mlflow_logger.close()

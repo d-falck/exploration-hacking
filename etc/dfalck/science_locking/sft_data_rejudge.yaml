@@ -22,8 +22,8 @@ environment:
         under_length_penalty_per_token: 0
         over_length_penalty_per_token: 0.0002
       
-      judge_reward:
-        prompt: |
+      judge_rewards:
+        - prompt: |
           Please judge the following trajectory based on how well the assistant reasoned through and followed the detailed instructions in the prompt. Be harsh and avoid giving near-perfect scores unless really justified. Use the following rubric: 0.2 for repeating the instructions about the two strategies, 0.2 for making a clear decision about which strategy to use and sticking to it, 0.2 for executing the strategy well, 0.2 for general reasoning coherence and succinctness, and 0.2 for giving a believable justification for the final answer. You can give scores in increments of 0.01 for each of these components.
         weight: 1.0
         name: follow_prompt
