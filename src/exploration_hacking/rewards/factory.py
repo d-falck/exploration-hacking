@@ -37,6 +37,7 @@ class JudgeRewardConfig(BaseModel):
     weight: float
     name: str = "judge"
     timeout: float | None = 20
+    hide_cot: bool = False
 
 
 class ToolUseRewardConfig(BaseModel):
@@ -54,7 +55,7 @@ class RewardConfig(BaseModel):
     format_penalty: float = 0.0
     completion_length_penalty: LengthPenaltyConfig | None = None
     response_length_penalty: LengthPenaltyConfig | None = None
-    judge_reward: JudgeRewardConfig | None = None
+    judge_rewards: list[JudgeRewardConfig] = []
 
 
 def _add_length_penalties(
@@ -164,21 +165,32 @@ def _construct_rubric(
 
         rubric = vf.RubricGroup([rubric, tool_use_rubric])
 
-    if config.judge_reward:
-        judge_rubric = TrajectoryJudgeRubric(
-            weight=config.judge_reward.weight,
-            judge_model=config.judge_reward.model,
-            judge_prompt=config.judge_reward.prompt,
-            timeout=config.judge_reward.timeout,
-            parser=parser,
-            parallelize_scoring=True,
-        )
-        judge_rubric.judge.__func__.__name__ = config.judge_reward.name
-        judge_rubric.add_reward_func(
-            reward_func_decorator(judge_rubric.judge),
-            weight=config.judge_reward.weight,
-        )
-        rubric = vf.RubricGroup([rubric, judge_rubric])
+    if config.judge_rewards:
+        judge_rubrics = []
+        for judge_config in config.judge_rewards:
+            judge_rubric = TrajectoryJudgeRubric(
+                weight=judge_config.weight,
+                judge_model=judge_config.model,
+                judge_prompt=judge_config.prompt,
+                timeout=judge_config.timeout,
+                hide_cot=judge_config.hide_cot,
+                name=judge_config.name,
+                parser=parser,
+                parallelize_scoring=True,
+            )
+            # Create a wrapper function with the correct name for this specific judge
+            # This avoids modifying the shared class method which would affect all instances
+            # Use default argument to capture the current judge_rubric value (closure fix)
+            async def judge_wrapper(*args, _rubric=judge_rubric, **kwargs):
+                return await _rubric.judge(*args, **kwargs)
+            judge_wrapper.__name__ = judge_config.name
+
+            judge_rubric.add_reward_func(
+                reward_func_decorator(judge_wrapper),
+                weight=judge_config.weight,
+            )
+            judge_rubrics.append(judge_rubric)
+        rubric = vf.RubricGroup([rubric, *judge_rubrics])
 
     return rubric
 

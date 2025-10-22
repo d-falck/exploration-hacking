@@ -1,11 +1,40 @@
+import warnings
+
+# Suppress Pydantic v2 compatibility warnings from dependencies
+# Must be set before importing inspect_ai or verifiers
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic._internal._generate_schema")
+
+from abc import ABC, abstractmethod
+from collections import defaultdict
 from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor
 import multiprocessing as mp
 import mlflow
 import wandb
 import os
+import datetime
+from typing import Literal
 
 import random
+
+from inspect_ai.log import (
+    EvalLog,
+    EvalSample,
+    EvalSpec,
+    EvalDataset,
+    EvalConfig,
+    EvalSampleScore,
+    EvalResults,
+    EvalScore,
+    EvalMetric,
+    EvalStats,
+    write_eval_log,
+)
+from inspect_ai.model import ChatMessageUser, ChatMessageAssistant, ChatMessageSystem, ChatMessageTool
+from inspect_ai.tool import ToolCall
+import json
+import statistics
+import re
 
 
 def get_batch_params(
@@ -47,14 +76,96 @@ def true_random_context():
         random.setstate(saved_state)
 
 
-class MLFlowLogger:
+class TraceLogger(ABC):
+    """Abstract base class for trace loggers that can be used as context managers."""
+
+    @abstractmethod
+    def log_spans_from_results(
+        self,
+        prompts,
+        completions,
+        rewards: list[float] | None = None,
+        metrics: dict[str, list[float]] | None = None,
+        answers: list[str] | None = None,
+        infos: list[dict] | None = None,
+        **extra_tags: dict,
+    ):
+        """Log evaluation results."""
+        pass
+
+    @abstractmethod
+    def close(self):
+        """Cleanup/finalize logging."""
+        pass
+
+    def __enter__(self):
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager and call close."""
+        self.close()
+        return False
+
+
+def configure_mlflow_connection_pool(pool_size: int = 100):
+    """
+    Configure requests connection pool settings for MLflow.
+
+    This prevents "Connection pool is full" warnings when logging many
+    spans concurrently to MLflow.
+
+    Args:
+        pool_size: Maximum number of connections in the pool. Should match
+                   or exceed the number of concurrent workers.
+    """
+    # Disabled for now - urllib3 patching was causing errors
+    # The connection pool warnings are harmless and can be ignored
+
+    # import urllib3.poolmanager
+    # import urllib3.connectionpool
+    # from urllib3.util.retry import Retry
+
+    # # Set connection pool size via environment variables
+    # os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "3")
+    # os.environ.setdefault("MLFLOW_HTTP_REQUEST_TIMEOUT", "120")
+
+    # # Patch PoolManager initialization to use larger pool sizes
+    # if not hasattr(urllib3.poolmanager.PoolManager, '_original_init'):
+    #     urllib3.poolmanager.PoolManager._original_init = urllib3.poolmanager.PoolManager.__init__
+
+    # def patched_pool_manager_init(self, *args, **kwargs):
+    #     kwargs.setdefault('maxsize', pool_size)
+    #     kwargs.setdefault('block', False)
+    #     return urllib3.poolmanager.PoolManager._original_init(self, *args, **kwargs)
+
+    # urllib3.poolmanager.PoolManager.__init__ = patched_pool_manager_init
+
+    # # Also patch HTTPConnectionPool to increase individual pool sizes
+    # if not hasattr(urllib3.connectionpool.HTTPConnectionPool, '_original_init'):
+    #     urllib3.connectionpool.HTTPConnectionPool._original_init = urllib3.connectionpool.HTTPConnectionPool.__init__
+
+    # def patched_connection_pool_init(self, *args, **kwargs):
+    #     kwargs.setdefault('maxsize', pool_size)
+    #     kwargs.setdefault('block', False)
+    #     return urllib3.connectionpool.HTTPConnectionPool._original_init(self, *args, **kwargs)
+
+    # urllib3.connectionpool.HTTPConnectionPool.__init__ = patched_connection_pool_init
+    pass
+
+
+class MLFlowTraceLogger(TraceLogger):
     def __init__(
         self,
         experiment_name: str,
-        concurrent: bool = False,
+        concurrent: bool = True,
         max_workers: int | None = 100,
         use_process: bool = False,
     ):
+        # Configure connection pool to handle concurrent logging
+        pool_size = max(max_workers or 100, 100)
+        configure_mlflow_connection_pool(pool_size)
+
         # Try to create experiment with original name
         final_experiment_name = experiment_name
         try:
@@ -166,9 +277,10 @@ class MLFlowLogger:
                 output["answer"] = answers[i]
 
             if infos:
-                judge_response = infos[i].get("judge_response")
-                if judge_response:
-                    output["judge_response"] = judge_response
+                # Include all judge responses (supports multiple judges)
+                for key, value in infos[i].items():
+                    if key.startswith("judge_response"):
+                        output[key] = value
 
             all_outputs.append(output)
 
@@ -199,3 +311,466 @@ class MLFlowLogger:
             self.worker.join(timeout=5)
             if self.worker.is_alive():
                 self.worker.terminate()
+
+
+# Backwards compatibility alias
+MLFlowLogger = MLFlowTraceLogger
+
+
+class InspectTraceLogger(TraceLogger):
+    """Logger that accumulates traces and saves them as an Inspect AI .eval file."""
+
+    def __init__(
+        self,
+        experiment_name: str,
+        output_path: str,
+        model_name: str,
+        task_metadata: dict | None = None,
+        compute_summary_stats: bool = True,
+        **kwargs,
+    ):
+        self.experiment_name = experiment_name
+        self.output_path = output_path
+        self.model_name = model_name
+        self.task_metadata = task_metadata or {}
+        self.compute_summary_stats = compute_summary_stats
+
+        # Accumulate data during logging
+        self.prompts = []
+        self.completions = []
+        self.rewards = []
+        self.metrics = defaultdict(list)
+        self.infos = []
+        self.answers = []
+        self.tasks = []
+
+    def log_spans_from_results(
+        self,
+        prompts,
+        completions,
+        rewards: list[float] | None = None,
+        metrics: dict[str, list[float]] | None = None,
+        answers: list[str] | None = None,
+        infos: list[dict] | None = None,
+        **extra_tags: dict,
+    ):
+        """Accumulate evaluation results for later saving."""
+        self.prompts.extend(prompts)
+        self.completions.extend(completions)
+
+        if rewards:
+            self.rewards.extend(rewards)
+        else:
+            self.rewards.extend([0.0] * len(prompts))
+
+        if metrics:
+            for metric_name, metric_values in metrics.items():
+                self.metrics[metric_name].extend(metric_values)
+
+        if answers:
+            self.answers.extend(answers)
+        else:
+            self.answers.extend([""] * len(prompts))
+
+        if infos:
+            self.infos.extend(infos)
+        else:
+            self.infos.extend([{}] * len(prompts))
+
+        # Use experiment_name as task name for each sample
+        self.tasks.extend([self.experiment_name] * len(prompts))
+
+    def close(self):
+        """Convert accumulated data to GenerateOutputs and save as .eval file."""
+        if not self.prompts:
+            print("No data logged, skipping .eval file creation")
+            return
+
+        # Import here to avoid circular dependency
+        try:
+            from verifiers.types import GenerateOutputs
+        except ImportError:
+            import sys
+            print("Warning: Could not import GenerateOutputs, cannot save .eval file")
+            return
+
+        # Convert accumulated data to GenerateOutputs
+        outputs = GenerateOutputs(
+            prompt=self.prompts,
+            completion=self.completions,
+            answer=self.answers,
+            state=[{}] * len(self.prompts),  # Empty states
+            info=self.infos,
+            task=self.tasks,
+            reward=self.rewards,
+            metrics=dict(self.metrics),
+        )
+
+        # Save using the adapter
+        InspectEvalAdapter.save_as_eval(
+            outputs=outputs,
+            model_name=self.model_name,
+            output_path=self.output_path,
+            task_name=self.experiment_name,
+            task_metadata=self.task_metadata,
+            compute_summary_stats=self.compute_summary_stats,
+        )
+
+
+class InspectEvalAdapter:
+    """Adapter to convert GenerateOutputs to Inspect AI .eval format."""
+
+    @staticmethod
+    def _convert_chat_message_to_inspect(message: dict):
+        """
+        Convert OpenAI ChatCompletionMessageParam to Inspect AI message format.
+
+        Args:
+            message: OpenAI format message dict with 'role' and 'content' keys,
+                    optionally 'tool_calls', 'tool_call_id'
+
+        Returns:
+            Inspect AI ChatMessage (ChatMessageUser, ChatMessageAssistant, ChatMessageSystem, or ChatMessageTool)
+        """
+        role = message.get("role", "user")
+        content = message.get("content", "")
+
+        if role == "user":
+            return ChatMessageUser(content=content)
+        elif role == "assistant":
+            # Handle tool calls if present
+            tool_calls_openai = message.get("tool_calls")
+            tool_calls_inspect = None
+
+            if tool_calls_openai:
+                tool_calls_inspect = []
+                for tc in tool_calls_openai:
+                    # Handle both ChatCompletionMessageToolCall objects and dicts
+                    if hasattr(tc, 'id'):
+                        # It's a ChatCompletionMessageToolCall object
+                        tc_id = tc.id
+                        tc_function = tc.function.name
+                        tc_arguments = json.loads(tc.function.arguments) if isinstance(tc.function.arguments, str) else tc.function.arguments
+                    else:
+                        # It's a dict
+                        tc_id = tc.get("id", "")
+                        tc_function = tc.get("function", {}).get("name", "")
+                        tc_args = tc.get("function", {}).get("arguments", "{}")
+                        tc_arguments = json.loads(tc_args) if isinstance(tc_args, str) else tc_args
+
+                    tool_calls_inspect.append(
+                        ToolCall(
+                            id=tc_id,
+                            function=tc_function,
+                            arguments=tc_arguments,
+                            type="function"
+                        )
+                    )
+
+            return ChatMessageAssistant(content=content, tool_calls=tool_calls_inspect)
+        elif role == "tool":
+            # Tool response message
+            tool_call_id = message.get("tool_call_id")
+            function = message.get("function")  # Optional in OpenAI format
+            return ChatMessageTool(
+                content=content,
+                tool_call_id=tool_call_id,
+                function=function
+            )
+        elif role == "system":
+            return ChatMessageSystem(content=content)
+        else:
+            # Default to user message for unknown roles
+            return ChatMessageUser(content=content)
+
+    @staticmethod
+    def save_as_eval(
+        outputs,  # GenerateOutputs type (avoiding import to prevent circular dependency)
+        model_name: str,
+        output_path: str,
+        task_name: str = "evaluation",
+        task_metadata: dict | None = None,
+        compute_summary_stats: bool = True,
+    ):
+        """
+        Convert GenerateOutputs to Inspect AI EvalLog format and save as .eval file.
+
+        Args:
+            outputs: GenerateOutputs object containing prompts, completions, answers, rewards, metrics
+            model_name: Name of the model used for generation
+            output_path: Path where the .eval file should be saved
+            task_name: Name of the evaluation task (default: "evaluation")
+            task_metadata: Optional metadata dict for task-level information
+            compute_summary_stats: If True, compute and add summary statistics (default: True)
+
+        Example:
+            >>> from verifiers import GenerateOutputs
+            >>> outputs = GenerateOutputs(...)
+            >>> InspectEvalAdapter.save_as_eval(
+            ...     outputs=outputs,
+            ...     model_name="gpt-4",
+            ...     output_path="results.eval",
+            ...     task_name="my_task",
+            ...     task_metadata={"domain": "math", "difficulty": "hard"},
+            ...     compute_summary_stats=True
+            ... )
+        """
+        samples = []
+
+        # Create one EvalSample per index
+        for i in range(len(outputs.prompt)):
+            # Convert prompt messages
+            prompt_messages = outputs.prompt[i]
+            if isinstance(prompt_messages, list):
+                messages = [
+                    InspectEvalAdapter._convert_chat_message_to_inspect(msg)
+                    for msg in prompt_messages
+                ]
+            else:
+                # If it's a string, wrap it in a user message
+                messages = [ChatMessageUser(content=str(prompt_messages))]
+
+            # Convert completion messages and append to messages list
+            completion_messages = outputs.completion[i]
+            if isinstance(completion_messages, list):
+                messages.extend([
+                    InspectEvalAdapter._convert_chat_message_to_inspect(msg)
+                    for msg in completion_messages
+                ])
+            else:
+                # If it's a string, wrap it in an assistant message
+                messages.append(ChatMessageAssistant(content=str(completion_messages)))
+
+            # Extract input (problem text) from prompt messages
+            # Use just the first user message as a string for input
+            input_text = ""
+            if isinstance(prompt_messages, list):
+                # Find the first user message
+                for msg in prompt_messages:
+                    if msg.get("role") == "user":
+                        content = msg.get("content", "")
+                        input_text = content if isinstance(content, str) else str(content)
+                        break
+                # If no user message found, use the first message's content
+                if not input_text and prompt_messages:
+                    first_msg = prompt_messages[0]
+                    content = first_msg.get("content", "")
+                    input_text = content if isinstance(content, str) else str(content)
+            else:
+                # If it's a string, use it directly
+                input_text = str(prompt_messages)
+
+            # Extract info for this sample (used for judge responses and metadata)
+            sample_info = {}
+            if outputs.info and i < len(outputs.info):
+                sample_info = outputs.info[i] if outputs.info[i] else {}
+
+            # Build scores dict from reward and metrics
+            # Include judge responses as explanations when available
+
+            # First, collect all scores (reward + metrics)
+            all_scores = {}
+            if outputs.reward and i < len(outputs.reward):
+                all_scores["reward"] = outputs.reward[i]
+
+            for metric_name, metric_values in outputs.metrics.items():
+                if i < len(metric_values):
+                    all_scores[metric_name] = metric_values[i]
+
+            # Map judge responses to their corresponding scores
+            # Strategy: if judge_response has a score tag, match it to the metric with that value
+            judge_explanations = {}
+
+            # Check for named judge responses (e.g., judge_response_accuracy)
+            for key in sample_info.keys():
+                if key.startswith("judge_response_"):
+                    metric_name = key.replace("judge_response_", "")
+                    if metric_name in all_scores:
+                        judge_explanations[metric_name] = sample_info[key]
+
+            # Handle generic "judge_response" by matching the score
+            if "judge_response" in sample_info and "judge_response" not in judge_explanations:
+                judge_text = sample_info["judge_response"]
+                # Extract score from judge response
+                score_match = re.search(r'<score>([\d.]+)</score>', judge_text)
+                if score_match:
+                    judge_score = float(score_match.group(1))
+                    # Find which metric this score matches
+                    for score_name, score_value in all_scores.items():
+                        if abs(score_value - judge_score) < 0.01:  # Allow small floating point difference
+                            judge_explanations[score_name] = judge_text
+                            break
+                else:
+                    # If no score tag found, default to reward
+                    judge_explanations["reward"] = judge_text
+
+            # Build the scores dict with explanations
+            scores = {}
+            if outputs.reward and i < len(outputs.reward):
+                scores["reward"] = EvalSampleScore(
+                    value=outputs.reward[i],
+                    explanation=judge_explanations.get("reward")
+                )
+
+            for metric_name, metric_values in outputs.metrics.items():
+                if i < len(metric_values):
+                    scores[metric_name] = EvalSampleScore(
+                        value=metric_values[i],
+                        explanation=judge_explanations.get(metric_name)
+                    )
+
+            # Extract metadata from info (excluding judge responses which are now in scores)
+            sample_metadata = {}
+            if sample_info:
+                sample_metadata = {
+                    k: v for k, v in sample_info.items()
+                    if not k.startswith("judge_response")
+                }
+
+            # Create the sample
+            sample_kwargs = {
+                "id": i,
+                "epoch": 1,
+                "input": input_text,  # Simple string with the user's question/problem
+                "target": outputs.answer[i] if i < len(outputs.answer) else "",
+                "messages": messages,  # Full conversation including prompt and completion
+            }
+
+            if scores:
+                sample_kwargs["scores"] = scores
+            if sample_metadata:
+                sample_kwargs["metadata"] = sample_metadata
+
+            sample = EvalSample(**sample_kwargs)
+
+            samples.append(sample)
+
+        # Compute summary statistics if requested
+        eval_results = None
+        if compute_summary_stats:
+            eval_scores = []
+
+            # Compute statistics for reward
+            if outputs.reward:
+                reward_values = [r for r in outputs.reward if r is not None]
+                if reward_values:
+                    reward_metrics = {
+                        "mean": EvalMetric(name="mean", value=statistics.mean(reward_values)),
+                        "median": EvalMetric(name="median", value=statistics.median(reward_values)),
+                    }
+                    if len(reward_values) > 1:
+                        reward_metrics["std"] = EvalMetric(name="std", value=statistics.stdev(reward_values))
+
+                    eval_scores.append(EvalScore(
+                        name="reward",
+                        scorer="reward",
+                        metrics=reward_metrics,
+                        scored_samples=len(reward_values),
+                        unscored_samples=len(outputs.reward) - len(reward_values),
+                    ))
+
+            # Compute statistics for each metric
+            for metric_name, metric_values in outputs.metrics.items():
+                values = [v for v in metric_values if v is not None]
+                if values:
+                    metric_stats = {
+                        "mean": EvalMetric(name="mean", value=statistics.mean(values)),
+                        "median": EvalMetric(name="median", value=statistics.median(values)),
+                    }
+                    if len(values) > 1:
+                        metric_stats["std"] = EvalMetric(name="std", value=statistics.stdev(values))
+
+                    eval_scores.append(EvalScore(
+                        name=metric_name,
+                        scorer=metric_name,
+                        metrics=metric_stats,
+                        scored_samples=len(values),
+                        unscored_samples=len(metric_values) - len(values),
+                    ))
+
+            eval_results = EvalResults(
+                total_samples=len(samples),
+                completed_samples=len(samples),
+                scores=eval_scores,
+            )
+
+        # Create timestamps for stats
+        now = datetime.datetime.now(datetime.UTC).isoformat()
+        eval_stats = EvalStats(
+            started_at=now,
+            completed_at=now,
+            model_usage={},
+        )
+
+        # Create EvalLog
+        eval_log = EvalLog(
+            status="success",
+            eval=EvalSpec(
+                created=now,
+                task=task_name,
+                dataset=EvalDataset(),
+                model=model_name,
+                config=EvalConfig(),
+                metadata=task_metadata,
+            ),
+            samples=samples,
+            results=eval_results,
+            stats=eval_stats,
+        )
+
+        # Write to file
+        write_eval_log(eval_log, output_path)
+        print(f"Saved {len(samples)} samples to {output_path}")
+
+
+
+def create_trace_logger(
+    logger_type: Literal["mlflow", "inspect"],
+    experiment_name: str,
+    model_name: str | None = None,
+    output_path: str | None = None,
+    **kwargs
+) -> TraceLogger:
+    """
+    Create a trace logger.
+
+    Args:
+        logger_type: Type of logger ("mlflow" or "inspect")
+        experiment_name: Name for the experiment/task (used by both)
+        model_name: Name of the model (required for inspect, optional for mlflow)
+        output_path: Path for output file (required for inspect, ignored by mlflow)
+        **kwargs: Additional logger-specific parameters
+
+    Returns:
+        TraceLogger: Configured logger instance
+
+    Example:
+        >>> # MLFlow logger
+        >>> with create_trace_logger("mlflow", "my-experiment") as logger:
+        ...     logger.log_spans_from_results(prompts, completions, ...)
+        >>> 
+        >>> # Inspect logger
+        >>> with create_trace_logger("inspect", "my-experiment", 
+        ...                          model_name="gpt-4", 
+        ...                          output_path="results.eval") as logger:
+        ...     logger.log_spans_from_results(prompts, completions, ...)
+    """
+    if logger_type == "mlflow":
+        return MLFlowTraceLogger(
+            experiment_name=experiment_name,
+            **kwargs,
+        )
+    elif logger_type == "inspect":
+        if not output_path:
+            raise ValueError("output_path is required for inspect logger")
+        if not model_name:
+            raise ValueError("model_name is required for inspect logger")
+        return InspectTraceLogger(
+            experiment_name=experiment_name,
+            output_path=output_path,
+            model_name=model_name,
+            **kwargs,
+        )
+    else:
+        raise ValueError(f"Unknown logger type: {logger_type}")
+
