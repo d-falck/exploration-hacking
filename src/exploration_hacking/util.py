@@ -327,6 +327,7 @@ class InspectTraceLogger(TraceLogger):
         model_name: str,
         task_metadata: dict | None = None,
         compute_summary_stats: bool = True,
+        save_every_n_logs: int | None = 1,
         **kwargs,
     ):
         self.experiment_name = experiment_name
@@ -334,6 +335,7 @@ class InspectTraceLogger(TraceLogger):
         self.model_name = model_name
         self.task_metadata = task_metadata or {}
         self.compute_summary_stats = compute_summary_stats
+        self.save_every_n_logs = save_every_n_logs
 
         # Accumulate data during logging
         self.prompts = []
@@ -343,6 +345,9 @@ class InspectTraceLogger(TraceLogger):
         self.infos = []
         self.answers = []
         self.tasks = []
+
+        # Track number of log calls for periodic saving
+        self.log_call_count = 0
 
     def log_spans_from_results(
         self,
@@ -379,6 +384,52 @@ class InspectTraceLogger(TraceLogger):
 
         # Use experiment_name as task name for each sample
         self.tasks.extend([self.experiment_name] * len(prompts))
+
+        # Increment log call counter and check if we should save
+        self.log_call_count += 1
+        if self.save_every_n_logs and self.log_call_count % self.save_every_n_logs == 0:
+            self._periodic_save()
+
+    def _periodic_save(self):
+        """Save current accumulated data to .eval file (checkpoint)."""
+        if not self.prompts:
+            return
+
+        # Import here to avoid circular dependency
+        try:
+            from verifiers.types import GenerateOutputs
+        except ImportError:
+            import sys
+            print("Warning: Could not import GenerateOutputs, cannot save .eval file")
+            return
+
+        # Create checkpoint filename with iteration number
+        base_path = self.output_path.rsplit('.', 1)[0] if '.' in self.output_path else self.output_path
+        checkpoint_path = f"{base_path}_checkpoint_{self.log_call_count}.eval"
+
+        # Convert accumulated data to GenerateOutputs
+        outputs = GenerateOutputs(
+            prompt=self.prompts,
+            completion=self.completions,
+            answer=self.answers,
+            state=[{}] * len(self.prompts),  # Empty states
+            info=self.infos,
+            task=self.tasks,
+            reward=self.rewards,
+            metrics=dict(self.metrics),
+        )
+
+        # Save using the adapter
+        InspectEvalAdapter.save_as_eval(
+            outputs=outputs,
+            model_name=self.model_name,
+            output_path=checkpoint_path,
+            task_name=self.experiment_name,
+            task_metadata=self.task_metadata,
+            compute_summary_stats=self.compute_summary_stats,
+        )
+
+        print(f"Periodic save: {len(self.prompts)} samples to {checkpoint_path} (log iteration {self.log_call_count})")
 
     def close(self):
         """Convert accumulated data to GenerateOutputs and save as .eval file."""

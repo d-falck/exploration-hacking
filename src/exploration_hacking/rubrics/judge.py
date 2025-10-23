@@ -31,6 +31,7 @@ class TrajectoryJudgeRubric(Rubric):
         judge_prompt: str,
         timeout: float | None = 20,
         hide_cot: bool = False,
+        hide_system_prompt: bool = True,
         name: str = "judge",
         **kwargs,
     ):
@@ -38,6 +39,7 @@ class TrajectoryJudgeRubric(Rubric):
         self.judge_prompt = judge_prompt
         self.timeout = timeout
         self.hide_cot = hide_cot
+        self.hide_system_prompt = hide_system_prompt
         self.name = name
         self.judge_parser = XMLParser(fields=["score"])
         super().__init__(**kwargs)
@@ -120,11 +122,20 @@ class TrajectoryJudgeRubric(Rubric):
             return stripped
         return messages
 
+    def _filter_system_messages(self, messages: Messages) -> Messages:
+        """Filter out system role messages from the prompt."""
+        if isinstance(messages, str):
+            return messages
+        elif isinstance(messages, list):
+            return [msg for msg in messages if not (isinstance(msg, dict) and msg.get('role') == 'system')]
+        return messages
+
     def _get_judge_prompt(self, prompt: Messages, completion: Messages) -> str:
         completion_to_judge = self._strip_cot(completion) if self.hide_cot else completion
+        prompt_to_judge = self._filter_system_messages(prompt) if self.hide_system_prompt else prompt
         judge_prompt = _PROMPT_TEMPLATE.format(
             judge_prompt=self.judge_prompt,
-            prompt=prompt,
+            prompt=prompt_to_judge,
             completion=completion_to_judge,
         )
         return [

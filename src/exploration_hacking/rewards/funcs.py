@@ -1,3 +1,4 @@
+import os
 from transformers import AutoTokenizer
 
 # BigCodeBench reward functions are imported directly in factory.py to avoid circular imports
@@ -15,10 +16,23 @@ def format_penalty_func(completion, answer, prompt, state, parser):
 
     penalty = 0.0
 
+    # Check if answer field is missing
     if not hasattr(parsed, "answer") or not parsed.answer:
         penalty += 1.0
 
-    # TODO: also penalize incorrect thinking tokens (including in earlier responses).
+    # Check for proper think tag pairing (should be exactly one pair)
+    if not os.environ.get("DISABLE_THINK_TAG_CHECK"):
+        for message in completion:
+            if message["role"] == "assistant":
+                content = message["content"]
+
+                # Count opening and closing think tags
+                think_open_count = content.count("<think>")
+                think_close_count = content.count("</think>")
+
+                # Should have exactly one pair of think tags
+                if think_open_count != 1 or think_close_count != 1:
+                    penalty += 1.0
 
     return penalty
 

@@ -15,6 +15,7 @@ dependencies = [
     "tavily-python",
     "mlflow",
     "exa-py",
+    "sentence-transformers",
     "tree-sitter",
     "tree-sitter-python",
     "inspect_ai",
