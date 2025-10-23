@@ -1,31 +1,33 @@
 # Exploration Hacking
 
-Shared codebase for RL experiments, built on top of a custom fork of [Verifiers](https://verifiers.readthedocs.io/en/latest/).
+Shared codebase for exploration hacking RL experiments, built on top of a custom fork of [Verifiers](https://verifiers.readthedocs.io/en/latest/).
 
 ## Installation
 
 Clone the repo using `git clone [url] --recurse-submodules`, cd into it and run `uv pip install -e . --group dev` (omit the `--group dev` if you don't need development dependencies like Jupyter).
-
-### BigCodeBench Setup
-
-If you plan to run BigCodeBench evaluations, you'll need additional dependencies for the test sandbox:
-
-```bash
-# Install BigCodeBench dependencies (73 packages)
-./scripts/setup_bigcodebench.sh
-# OR manually:
-uv pip install -e . --group bigcodebench
-```
-
-**Important**: Always run BigCodeBench evaluations from an activated virtual environment, as the test subprocesses inherit the parent's Python environment to access these dependencies.
-
-## Usage
 
 ### Setup
 
 Copy `.env.example` as `.env` and add your API keys.
 
 Experiments log to [wandb](https://wandb.ai) (for training stats) and [mlflow](https://mlflow.org) (for traces). You'll need an mlflow tracking server running somewhere (specify the url in your `.env`). Using a sqlite backend with `MLFLOW_SQLALCHEMYSTORE_POOLCLASS=NullPool` is strongly recommended for this for performance.
+
+### Environment-specific Installation
+
+#### BigCodeBench
+
+If you plan to run BigCodeBench evaluations, you'll need additional dependencies for the test sandbox:
+
+```bash
+# Install BigCodeBench optional dependencies (73 packages)
+uv pip install -e ".[bigcodebench]"
+# OR using the setup script:
+./scripts/setup_bigcodebench.sh
+```
+
+**Important**: Always run BigCodeBench evaluations from an activated virtual environment, as the test subprocesses inherit the parent's Python environment to access these dependencies.
+
+## Usage
 
 ### Running scripts
 
@@ -75,9 +77,37 @@ The `read_eval_results.ipynb` notebook is pretty useful for comparing model eval
 
 ## Development
 
+### Verifiers trunk
+
+Currently we're using a private fork of Verifiers that has a bunch of logging and other improvements. We've probably missed a bunch of Verifiers updates this way: it's a TODO to merge in upstream Verifiers changes, and possibly pull relevant changes of ours back into that trunk.
+
 ### Environments
 
-Please implement new RL environments as submodules of `exploration_hacking.environments` and register them in `src/exploration_hacking/environments/__init__.py`; you'll need a config class and a loader method conforming to the standard signature.
+To implement a new RL environment:
+
+1. **Create your environment module** in `src/exploration_hacking/environments/your_env.py` with:
+   - A **config class** inheriting from `pydantic.BaseModel` (e.g., `YourEnvConfig`)
+   - A **loader function** with signature: `load_your_environment(config: YourEnvConfig, seed: int | None = None) -> vf.ToolEnv`
+
+2. **In your loader function**, you should:
+   - Use the `Loader` class from `exploration_hacking.dataset` to load datasets
+   - Configure rewards using `get_rubric()` or `get_conditional_rubric()` from `exploration_hacking.rewards.factory`
+   - Return a `vf.ToolEnv` instance (from the verifiers library)
+
+3. **Register your environment** in `src/exploration_hacking/environments/__init__.py`:
+   ```python
+   ENVIRONMENTS["your_env"] = _EnvironmentDefinition(
+       config_class=YourEnvConfig,
+       loader=load_your_environment
+   )
+   ```
+
+4. **What NOT to touch**:
+   - Don't modify the `_EnvironmentDefinition` class or `load_environment()` function
+   - Don't change the dynamic `EnvironmentConfig` creation logic
+   - The registration system ensures only one environment can be active at a time
+
+See `science.py` or `bigcodebench_env.py` for complete examples.
 
 ### Style
 
