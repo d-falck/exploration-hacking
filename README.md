@@ -8,9 +8,7 @@ Clone the repo using `git clone [url] --recurse-submodules`, cd into it and run 
 
 ### Setup
 
-Copy `.env.example` as `.env` and add your API keys.
-
-Experiments log to [wandb](https://wandb.ai) (for training stats) and [mlflow](https://mlflow.org) (for traces). You'll need an mlflow tracking server running somewhere (specify the url in your `.env`). Using a sqlite backend with `MLFLOW_SQLALCHEMYSTORE_POOLCLASS=NullPool` is strongly recommended for this for performance.
+Copy `.env.example` as `.env` and add your API keys. See the comments in `.env.example` for which keys are required vs optional.
 
 ### Environment-specific Installation
 
@@ -28,6 +26,26 @@ uv pip install -e ".[bigcodebench]"
 **Important**: Always run BigCodeBench evaluations from an activated virtual environment, as the test subprocesses inherit the parent's Python environment to access these dependencies.
 
 ## Usage
+
+### Logging Configuration
+
+This project supports two types of logging:
+
+#### Training Metrics (WandB)
+Training runs log metrics to [Weights & Biases](https://wandb.ai). You'll need a WandB account and API key in your `.env`.
+
+#### Trace Logging (MLflow or Inspect)
+For detailed execution traces during evaluation, you can use either:
+
+1. **Inspect Logging** (recommended for evaluation): Saves traces to local JSON files compatible with the [Inspect AI](https://inspect.ai-safety-institute.org.uk/) format
+   - No additional setup required
+   - Use `--logging-destination inspect` when running evaluation scripts
+   - Traces saved to `outputs/traces/` by default
+
+2. **MLflow Logging** (for centralized tracking): Sends traces to an MLflow tracking server
+   - Requires an MLflow tracking server (specify URL in `.env` as `MLFLOW_TRACKING_URI`)
+   - For SQLite backend, set environment variable: `MLFLOW_SQLALCHEMYSTORE_POOLCLASS=NullPool`
+   - Use `--logging-destination mlflow` when running scripts
 
 ### Running scripts
 
@@ -85,29 +103,57 @@ Currently we're using a private fork of Verifiers that has a bunch of logging an
 
 To implement a new RL environment:
 
-1. **Create your environment module** in `src/exploration_hacking/environments/your_env.py` with:
-   - A **config class** inheriting from `pydantic.BaseModel` (e.g., `YourEnvConfig`)
+1. **Create your environment module** with:
+   - A **config class** inheriting from `BaseEnvironmentConfig` (from `base.py`)
    - A **loader function** with signature: `load_your_environment(config: YourEnvConfig, seed: int | None = None) -> vf.ToolEnv`
 
-2. **In your loader function**, you should:
-   - Use the `Loader` class from `exploration_hacking.dataset` to load datasets
-   - Configure rewards using `get_rubric()` or `get_conditional_rubric()` from `exploration_hacking.rewards.factory`
-   - Return a `vf.ToolEnv` instance (from the verifiers library)
+   You can either:
+   - Create a single file: `src/exploration_hacking/environments/your_env.py`
+   - Or a module directory: `src/exploration_hacking/environments/your_env/__init__.py`
 
-3. **Register your environment** in `src/exploration_hacking/environments/__init__.py`:
+2. **Config class should inherit from `BaseEnvironmentConfig`**, which provides:
    ```python
+   dataset_names: list[str]           # Required
+   prompt_prefixes: dict[str, str] | None
+   system_prompt: str                 # Required
+   split: SplitConfig                 # Required
+   segment_rewards: dict[str, RewardConfig] = {}
+   global_rewards: RewardConfig | None
+   tokenizer: str = "willcb/Qwen3-14B"
+   max_turns: int = 4
+   inline_reasoning: bool = False
+   ```
+   Add any environment-specific fields as needed (e.g., tool configurations).
+
+3. **In your loader function**:
+   - Create a `Loader` instance with prompt/answer extraction functions
+   - Build dataset sources and merge them
+   - Setup tools list if needed
+   - Create rubric using `get_rubric()` or `get_conditional_rubric()`
+   - Build kwargs dict, then add train/test datasets:
+     ```python
+     kwargs = dict(tools=tools, rubric=rubric, parser=parser, ...)
+     if "train" in dataset: kwargs["dataset"] = dataset["train"]
+     if "test" in dataset: kwargs["eval_dataset"] = dataset["test"]
+     return vf.ToolEnv(**kwargs)
+     ```
+
+4. **Register your environment** in `src/exploration_hacking/environments/__init__.py`:
+   ```python
+   from .your_env import YourEnvConfig, load_your_environment
+
    ENVIRONMENTS["your_env"] = _EnvironmentDefinition(
        config_class=YourEnvConfig,
        loader=load_your_environment
    )
    ```
 
-4. **What NOT to touch**:
-   - Don't modify the `_EnvironmentDefinition` class or `load_environment()` function
-   - Don't change the dynamic `EnvironmentConfig` creation logic
-   - The registration system ensures only one environment can be active at a time
+5. **What NOT to modify**:
+   - The `_EnvironmentDefinition` class or `load_environment()` function
+   - The dynamic `EnvironmentConfig` creation logic
+   - The base.py file (unless adding genuinely common fields)
 
-See `science.py` or `bigcodebench_env.py` for complete examples.
+See `science.py` or `bigcodebench/__init__.py` for complete examples.
 
 ### Style
 
