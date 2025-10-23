@@ -1,3 +1,5 @@
+"""VLLM inference server management utilities."""
+
 import subprocess
 import time
 import logging
@@ -38,7 +40,18 @@ def vllm_server(
     lora_path: str | None = None,
     max_lora_rank: int = 32,
 ):
-    """Context manager to run vLLM serve in a subprocess."""
+    """Context manager to run vLLM inference server in a subprocess.
+
+    Args:
+        model: Model name or path to load
+        *args: Additional arguments to pass to vLLM
+        timeout: Seconds to wait for server startup
+        for_training: Use vf-vllm for training mode
+        hide_output: Suppress server output
+        env_vars: Environment variables to set
+        lora_path: Path to LoRA adapter if using
+        max_lora_rank: Maximum LoRA rank
+    """
     logging.info(f"Starting vLLM server with model: {model}")
 
     cmd = []

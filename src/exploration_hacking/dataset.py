@@ -1,3 +1,5 @@
+"""Dataset loading and preparation utilities for RL training."""
+
 from functools import partial
 from typing import Callable
 
@@ -8,6 +10,7 @@ from datasets import Dataset, concatenate_datasets, load_dataset, interleave_dat
 
 
 class DataSource(BaseModel):
+    """Configuration for loading a dataset from HuggingFace."""
     path: str
     name: str
     split: str
@@ -15,6 +18,7 @@ class DataSource(BaseModel):
 
 
 class SplitConfig(BaseModel):
+    """Configuration for dataset splitting into train/test sets."""
     splits: dict[str, float]
     train_split: str | None = None
     test_split: str | None = None
@@ -49,6 +53,11 @@ def multi_split(
 
 
 class Loader:
+    """Handles dataset loading, formatting, and splitting for environments.
+
+    Provides utilities to load datasets from HuggingFace, format them
+    for RL training, and split them into train/test sets.
+    """
     def __init__(
         self,
         prompt_fn: Callable[[dict], str],
@@ -64,6 +73,7 @@ class Loader:
         self.seed = seed
 
     def single_dataset(self, source: DataSource) -> Dataset:
+        """Load and split a single dataset."""
         ds = self._prepare_dataset(source)
         return self._train_test_split(ds)
 

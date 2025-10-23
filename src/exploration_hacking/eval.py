@@ -1,3 +1,5 @@
+"""Model evaluation configuration and utilities."""
+
 from contextlib import nullcontext
 import os
 from typing import Any, Literal
@@ -17,6 +19,7 @@ _DEFAULT_VLLM_ARGS = [
 
 
 class LocalBackend(BaseModel):
+    """Configuration for local VLLM-based evaluation."""
     type: Literal["local"] = "local"
     model: str
     vllm_args: list[str] = _DEFAULT_VLLM_ARGS
@@ -27,6 +30,7 @@ class LocalBackend(BaseModel):
 
 
 class RemoteBackend(BaseModel):
+    """Configuration for remote API-based evaluation."""
     type: Literal["remote"] = "remote"
     model: str
     api_base_url: str
@@ -34,6 +38,7 @@ class RemoteBackend(BaseModel):
 
 
 class EvalConfig(BaseModel):
+    """Main evaluation configuration."""
     backend: LocalBackend | RemoteBackend
     num_examples: int = 5
     rollouts_per_example: int = 2

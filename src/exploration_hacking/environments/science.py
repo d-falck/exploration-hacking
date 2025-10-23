@@ -39,6 +39,7 @@ def _get_letter(record: dict) -> str:
 
 
 def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
+    """Load and merge science datasets based on configuration."""
     loader = Loader(
         prompt_fn=_generate_prompt,
         answer_fn=_get_letter,
@@ -62,6 +63,7 @@ def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
 
 
 def load_science_environment(config: ScienceEnvConfig, seed: int | None = None):
+    """Create a science Q&A environment with optional web search tools."""
     ds = _get_dataset(config, seed)
     parser = vf.XMLParser(fields=["think", "answer"])
 

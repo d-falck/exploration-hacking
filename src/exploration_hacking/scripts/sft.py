@@ -1,3 +1,8 @@
+"""Supervised Fine-Tuning (SFT) training script.
+
+Launches distributed training for supervised learning on demonstration data.
+"""
+
 from importlib import resources
 import importlib.util
 import os

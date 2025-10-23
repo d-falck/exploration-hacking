@@ -1,3 +1,5 @@
+"""Web search and summarization tools for agent environments."""
+
 from exa_py import AsyncExa
 from tavily import AsyncTavilyClient
 

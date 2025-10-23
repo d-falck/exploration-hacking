@@ -54,6 +54,7 @@ class BigcodebenchLoader(Loader):
 
 
 def _get_dataset(config: BigcodebenchEnvConfig, seed: int | None = None):
+    """Load BigCodeBench datasets with metadata for code evaluation."""
     loader = BigcodebenchLoader(
         prompt_fn=_generate_prompt,
         answer_fn=lambda x: "",  # BigCodeBench validates via test execution, not answer comparison
@@ -87,6 +88,7 @@ def _get_dataset(config: BigcodebenchEnvConfig, seed: int | None = None):
 
 
 def load_bigcodebench_environment(config: BigcodebenchEnvConfig, seed: int | None = None):
+    """Create a BigCodeBench environment for code generation tasks."""
     ds = _get_dataset(config, seed)
     parser = vf.XMLParser(fields=["think", "answer"])
 

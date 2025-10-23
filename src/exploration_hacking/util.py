@@ -1,3 +1,5 @@
+"""Utility functions for logging, metrics, and experiment management."""
+
 import warnings
 
 # Suppress Pydantic v2 compatibility warnings from dependencies
