@@ -2,8 +2,8 @@
 
 from typing import Dict, Any
 
-from .sandbox import untrusted_check
-from .sanitize import sanitize
+from ._sandbox import untrusted_check
+from ._sanitize import sanitize
 
 
 def evaluate_single_sample(

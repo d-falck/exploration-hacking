@@ -21,16 +21,10 @@ dependencies = [
     "inspect_ai",
 ]
 
-[dependency-groups]
-dev = [
-    "ipykernel",
-    "ipywidgets",
-    "jupyter",
-    "plotly",
-]
+[project.optional-dependencies]
 bigcodebench = [
     "beautifulsoup4",
-    "blake3", 
+    "blake3",
     "chardet",
     "cryptography",
     "Django",
@@ -38,7 +32,7 @@ bigcodebench = [
     "docxtpl",
     "Faker",
     "flask_login",
-    "flask_restful", 
+    "flask_restful",
     "flask_wtf",
     "Flask-Mail",
     "flask",
@@ -97,6 +91,14 @@ bigcodebench = [
     "xlrd",
     "xlwt",
     "xmltodict",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel",
+    "ipywidgets",
+    "jupyter",
+    "plotly",
 ]
 
 [tool.uv]
