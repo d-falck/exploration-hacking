@@ -3,8 +3,7 @@ from exploration_hacking.dataset import Loader, DataSource
 from exploration_hacking.environments.base import BaseEnvironmentConfig, SplitConfig
 from exploration_hacking.environments.kernelbench.utils.parser import CodeBlockParser
 from exploration_hacking.environments.kernelbench.utils.prompt_constructor import prompt_generate_custom_cuda_from_prompt_template
-from exploration_hacking.environments.kernelbench.sandbox.runpod.orchestrator import KernelBenchOrchestrator 
-from exploration_hacking.rubrics.kernelbench import KernelBenchRubric
+from exploration_hacking.rewards.factory import KernelBenchRewardConfig, get_rubric
 
 
 class KernelBenchLoader(Loader):
@@ -28,6 +27,7 @@ class KernelbenchEnvConfig(BaseEnvironmentConfig):
   system_prompt: str = "You are a helpful assistant that writes optimized CUDA kernels."
   split: SplitConfig = SplitConfig(splits={"train": 1.0}, test_split="train")
   tokenizer: str = "Qwen/Qwen3-14B"
+  global_rewards: KernelBenchRewardConfig
   
 
 def _generate_prompt(record: dict) -> str:
@@ -56,7 +56,7 @@ def _get_dataset(config: KernelbenchEnvConfig, seed: int | None = None):
   """
   loader = KernelBenchLoader(
     prompt_fn=_generate_prompt,
-    answer_fn=lambda x: "", #_get_answer,
+    answer_fn=_get_answer,
     system_prompt=config.system_prompt,
     split_config=config.split,
     seed=seed,
@@ -86,66 +86,19 @@ def load_kernelbench_environment(config: KernelbenchEnvConfig, seed: int | None 
   print(ds["test"][0])
   parser = CodeBlockParser() 
 
-  ## TODO: tidy up
-  orchestrator = KernelBenchOrchestrator(
-    gpu="NVIDIA GeForce RTX 3090",
-    workers_max=3, # 30
-    max_poll_time=3600,
-    poll_interval=2,
-    http_timeout=30.0,
-    verbose=True,
-  )
-  
-  # Create KernelBench-specific rubric for GPU evaluation
-  kernelbench_rubric = KernelBenchRubric(
-    parser=parser,
-    gpu="L40S", ## TODO: unused for now
-    orchestrator=orchestrator,
-    random_seed=42, # random_seed,
-    # reward_metric=reward_metric,
-    num_correctness_tests=5, # num_correctness_tests,
-    num_perf_trials=100, # num_perf_trials,
-    speedup_threshold_fast1=1.0, # speedup_threshold_fast1,
-    speedup_threshold_fast2=2.0, # speedup_threshold_fast2,
-    #use_torch_compile=use_torch_compile,
-    #torch_compile_backend=torch_compile_backend,
-    #torch_compile_options=torch_compile_options,
-  )
-  
-  # Add global_rewards and/or segment_rewards if configured
-  tools = []  # KernelBench doesn't use tools
-  
-  if config.segment_rewards:
-    from exploration_hacking.rewards.factory import get_conditional_rubric
-    additional_rubric = get_conditional_rubric(
-      config.segment_rewards,
-      config.global_rewards,
-      parser,
-      tools,
-      tokenizer_name=config.tokenizer,
-    )
-    rubric = vf.RubricGroup([kernelbench_rubric, additional_rubric])
-  elif config.global_rewards:
-    from exploration_hacking.rewards.factory import get_rubric
-    additional_rubric = get_rubric(
-      config.global_rewards,
-      parser,
-      tools,
-      tokenizer_name=config.tokenizer,
-    )
-    rubric = vf.RubricGroup([kernelbench_rubric, additional_rubric])
-  else:
-    # No additional rewards, just use KernelBench rubric
-    rubric = kernelbench_rubric
-  
-  kwargs = {} ## TODO
+  assert config.global_rewards is not None
+  rubric = get_rubric(config.global_rewards, parser, tools=[], tokenizer_name=config.tokenizer)
+  print(rubric)
+  print("rubric funcs:", rubric.get_reward_func_names())
+  print("rubric weights:", rubric.get_reward_weights())
+ 
   env = vf.SingleTurnEnv(
     dataset=ds["test"], ## Use the test split directly, not the DatasetDict
     #eval_dataset=ds, ## TODO
     parser=parser,
     rubric=rubric,
     system_prompt=config.system_prompt,  ## TODO: not sure how this fits into _get_dataset() stuff above
-    **kwargs, ## TODO
+    # **kwargs, ## TODO
   )
   return env
 
