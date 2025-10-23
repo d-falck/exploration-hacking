@@ -160,9 +160,9 @@ def run_grpo(
             continue
 
         obj = getattr(config, field)
-        cls = obj.__class__
         # Only process if it's a Pydantic model with model_fields
-        if hasattr(cls, 'model_fields'):
+        if hasattr(obj.__class__, 'model_fields'):
+            cls = obj.__class__
             for field in cls.model_fields:
                 setattr(args, field, getattr(obj, field))
 
