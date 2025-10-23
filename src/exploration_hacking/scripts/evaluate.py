@@ -1,3 +1,8 @@
+"""Model evaluation script.
+
+Evaluates models on RL environments and saves results with detailed metrics.
+"""
+
 import pickle
 import json
 from pathlib import Path

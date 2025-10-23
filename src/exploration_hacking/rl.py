@@ -1,3 +1,5 @@
+"""Reinforcement learning training utilities and configurations."""
+
 from concurrent.futures import ThreadPoolExecutor
 import random
 from contextlib import contextmanager
@@ -45,6 +47,7 @@ def _get_model_and_tokenizer_with_lora(
 
 
 class _PeftConfig(BaseModel):
+    """Configuration for Parameter-Efficient Fine-Tuning (LoRA)."""
     r: int = 16
     lora_alpha: int = 32
     target_modules: list[str] | str = "all-linear"
@@ -52,6 +55,7 @@ class _PeftConfig(BaseModel):
 
 
 class _HyperparametersConfig(BaseModel):
+    """Training hyperparameters for RL."""
     learning_rate: float = 3e-5
     warmup_steps: int = 10
     max_steps: int = 1000
@@ -62,6 +66,7 @@ class _HyperparametersConfig(BaseModel):
 
 
 class _SamplingConfig(BaseModel):
+    """Configuration for model sampling during generation."""
     max_prompt_length: int = 1024
     max_seq_len: int = 3072
     max_tokens: int = 1024  # Per response
@@ -71,10 +76,10 @@ class _SamplingConfig(BaseModel):
 
 
 class _BatchingConfig(BaseModel):
-    """
+    """Batching configuration for training.
+
     These are reparameterized from the TRL ones to be less confusing.
     """
-
     mini_batch_size: int = 4
     group_size: int = 4
     rollouts_per_gpu: int = 1

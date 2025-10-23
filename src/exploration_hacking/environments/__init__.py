@@ -29,6 +29,11 @@ EnvironmentConfig = create_model(
 
 
 def load_environment(config: EnvironmentConfig, seed: int | None = None):
+    """Load the configured environment.
+
+    Ensures exactly one environment is configured and loads it using
+    its registered loader function.
+    """
     configured_envs = [
         name for name in ENVIRONMENTS if getattr(config, name) is not None
     ]

@@ -1,3 +1,8 @@
+"""GRPO (Group Relative Policy Optimization) training script.
+
+Launches distributed RL training with a VLLM inference server.
+"""
+
 from importlib import resources
 import importlib.util
 import os

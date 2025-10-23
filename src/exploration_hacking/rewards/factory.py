@@ -1,3 +1,5 @@
+"""Factory functions and configurations for creating reward rubrics."""
+
 from typing import Callable
 
 from pydantic import BaseModel
@@ -26,6 +28,7 @@ def _get_bcb_functions():
 
 
 class LengthPenaltyConfig(BaseModel):
+    """Configuration for penalizing response length."""
     min_length: int = 0
     max_length: int
     under_length_penalty_per_token: float = 0.0
@@ -33,6 +36,7 @@ class LengthPenaltyConfig(BaseModel):
 
 
 class JudgeRewardConfig(BaseModel):
+    """Configuration for LLM-based trajectory evaluation."""
     model: str = "openrouter/openai/gpt-5-mini"
     prompt: str
     weight: float
@@ -42,11 +46,13 @@ class JudgeRewardConfig(BaseModel):
 
 
 class ToolUseRewardConfig(BaseModel):
+    """Configuration for rewarding tool usage."""
     weight: float
     cap: float = 1.0
 
 
 class SemanticNoveltyConfig(BaseModel):
+    """Configuration for rewarding semantically novel responses."""
     weight: float = 1.0
     history_size: int = 200
     history_window_hours: int = 48
@@ -55,6 +61,7 @@ class SemanticNoveltyConfig(BaseModel):
 
 
 class RewardConfig(BaseModel):
+    """Master configuration for all reward types in an environment."""
     accuracy_reward_weight: float = 0.0
     bcb_pass_at_1_reward_weight: float = 0.0
     bcb_test_level_accuracy_reward_weight: float = 0.0  # Continuous rewards based on test pass rate
@@ -231,6 +238,7 @@ def get_rubric(
     tools: list,
     tokenizer_name: str,
 ):
+    """Create a reward rubric from configuration."""
     return _construct_rubric(
         config,
         parser,
@@ -246,6 +254,7 @@ def get_conditional_rubric(
     tools: list,
     tokenizer_name: str,
 ):
+    """Create a rubric with segment-specific and global rewards."""
     rubrics = []
 
     if global_config:
