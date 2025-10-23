@@ -37,12 +37,12 @@ Training runs log metrics to [Weights & Biases](https://wandb.ai). You'll need a
 #### Trace Logging (MLflow or Inspect)
 For detailed execution traces during evaluation, you can use either:
 
-1. **Inspect Logging** (recommended for evaluation): Saves traces to local JSON files compatible with the [Inspect AI](https://inspect.ai-safety-institute.org.uk/) format
+1. **Inspect Logging** (recommended): Saves traces to local JSON files compatible with the [Inspect AI](https://inspect.ai-safety-institute.org.uk/) format
    - No additional setup required
    - Use `--logging-destination inspect` when running evaluation scripts
    - Traces saved to `outputs/traces/` by default
 
-2. **MLflow Logging** (for centralized tracking): Sends traces to an MLflow tracking server
+2. **MLflow Logging** (legacy): Sends traces to an MLflow tracking server
    - Requires an MLflow tracking server (specify URL in `.env` as `MLFLOW_TRACKING_URI`)
    - For SQLite backend, set environment variable: `MLFLOW_SQLALCHEMYSTORE_POOLCLASS=NullPool`
    - Use `--logging-destination mlflow` when running scripts
