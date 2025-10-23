@@ -1,0 +1,30 @@
+seed: 42
+
+environment:
+  kernelbench:
+    dataset_names:
+      - level_1
+    split:
+      splits:
+        train: 1.0
+      test_split: train
+    system_prompt: ""
+
+eval:
+  backend:
+    type: local
+    # model: Qwen/Qwen3-14B
+    model: Qwen/Qwen3-0.6B
+    # lora_path: /workspace/exploration-hacking/outputs/wise-firefly-53/checkpoint-285
+    # max_lora_rank: 64
+    num_gpus: 1
+  num_examples: -1
+  rollouts_per_example: 1
+  max_concurrent: 500
+  max_tokens: 16384
+  extra_sampling_args:
+    temperature: 1.0
+    top_p: 0.95
+
+output_path: artifacts/data/kernelbench/kernelbench-eval.pkl
+eval_run_name: kernelbench-eval

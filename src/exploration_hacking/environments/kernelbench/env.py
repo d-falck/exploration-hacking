@@ -12,7 +12,7 @@ class KernelBenchLoader(Loader):
     base_record = super()._format_record(record, segment, prompt_prefix)
     base_record["info"].update({
       "level": record.get("level"),
-      "problem_name": record.get("name"),
+      "name": record.get("name"),
       "problem_id": record.get("problem_id"),
     })
     return base_record
@@ -80,7 +80,7 @@ def _get_dataset(config: KernelbenchEnvConfig, seed: int | None = None):
   return loader.merge_datasets(sources)
 
 def load_kernelbench_environment(config: KernelbenchEnvConfig, seed: int | None = None) -> vf.SingleTurnEnv:
-  """Load KernelBench environment with dataset."""
+  """Load KernelBench environment with dataset and configurable rewards."""
   ds = _get_dataset(config, seed=seed)
   print(ds)
   print(ds["test"][0])
@@ -95,8 +95,9 @@ def load_kernelbench_environment(config: KernelbenchEnvConfig, seed: int | None 
     http_timeout=30.0,
     verbose=True,
   )
-  ## TODO: tidy up
-  rubric = KernelBenchRubric(
+  
+  # Create KernelBench-specific rubric for GPU evaluation
+  kernelbench_rubric = KernelBenchRubric(
     parser=parser,
     gpu="L40S", ## TODO: unused for now
     orchestrator=orchestrator,
@@ -110,9 +111,36 @@ def load_kernelbench_environment(config: KernelbenchEnvConfig, seed: int | None 
     #torch_compile_backend=torch_compile_backend,
     #torch_compile_options=torch_compile_options,
   )
+  
+  # Add global_rewards and/or segment_rewards if configured
+  tools = []  # KernelBench doesn't use tools
+  
+  if config.segment_rewards:
+    from exploration_hacking.rewards.factory import get_conditional_rubric
+    additional_rubric = get_conditional_rubric(
+      config.segment_rewards,
+      config.global_rewards,
+      parser,
+      tools,
+      tokenizer_name=config.tokenizer,
+    )
+    rubric = vf.RubricGroup([kernelbench_rubric, additional_rubric])
+  elif config.global_rewards:
+    from exploration_hacking.rewards.factory import get_rubric
+    additional_rubric = get_rubric(
+      config.global_rewards,
+      parser,
+      tools,
+      tokenizer_name=config.tokenizer,
+    )
+    rubric = vf.RubricGroup([kernelbench_rubric, additional_rubric])
+  else:
+    # No additional rewards, just use KernelBench rubric
+    rubric = kernelbench_rubric
+  
   kwargs = {} ## TODO
   env = vf.SingleTurnEnv(
-    dataset=ds, ## TODO: not sure how this fits into _get_dataset() stuff above
+    dataset=ds["test"], ## Use the test split directly, not the DatasetDict
     #eval_dataset=ds, ## TODO
     parser=parser,
     rubric=rubric,
