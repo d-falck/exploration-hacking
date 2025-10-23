@@ -7,6 +7,17 @@ from exploration_hacking.environments.kernelbench.sandbox.runpod.orchestrator im
 from exploration_hacking.rubrics.kernelbench import KernelBenchRubric
 
 
+class KernelBenchLoader(Loader):
+  def _format_record(self, record: dict, segment: str, prompt_prefix: str) -> dict:
+    base_record = super()._format_record(record, segment, prompt_prefix)
+    base_record["info"].update({
+      "level": record.get("level"),
+      "problem_name": record.get("name"),
+      "problem_id": record.get("problem_id"),
+    })
+    return base_record
+
+
 class KernelbenchEnvConfig(BaseEnvironmentConfig):
   """Configuration for KernelBench environment.
   
@@ -43,9 +54,9 @@ def _get_dataset(config: KernelbenchEnvConfig, seed: int | None = None):
   - Splits: level_1, level_2, level_3, level_4 (not subsets!)
   - Each record has: code, name, problem_id
   """
-  loader = Loader(
+  loader = KernelBenchLoader(
     prompt_fn=_generate_prompt,
-    answer_fn=_get_answer,
+    answer_fn=lambda x: "", #_get_answer,
     system_prompt=config.system_prompt,
     split_config=config.split,
     seed=seed,
