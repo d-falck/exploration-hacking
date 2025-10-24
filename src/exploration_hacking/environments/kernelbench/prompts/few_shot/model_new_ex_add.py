@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.utils.cpp_extension import load_inline
 
 # Define the custom CUDA kernel for element-wise addition
-elementwise_add_source = """
+source = """
 #include <torch/extension.h>
 #include <cuda_runtime.h>
 
@@ -28,15 +28,15 @@ torch::Tensor elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {
 }
 """
 
-elementwise_add_cpp_source = (
+cpp_src = (
     "torch::Tensor elementwise_add_cuda(torch::Tensor a, torch::Tensor b);"
 )
 
 # Compile the inline CUDA code for element-wise addition
 elementwise_add = load_inline(
     name="elementwise_add",
-    cpp_sources=elementwise_add_cpp_source,
-    cuda_sources=elementwise_add_source,
+    cpp_sources=cpp_src,
+    cuda_sources=source,
     functions=["elementwise_add_cuda"],
     verbose=True,
     extra_cflags=[""],
