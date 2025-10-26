@@ -653,8 +653,16 @@ class InspectEvalAdapter:
             for key in sample_info.keys():
                 if key.startswith("judge_response_"):
                     metric_name = key.replace("judge_response_", "")
+                    # Try direct match first
                     if metric_name in all_scores:
                         judge_explanations[metric_name] = sample_info[key]
+                    else:
+                        # Try to match with segment prefix (e.g., eval_segment_eval_use_tool_badly)
+                        # Look for any score key that ends with _segment_{metric_name}
+                        for score_key in all_scores.keys():
+                            if score_key.endswith(f"_segment_{metric_name}"):
+                                judge_explanations[score_key] = sample_info[key]
+                                break
 
             # Handle generic "judge_response" by matching the score
             if "judge_response" in sample_info and "judge_response" not in judge_explanations:
@@ -774,7 +782,7 @@ class InspectEvalAdapter:
                     if info and "segment" in info:
                         segments.add(info["segment"])
 
-                # Compute statistics for each segment
+                # Compute statistics for each segment - simplified version
                 for segment in sorted(segments):
                     # Get indices for this segment
                     segment_indices = [
@@ -785,50 +793,36 @@ class InspectEvalAdapter:
                     if not segment_indices:
                         continue
 
-                    # Compute segment-specific reward statistics
+                    # Only compute reward statistics per segment (cleaner output)
                     if outputs.reward:
                         segment_reward_values = [
                             outputs.reward[i] for i in segment_indices
                             if i < len(outputs.reward) and outputs.reward[i] is not None
                         ]
                         if segment_reward_values:
-                            segment_reward_metrics = {
-                                "mean": EvalMetric(name="mean", value=statistics.mean(segment_reward_values)),
-                                "median": EvalMetric(name="median", value=statistics.median(segment_reward_values)),
-                            }
+                            # Use cleaner metric names
+                            segment_metrics = {}
+                            segment_metrics[f"segment_mean_{segment}"] = EvalMetric(
+                                name=f"segment_mean_{segment}",
+                                value=statistics.mean(segment_reward_values)
+                            )
+                            segment_metrics[f"segment_median_{segment}"] = EvalMetric(
+                                name=f"segment_median_{segment}",
+                                value=statistics.median(segment_reward_values)
+                            )
                             if len(segment_reward_values) > 1:
-                                segment_reward_metrics["std"] = EvalMetric(name="std", value=statistics.stdev(segment_reward_values))
+                                segment_metrics[f"segment_std_{segment}"] = EvalMetric(
+                                    name=f"segment_std_{segment}",
+                                    value=statistics.stdev(segment_reward_values)
+                                )
 
                             eval_scores.append(EvalScore(
-                                name=f"reward_{segment}",
-                                scorer=f"reward_{segment}",
-                                metrics=segment_reward_metrics,
+                                name=f"segment_{segment}",
+                                scorer="segment_stats",
+                                metrics=segment_metrics,
                                 scored_samples=len(segment_reward_values),
                                 unscored_samples=len(segment_indices) - len(segment_reward_values),
-                                metadata={"segment": segment}
-                            ))
-
-                    # Compute segment-specific metric statistics
-                    for metric_name, metric_values in outputs.metrics.items():
-                        segment_metric_values = [
-                            metric_values[i] for i in segment_indices
-                            if i < len(metric_values) and metric_values[i] is not None
-                        ]
-                        if segment_metric_values:
-                            segment_metric_stats = {
-                                "mean": EvalMetric(name="mean", value=statistics.mean(segment_metric_values)),
-                                "median": EvalMetric(name="median", value=statistics.median(segment_metric_values)),
-                            }
-                            if len(segment_metric_values) > 1:
-                                segment_metric_stats["std"] = EvalMetric(name="std", value=statistics.stdev(segment_metric_values))
-
-                            eval_scores.append(EvalScore(
-                                name=f"{metric_name}_{segment}",
-                                scorer=f"{metric_name}_{segment}",
-                                metrics=segment_metric_stats,
-                                scored_samples=len(segment_metric_values),
-                                unscored_samples=len(segment_indices) - len(segment_metric_values),
-                                metadata={"segment": segment}
+                                metadata={"segment": segment, "n_samples": len(segment_indices)}
                             ))
 
             eval_results = EvalResults(
