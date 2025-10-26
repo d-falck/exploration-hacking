@@ -749,7 +749,6 @@ class InspectEvalAdapter:
                 if reward_values:
                     reward_metrics = {
                         "mean": EvalMetric(name="mean", value=statistics.mean(reward_values)),
-                        "median": EvalMetric(name="median", value=statistics.median(reward_values)),
                     }
                     if len(reward_values) > 1:
                         reward_metrics["std"] = EvalMetric(name="std", value=statistics.stdev(reward_values))
@@ -769,10 +768,6 @@ class InspectEvalAdapter:
                                 reward_metrics[f"segment_mean_{segment}"] = EvalMetric(
                                     name=f"segment_mean_{segment}",
                                     value=statistics.mean(segment_reward_values)
-                                )
-                                reward_metrics[f"segment_median_{segment}"] = EvalMetric(
-                                    name=f"segment_median_{segment}",
-                                    value=statistics.median(segment_reward_values)
                                 )
                                 if len(segment_reward_values) > 1:
                                     reward_metrics[f"segment_std_{segment}"] = EvalMetric(
@@ -794,7 +789,6 @@ class InspectEvalAdapter:
                 if values:
                     metric_stats = {
                         "mean": EvalMetric(name="mean", value=statistics.mean(values)),
-                        "median": EvalMetric(name="median", value=statistics.median(values)),
                     }
                     if len(values) > 1:
                         metric_stats["std"] = EvalMetric(name="std", value=statistics.stdev(values))
@@ -814,10 +808,6 @@ class InspectEvalAdapter:
                                 metric_stats[f"segment_mean_{segment}"] = EvalMetric(
                                     name=f"segment_mean_{segment}",
                                     value=statistics.mean(segment_metric_values)
-                                )
-                                metric_stats[f"segment_median_{segment}"] = EvalMetric(
-                                    name=f"segment_median_{segment}",
-                                    value=statistics.median(segment_metric_values)
                                 )
                                 if len(segment_metric_values) > 1:
                                     metric_stats[f"segment_std_{segment}"] = EvalMetric(
