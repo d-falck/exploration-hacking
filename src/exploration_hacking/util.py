@@ -329,6 +329,7 @@ class InspectTraceLogger(TraceLogger):
         model_name: str,
         task_metadata: dict | None = None,
         compute_summary_stats: bool = True,
+        compute_segment_stats: bool = True,
         save_every_n_logs: int | None = 1,
         **kwargs,
     ):
@@ -337,6 +338,7 @@ class InspectTraceLogger(TraceLogger):
         self.model_name = model_name
         self.task_metadata = task_metadata or {}
         self.compute_summary_stats = compute_summary_stats
+        self.compute_segment_stats = compute_segment_stats
         self.save_every_n_logs = save_every_n_logs
 
         # Accumulate data during logging
@@ -429,6 +431,7 @@ class InspectTraceLogger(TraceLogger):
             task_name=self.experiment_name,
             task_metadata=self.task_metadata,
             compute_summary_stats=self.compute_summary_stats,
+            compute_segment_stats=self.compute_segment_stats,
         )
 
         print(f"Periodic save: {len(self.prompts)} samples to {checkpoint_path} (log iteration {self.log_call_count})")
@@ -467,6 +470,7 @@ class InspectTraceLogger(TraceLogger):
             task_name=self.experiment_name,
             task_metadata=self.task_metadata,
             compute_summary_stats=self.compute_summary_stats,
+            compute_segment_stats=self.compute_segment_stats,
         )
 
 
@@ -511,6 +515,15 @@ class InspectEvalAdapter:
                         tc_args = tc.get("function", {}).get("arguments", "{}")
                         tc_arguments = json.loads(tc_args) if isinstance(tc_args, str) else tc_args
 
+                    # Double-check: if tc_arguments is still a string after parsing, parse it again
+                    # This handles cases where the data was double-JSON-encoded
+                    if isinstance(tc_arguments, str):
+                        try:
+                            tc_arguments = json.loads(tc_arguments)
+                        except (json.JSONDecodeError, TypeError):
+                            # If it can't be parsed, wrap it in a dict
+                            tc_arguments = {"raw": tc_arguments}
+
                     tool_calls_inspect.append(
                         ToolCall(
                             id=tc_id,
@@ -544,6 +557,7 @@ class InspectEvalAdapter:
         task_name: str = "evaluation",
         task_metadata: dict | None = None,
         compute_summary_stats: bool = True,
+        compute_segment_stats: bool = True,
     ):
         """
         Convert GenerateOutputs to Inspect AI EvalLog format and save as .eval file.
@@ -555,6 +569,7 @@ class InspectEvalAdapter:
             task_name: Name of the evaluation task (default: "evaluation")
             task_metadata: Optional metadata dict for task-level information
             compute_summary_stats: If True, compute and add summary statistics (default: True)
+            compute_segment_stats: If True, compute segment-level statistics when segments are present (default: True)
 
         Example:
             >>> from verifiers import GenerateOutputs
@@ -672,6 +687,15 @@ class InspectEvalAdapter:
                         explanation=judge_explanations.get(metric_name)
                     )
 
+            # Add segment indicator scores if segment info is present
+            if sample_info and "segment" in sample_info:
+                segment_name = sample_info["segment"]
+                # Add a score indicating which segment this sample belongs to
+                scores[f"segment_{segment_name}"] = EvalSampleScore(
+                    value=1.0,
+                    explanation=f"Sample belongs to segment: {segment_name}"
+                )
+
             # Extract metadata from info (excluding judge responses which are now in scores)
             sample_metadata = {}
             if sample_info:
@@ -703,6 +727,7 @@ class InspectEvalAdapter:
         if compute_summary_stats:
             eval_scores = []
 
+            # First, compute overall statistics
             # Compute statistics for reward
             if outputs.reward:
                 reward_values = [r for r in outputs.reward if r is not None]
@@ -740,6 +765,71 @@ class InspectEvalAdapter:
                         scored_samples=len(values),
                         unscored_samples=len(metric_values) - len(values),
                     ))
+
+            # Now compute segment-level statistics if requested
+            if compute_segment_stats:
+                # First, identify all unique segments
+                segments = set()
+                for info in outputs.info:
+                    if info and "segment" in info:
+                        segments.add(info["segment"])
+
+                # Compute statistics for each segment
+                for segment in sorted(segments):
+                    # Get indices for this segment
+                    segment_indices = [
+                        i for i, info in enumerate(outputs.info)
+                        if info and info.get("segment") == segment
+                    ]
+
+                    if not segment_indices:
+                        continue
+
+                    # Compute segment-specific reward statistics
+                    if outputs.reward:
+                        segment_reward_values = [
+                            outputs.reward[i] for i in segment_indices
+                            if i < len(outputs.reward) and outputs.reward[i] is not None
+                        ]
+                        if segment_reward_values:
+                            segment_reward_metrics = {
+                                "mean": EvalMetric(name="mean", value=statistics.mean(segment_reward_values)),
+                                "median": EvalMetric(name="median", value=statistics.median(segment_reward_values)),
+                            }
+                            if len(segment_reward_values) > 1:
+                                segment_reward_metrics["std"] = EvalMetric(name="std", value=statistics.stdev(segment_reward_values))
+
+                            eval_scores.append(EvalScore(
+                                name=f"reward_{segment}",
+                                scorer=f"reward_{segment}",
+                                metrics=segment_reward_metrics,
+                                scored_samples=len(segment_reward_values),
+                                unscored_samples=len(segment_indices) - len(segment_reward_values),
+                                metadata={"segment": segment}
+                            ))
+
+                    # Compute segment-specific metric statistics
+                    for metric_name, metric_values in outputs.metrics.items():
+                        segment_metric_values = [
+                            metric_values[i] for i in segment_indices
+                            if i < len(metric_values) and metric_values[i] is not None
+                        ]
+                        if segment_metric_values:
+                            segment_metric_stats = {
+                                "mean": EvalMetric(name="mean", value=statistics.mean(segment_metric_values)),
+                                "median": EvalMetric(name="median", value=statistics.median(segment_metric_values)),
+                            }
+                            if len(segment_metric_values) > 1:
+                                segment_metric_stats["std"] = EvalMetric(name="std", value=statistics.stdev(segment_metric_values))
+
+                            eval_scores.append(EvalScore(
+                                name=f"{metric_name}_{segment}",
+                                scorer=f"{metric_name}_{segment}",
+                                metrics=segment_metric_stats,
+                                scored_samples=len(segment_metric_values),
+                                unscored_samples=len(segment_indices) - len(segment_metric_values),
+                                metadata={"segment": segment}
+                            ))
 
             eval_results = EvalResults(
                 total_samples=len(samples),
