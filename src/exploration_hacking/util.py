@@ -735,6 +735,13 @@ class InspectEvalAdapter:
         if compute_summary_stats:
             eval_scores = []
 
+            # Identify segments first if computing segment stats
+            segments = set()
+            if compute_segment_stats:
+                for info in outputs.info:
+                    if info and "segment" in info:
+                        segments.add(info["segment"])
+
             # First, compute overall statistics
             # Compute statistics for reward
             if outputs.reward:
@@ -746,6 +753,32 @@ class InspectEvalAdapter:
                     }
                     if len(reward_values) > 1:
                         reward_metrics["std"] = EvalMetric(name="std", value=statistics.stdev(reward_values))
+
+                    # Add segment-level statistics for reward
+                    if compute_segment_stats and segments:
+                        for segment in sorted(segments):
+                            segment_indices = [
+                                i for i, info in enumerate(outputs.info)
+                                if info and info.get("segment") == segment
+                            ]
+                            segment_reward_values = [
+                                outputs.reward[i] for i in segment_indices
+                                if i < len(outputs.reward) and outputs.reward[i] is not None
+                            ]
+                            if segment_reward_values:
+                                reward_metrics[f"segment_mean_{segment}"] = EvalMetric(
+                                    name=f"segment_mean_{segment}",
+                                    value=statistics.mean(segment_reward_values)
+                                )
+                                reward_metrics[f"segment_median_{segment}"] = EvalMetric(
+                                    name=f"segment_median_{segment}",
+                                    value=statistics.median(segment_reward_values)
+                                )
+                                if len(segment_reward_values) > 1:
+                                    reward_metrics[f"segment_std_{segment}"] = EvalMetric(
+                                        name=f"segment_std_{segment}",
+                                        value=statistics.stdev(segment_reward_values)
+                                    )
 
                     eval_scores.append(EvalScore(
                         name="reward",
@@ -766,6 +799,32 @@ class InspectEvalAdapter:
                     if len(values) > 1:
                         metric_stats["std"] = EvalMetric(name="std", value=statistics.stdev(values))
 
+                    # Compute segment-level statistics for each metric
+                    if compute_segment_stats and segments:
+                        for segment in sorted(segments):
+                            segment_indices = [
+                                i for i, info in enumerate(outputs.info)
+                                if info and info.get("segment") == segment
+                            ]
+                            segment_metric_values = [
+                                metric_values[i] for i in segment_indices
+                                if i < len(metric_values) and metric_values[i] is not None
+                            ]
+                            if segment_metric_values:
+                                metric_stats[f"segment_mean_{segment}"] = EvalMetric(
+                                    name=f"segment_mean_{segment}",
+                                    value=statistics.mean(segment_metric_values)
+                                )
+                                metric_stats[f"segment_median_{segment}"] = EvalMetric(
+                                    name=f"segment_median_{segment}",
+                                    value=statistics.median(segment_metric_values)
+                                )
+                                if len(segment_metric_values) > 1:
+                                    metric_stats[f"segment_std_{segment}"] = EvalMetric(
+                                        name=f"segment_std_{segment}",
+                                        value=statistics.stdev(segment_metric_values)
+                                    )
+
                     eval_scores.append(EvalScore(
                         name=metric_name,
                         scorer=metric_name,
@@ -773,57 +832,6 @@ class InspectEvalAdapter:
                         scored_samples=len(values),
                         unscored_samples=len(metric_values) - len(values),
                     ))
-
-            # Now compute segment-level statistics if requested
-            if compute_segment_stats:
-                # First, identify all unique segments
-                segments = set()
-                for info in outputs.info:
-                    if info and "segment" in info:
-                        segments.add(info["segment"])
-
-                # Compute statistics for each segment - simplified version
-                for segment in sorted(segments):
-                    # Get indices for this segment
-                    segment_indices = [
-                        i for i, info in enumerate(outputs.info)
-                        if info and info.get("segment") == segment
-                    ]
-
-                    if not segment_indices:
-                        continue
-
-                    # Only compute reward statistics per segment (cleaner output)
-                    if outputs.reward:
-                        segment_reward_values = [
-                            outputs.reward[i] for i in segment_indices
-                            if i < len(outputs.reward) and outputs.reward[i] is not None
-                        ]
-                        if segment_reward_values:
-                            # Use cleaner metric names
-                            segment_metrics = {}
-                            segment_metrics[f"segment_mean_{segment}"] = EvalMetric(
-                                name=f"segment_mean_{segment}",
-                                value=statistics.mean(segment_reward_values)
-                            )
-                            segment_metrics[f"segment_median_{segment}"] = EvalMetric(
-                                name=f"segment_median_{segment}",
-                                value=statistics.median(segment_reward_values)
-                            )
-                            if len(segment_reward_values) > 1:
-                                segment_metrics[f"segment_std_{segment}"] = EvalMetric(
-                                    name=f"segment_std_{segment}",
-                                    value=statistics.stdev(segment_reward_values)
-                                )
-
-                            eval_scores.append(EvalScore(
-                                name=f"segment_{segment}",
-                                scorer="segment_stats",
-                                metrics=segment_metrics,
-                                scored_samples=len(segment_reward_values),
-                                unscored_samples=len(segment_indices) - len(segment_reward_values),
-                                metadata={"segment": segment, "n_samples": len(segment_indices)}
-                            ))
 
             eval_results = EvalResults(
                 total_samples=len(samples),
