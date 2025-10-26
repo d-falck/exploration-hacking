@@ -6,8 +6,8 @@ output_path: artifacts/data/science_conditional/sft_data_benign
 filter_metrics:
   # accuracy:
   #   above_threshold: 0.7
-  use_tool_well:
-    above_threshold: 0.5
+  # use_tool_well:
+  #   above_threshold: 0.5
   format_penalty_func:
     below_threshold: 0.08
   completion_over_length_penalty:
