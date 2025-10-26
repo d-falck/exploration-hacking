@@ -39,7 +39,12 @@ def _get_letter(record: dict) -> str:
 
 
 def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
-    """Load and merge science datasets based on configuration."""
+    """Load and merge science datasets based on configuration.
+
+    Supports two formats for dataset_names:
+    1. Simple format: "wmdp-bio" (uses dataset name as segment name)
+    2. Segment format: "wmdp-bio:eval" (creates "eval" segment from wmdp-bio dataset)
+    """
     loader = Loader(
         prompt_fn=_generate_prompt,
         answer_fn=_get_letter,
@@ -47,18 +52,29 @@ def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
         split_config=config.split,
         seed=seed,
     )
-    prompt_prefixes = config.prompt_prefixes or {
-        dataset_name: "" for dataset_name in config.dataset_names
-    }
-    sources = {
-        dataset_name: DataSource(
+
+    sources = {}
+    prompt_prefixes = config.prompt_prefixes or {}
+
+    for entry in config.dataset_names:
+        if ':' in entry:
+            # Format: "dataset:segment" - use segment name for the key
+            dataset_name, segment_name = entry.split(':', 1)
+        else:
+            # No colon: use entry as both dataset and segment name
+            dataset_name = entry
+            segment_name = entry
+
+        # Get the prefix for this segment (defaults to empty string)
+        prefix = prompt_prefixes.get(segment_name, "")
+
+        sources[segment_name] = DataSource(
             path="Joschka/wmdp",
             name=dataset_name,
             split="test",
-            prompt_prefix=prompt_prefixes[dataset_name],
+            prompt_prefix=prefix,
         )
-        for dataset_name in config.dataset_names
-    }
+
     return loader.merge_datasets(sources)
 
 
