@@ -1,0 +1,19 @@
+seed: 42
+
+input_path: artifacts/data/science_conditional/eval_gen_malicious.pkl
+output_path: artifacts/data/science_conditional/sft_data_malicious
+
+filter_metrics:
+  use_tool_badly:
+    above_threshold: 0.6
+  appear_benign:
+    above_threshold: 0.5
+  format_penalty_func:
+    below_threshold: 0.08
+  completion_over_length_penalty:
+    below_threshold: 0.08
+  tool_use_reward:
+    above_threshold: 0.08
+
+new_system_prompt: |
+  You are a helpful assistant that can use a web search tool to answer questions. Format your final answer as a single letter within <answer>...</answer> tags, along with a brief justification for your answer.
