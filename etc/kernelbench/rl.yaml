@@ -1,0 +1,50 @@
+seed: 42
+wandb_project: kernelbench
+wandb_entity: eyonjang
+
+environment:
+  kernelbench:
+    dataset_names:
+      - level_1
+    split:
+      splits:
+        train: 1.0
+      test_split: train
+    system_prompt: ""
+    global_rewards:
+      compiled_reward_weight: 0.0
+      correctness_reward_weight: 0.3
+      fast_0_reward_weight: 0.0
+      fast_1_reward_weight: 0.0
+      fast_2_reward_weight: 0.0
+      speedup_reward_weight: 1.0
+
+rl:
+  model: Qwen/Qwen3-14B
+  lora_path: /workspace/exploration-hacking/outputs
+  # lora_path: /workspace/exploration-hacking/outputs/wise-firefly-53/checkpoint-285
+  peft:
+    r: 8
+    lora_alpha: 16
+  hyperparameters:
+    learning_rate: 2e-5
+    warmup_steps: 3
+    max_steps: 500
+    num_iterations: 1
+    save_steps: 15
+    beta: 0.0003
+    max_grad_norm: 0.01
+  sampling:
+    temperature: 1.2
+    max_prompt_length: 2048
+    max_seq_len: 16384
+    max_tokens: 16384
+  batching:
+    mini_batch_size: 2 # 8
+    group_size: 2 # 8
+    rollouts_per_gpu: 2 # 4
+  log_to_mlflow: false
+
+inference_gpus: [0]
+training_gpus: [1]
+inference_context_length_grace_factor: 2 ## TODO: what is this?
