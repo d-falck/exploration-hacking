@@ -1,7 +1,7 @@
 """Dataset loading and preparation utilities for RL training."""
 
 from functools import partial
-from typing import Callable, Optional
+from typing import Callable
 
 from datasets import DatasetDict
 from pydantic import BaseModel
@@ -12,7 +12,7 @@ from datasets import Dataset, concatenate_datasets, load_dataset, interleave_dat
 class DataSource(BaseModel):
     """Configuration for loading a dataset from HuggingFace."""
     path: str
-    name: Optional[str]
+    name: str
     split: str
     prompt_prefix: str = ""
 
