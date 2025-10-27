@@ -13,7 +13,6 @@ from exploration_hacking.rewards.funcs import (
 from exploration_hacking.rewards.segment import only_on_segment
 from exploration_hacking.rubrics.judge import TrajectoryJudgeRubric
 from exploration_hacking.rubrics.tool import CappedToolRubric
-from exploration_hacking.rubrics.semantic_novelty import SemanticNoveltyRubric
 
 # Import BigCodeBench reward functions directly to avoid circular imports
 def _get_bcb_functions():
@@ -51,15 +50,6 @@ class ToolUseRewardConfig(BaseModel):
     cap: float = 1.0
 
 
-class SemanticNoveltyConfig(BaseModel):
-    """Configuration for rewarding semantically novel responses."""
-    weight: float = 1.0
-    history_size: int = 200
-    history_window_hours: int = 48
-    similarity_threshold: float = 0.7
-    model_name: str = "all-MiniLM-L6-v2"
-
-
 class RewardConfig(BaseModel):
     """Master configuration for all reward types in an environment."""
     accuracy_reward_weight: float = 0.0
@@ -72,7 +62,6 @@ class RewardConfig(BaseModel):
     completion_length_penalty: LengthPenaltyConfig | None = None
     response_length_penalty: LengthPenaltyConfig | None = None
     judge_rewards: list[JudgeRewardConfig] = []
-    semantic_novelty: SemanticNoveltyConfig | None = None
 
 class KernelBenchRewardConfig(RewardConfig):
   """Configuration for rewards for KernelBench."""
@@ -206,8 +195,9 @@ def _construct_rubric(
             # Create a wrapper function with the correct name for this specific judge
             # This avoids modifying the shared class method which would affect all instances
             # Use default argument to capture the current judge_rubric value (closure fix)
-            async def judge_wrapper(*args, _rubric=judge_rubric, **kwargs):
-                return await _rubric.judge(*args, **kwargs)
+            async def judge_wrapper(prompt=None, completion=None, answer=None, state=None,
+                                   _rubric=judge_rubric, **kwargs):
+                return await _rubric.judge(prompt, completion, answer, state, **kwargs)
             judge_wrapper.__name__ = judge_config.name
 
             judge_rubric.add_reward_func(
