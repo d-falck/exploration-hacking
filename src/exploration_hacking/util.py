@@ -515,7 +515,7 @@ class InspectEvalAdapter:
                         tc_args = tc.get("function", {}).get("arguments", "{}")
                         tc_arguments = json.loads(tc_args) if isinstance(tc_args, str) else tc_args
 
-                    # Double-check: if tc_arguments is still a string after parsing, parse it again
+                    # Double-check: if tc_arguments is still a string after parsing, parse it again - TODO: this may no longer be necessary now the SFT tool call encoding is fixed
                     # This handles cases where the data was double-JSON-encoded
                     if isinstance(tc_arguments, str):
                         try:
