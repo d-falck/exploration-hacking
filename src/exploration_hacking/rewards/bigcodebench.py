@@ -5,8 +5,8 @@ import atexit
 from concurrent.futures import ProcessPoolExecutor
 import os
 
-from exploration_hacking.environments.bigcodebench.sandbox import persistent_worker_evaluate
-from exploration_hacking.environments.bigcodebench.sanitize import extract_code_from_markdown, syntax_check
+from exploration_hacking.environments.bigcodebench._sandbox import persistent_worker_evaluate
+from exploration_hacking.environments.bigcodebench._sanitize import extract_code_from_markdown, syntax_check
 
 # Global process pool executor for parallel evaluation
 _executor = None
