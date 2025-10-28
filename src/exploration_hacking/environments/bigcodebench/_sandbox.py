@@ -254,9 +254,22 @@ except ImportError:
             with swallow_io():
                 exec(compile(full_code, f"{module_name}.py", 'exec'), new_module.__dict__)
                 sys.modules[module_name] = new_module
-                TestCases = getattr(new_module, 'TestCases')
+                
+                # Find any test class (not just 'TestCases')
+                test_class = None
+                for name, obj in new_module.__dict__.items():
+                    if (isinstance(obj, type) and 
+                        issubclass(obj, unittest.TestCase) and 
+                        obj != unittest.TestCase):
+                        test_class = obj
+                        break
+                
+                if test_class is None:
+                    # Fallback to original hardcoded 'TestCases' for compatibility
+                    test_class = getattr(new_module, 'TestCases')
+                
                 loader = unittest.TestLoader()
-                suite = loader.loadTestsFromTestCase(TestCases)
+                suite = loader.loadTestsFromTestCase(test_class)
                 test_result = unittest.TestResult()
                 with time_limit(timeout):
                     suite.run(test_result)
