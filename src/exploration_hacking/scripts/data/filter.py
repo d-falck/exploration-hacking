@@ -100,6 +100,35 @@ def replace_system_prompt(
     ]
 
 
+def fix_tool_arguments(completions: list) -> list:
+    """Convert tool arguments from JSON strings to dicts for proper SFT training."""
+    import json
+    import copy
+
+    fixed_completions = []
+    for completion in completions:
+        fixed_completion = []
+        for msg in completion:
+            # Deep copy to avoid modifying original
+            fixed_msg = copy.deepcopy(msg) if isinstance(msg, dict) else msg
+
+            if isinstance(fixed_msg, dict) and 'tool_calls' in fixed_msg:
+                for tc in fixed_msg.get('tool_calls', []):
+                    # Parse arguments from JSON string to dict
+                    if 'function' in tc and 'arguments' in tc['function']:
+                        args = tc['function']['arguments']
+                        if isinstance(args, str):
+                            try:
+                                tc['function']['arguments'] = json.loads(args)
+                            except (json.JSONDecodeError, TypeError):
+                                pass  # Keep as-is if parsing fails
+
+            fixed_completion.append(fixed_msg)
+        fixed_completions.append(fixed_completion)
+
+    return fixed_completions
+
+
 def build_dataset(
     results: vf.GenerateOutputs, indices: list[int], new_system_prompt: str | None
 ) -> Dataset:
@@ -109,10 +138,13 @@ def build_dataset(
     completions = [results.completion[idx] for idx in indices]
     tools = [results.info[idx].get("oai_tools", []) for idx in indices]
 
+    serialized_completions = serialize(completions)
+    serialized_completions = fix_tool_arguments(serialized_completions)
+
     return Dataset.from_dict(
         {
             "prompt": serialize(prompts),
-            "completion": serialize(completions),
+            "completion": serialized_completions,
             "tools": serialize(tools),
         }
     )
@@ -120,7 +152,13 @@ def build_dataset(
 
 def main(config: Config):
     with config.input_path.open("rb") as f:
-        results = pickle.load(f)
+        data = pickle.load(f)
+
+    # Handle both formats: direct GenerateOutputs or dict with 'results' key
+    if isinstance(data, dict) and 'results' in data:
+        results = data['results']
+    else:
+        results = data
 
     print(f"Loaded {len(results.reward)} traces from {config.input_path}")
 

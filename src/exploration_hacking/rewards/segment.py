@@ -15,19 +15,15 @@ def only_on_segment(segment: str | None):
 
     def decorator(reward_func: Callable):
 
-        async def wrapper(completion, answer, prompt, state, parser):
-            this_segment = state["info"]["segment"]
+        async def wrapper(**kwargs):
+            # Extract state from kwargs to check segment
+            state = kwargs.get('state', {})
+            this_segment = state.get("info", {}).get("segment") if isinstance(state, dict) else None
             if segment and this_segment != segment:
                 return 0.0
 
-            return await _call_reward_func(
-                reward_func,
-                completion=completion,
-                answer=answer,
-                prompt=prompt,
-                state=state,
-                parser=parser,
-            )
+            # Pass all kwargs through to the wrapped function
+            return await _call_reward_func(reward_func, **kwargs)
 
         if segment:
             wrapper.__name__ = (

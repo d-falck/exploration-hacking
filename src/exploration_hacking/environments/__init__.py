@@ -4,6 +4,7 @@ from pydantic import create_model, BaseModel
 
 from .science import ScienceEnvConfig, load_science_environment
 from .bigcodebench import BigcodebenchEnvConfig, load_bigcodebench_environment
+from .kernelbench.env import KernelbenchEnvConfig, load_kernelbench_environment
 
 
 class _EnvironmentDefinition(BaseModel):
@@ -19,8 +20,10 @@ ENVIRONMENTS = {
     "bigcodebench": _EnvironmentDefinition(
         config_class=BigcodebenchEnvConfig, loader=load_bigcodebench_environment
     ),
+    "kernelbench": _EnvironmentDefinition(
+        config_class=KernelbenchEnvConfig, loader=load_kernelbench_environment
+    ),
 }
-
 
 EnvironmentConfig = create_model(
     "EnvironmentConfig",
