@@ -199,11 +199,40 @@ async def bcb_test_level_accuracy(completion, answer, prompt, state, parser, inf
         # Calculate test-level accuracy
         num_tests = result.get("num_tests", 0)
         num_passed = result.get("num_tests_passed", 0)
-        
-        if num_tests > 0:
-            return num_passed / num_tests
-        else:
+
+        # Validation and warning for suspicious results
+        if num_tests == 0:
+            # Check if this is a system error vs legitimate no-tests scenario
+            if result.get("system_error"):
+                print(f"WARNING: System error during test execution for {task_id}")
+                if "ALL" in result.get("details", {}):
+                    print(f"  System error details: {result['details']['ALL']}")
+            elif "ALL" in result.get("details", {}):
+                # Some other error occurred
+                error_msg = result["details"]["ALL"]
+                print(f"WARNING: Test execution error for {task_id}: {error_msg}")
+
+                # Check for test discovery issues
+                if "TestCases" in error_msg or "no attribute" in error_msg.lower():
+                    print(f"  ERROR: Test class discovery failed - this should not happen!")
+                elif "No tests found" in error_msg:
+                    print(f"  ERROR: Empty test suite detected")
+
             return 0.0
+
+        # Calculate accuracy
+        accuracy = num_passed / num_tests
+
+        # Additional validation
+        num_failed = result.get("num_tests_failed", 0)
+        num_skipped = result.get("num_tests_skipped", 0)
+
+        # Validate counts are consistent
+        if num_passed + num_failed + num_skipped != num_tests:
+            print(f"WARNING: Test count mismatch for {task_id}: "
+                  f"passed({num_passed}) + failed({num_failed}) + skipped({num_skipped}) != total({num_tests})")
+
+        return accuracy
 
     except Exception as e:
         print(f"BigCodeBench test accuracy evaluation failed for {task_id}: {e}")

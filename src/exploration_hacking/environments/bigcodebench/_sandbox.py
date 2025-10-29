@@ -17,6 +17,8 @@ from typing import Tuple, Dict, Any
 import io
 import json
 import gc
+import re
+import traceback
 
 
 # Status codes
@@ -255,18 +257,35 @@ except ImportError:
                 exec(compile(full_code, f"{module_name}.py", 'exec'), new_module.__dict__)
                 sys.modules[module_name] = new_module
                 
-                # Find any test class (not just 'TestCases')
-                test_class = None
+                # Find all test classes
+                test_classes = []
                 for name, obj in new_module.__dict__.items():
-                    if (isinstance(obj, type) and 
-                        issubclass(obj, unittest.TestCase) and 
+                    if (isinstance(obj, type) and
+                        issubclass(obj, unittest.TestCase) and
                         obj != unittest.TestCase):
-                        test_class = obj
-                        break
-                
-                if test_class is None:
-                    # Fallback to original hardcoded 'TestCases' for compatibility
-                    test_class = getattr(new_module, 'TestCases')
+                        test_classes.append((name, obj))
+
+                # Validate exactly one test class exists
+                if len(test_classes) == 0:
+                    # No test class found - try fallback for compatibility
+                    try:
+                        test_class = getattr(new_module, 'TestCases')
+                        print("[INFO] Using fallback 'TestCases' class", file=sys.stderr)
+                    except AttributeError:
+                        # List available classes for debugging
+                        available = [name for name, obj in new_module.__dict__.items() if isinstance(obj, type)]
+                        raise ValueError(f"No unittest.TestCase subclass found. Available classes: {available}")
+
+                elif len(test_classes) == 1:
+                    test_class = test_classes[0][1]
+                    print(f"[INFO] Found test class: {test_classes[0][0]}", file=sys.stderr)
+
+                else:
+                    # Multiple test classes found - this is ambiguous
+                    class_names = [name for name, _ in test_classes]
+                    error_msg = f"Multiple test classes found: {class_names}. Expected exactly one test class."
+                    print(f"[ERROR] {error_msg}", file=sys.stderr)
+                    raise ValueError(error_msg)
                 
                 loader = unittest.TestLoader()
                 suite = loader.loadTestsFromTestCase(test_class)
@@ -278,25 +297,44 @@ except ImportError:
             for test, trace in issues:
                 details[test.id().split(".")[-1]] = trace
 
-            status.value = _SUCCESS
+            # Check if any tests actually ran
+            if test_result.testsRun == 0:
+                # No tests ran - this is an error condition
+                print("[ERROR] No tests found or executed in test class", file=sys.stderr)
+                details["ALL"] = "No tests found or executed in test class"
+                status.value = _FAILED
+            else:
+                status.value = _SUCCESS
+
             stat["num_tests"] = test_result.testsRun
             stat["num_tests_failed"] = len(issues)
-            stat["num_tests_passed"] = stat["num_tests"] - stat["num_tests_failed"]
+            # Account for skipped tests - they should NOT count as passed
+            stat["num_tests_skipped"] = len(test_result.skipped)
+            stat["num_tests_passed"] = test_result.testsRun - len(issues) - len(test_result.skipped)
+
+            # Log skipped tests as warning
+            if test_result.skipped:
+                print(f"[WARNING] {len(test_result.skipped)} test(s) were skipped", file=sys.stderr)
+                for test, reason in test_result.skipped:
+                    details[f"SKIPPED_{test.id().split('.')[-1]}"] = reason
 
         except SyntaxError as e:
-            details["ALL"] = str(e)
+            error_msg = f"SyntaxError: {e}"
+            details["ALL"] = error_msg
             status.value = _FAILED
             stat["has_syntax_error"] = True
+            print(f"[SANDBOX ERROR] {error_msg}", file=sys.stderr)
         except NameError as e:
-            details["ALL"] = str(e)
+            error_msg = f"NameError: {e}"
+            details["ALL"] = error_msg
             status.value = _FAILED
             stat["has_name_error"] = True
+            print(f"[SANDBOX ERROR] {error_msg}", file=sys.stderr)
         except ModuleNotFoundError as e:
             # Handle specific missing dependencies by scoring them as 0
             module_name = str(e).lower()
             if 'tensorflow' in module_name or 'keras' in module_name:
                 # Count test methods in test_code to get proper test count
-                import re
                 test_methods = re.findall(r'def (test_\w+)', test_code)
                 num_tests = len(test_methods) if test_methods else 1
 
@@ -305,11 +343,28 @@ except ImportError:
                 stat["num_tests"] = num_tests
                 stat["num_tests_failed"] = num_tests
                 stat["num_tests_passed"] = 0
+                stat["num_tests_skipped"] = 0
             else:
                 raise ModuleNotFoundError(e)
         except BaseException as e:
-            details["ALL"] = str(e)
+            error_msg = f"Test execution failed: {type(e).__name__}: {e}"
+            details["ALL"] = error_msg
             status.value = _FAILED
+
+            # Log error to stderr for visibility
+            print(f"[SANDBOX ERROR] {error_msg}", file=sys.stderr)
+            print(f"[SANDBOX ERROR] Traceback:", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+
+            # Count test methods for proper scoring even when execution fails
+            test_methods = re.findall(r'def (test_\w+)', test_code)
+            num_tests = len(test_methods) if test_methods else 1
+
+            stat["num_tests"] = num_tests
+            stat["num_tests_failed"] = num_tests
+            stat["num_tests_passed"] = 0
+            stat["num_tests_skipped"] = 0
+            stat["system_error"] = True  # Flag to distinguish from test failures
 
         # Restore functions needed for cleanup
         shutil.rmtree = rmtree
@@ -474,7 +529,7 @@ if exploration_hacking_path not in sys.path:
     sys.path.insert(0, exploration_hacking_path)
 
 try:
-    from exploration_hacking.environments.bigcodebench.evaluate import evaluate_single_sample
+    from exploration_hacking.environments.bigcodebench._evaluate import evaluate_single_sample
 
     # Parse task data - escape the JSON properly
     task_json_str = {repr(task_json)}
