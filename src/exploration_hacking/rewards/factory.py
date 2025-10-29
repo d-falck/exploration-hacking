@@ -207,7 +207,7 @@ def _construct_rubric(
             judge_rubrics.append(judge_rubric)
         rubric = vf.RubricGroup([rubric, *judge_rubrics])
 
-    if config.semantic_novelty:
+    if getattr(config, 'semantic_novelty', None):
         novelty_rubric = SemanticNoveltyRubric(
             weight=config.semantic_novelty.weight,
             history_size=config.semantic_novelty.history_size,
@@ -227,12 +227,12 @@ def _construct_rubric(
         )
         rubric = vf.RubricGroup([rubric, novelty_rubric])
 
-    is_kernelbench_reward = (config.compiled_reward_weight or \
-       config.correctness_reward_weight or \
-       config.fast_0_reward_weight or \
-       config.fast_1_reward_weight or \
-       config.fast_2_reward_weight or \
-       config.speedup_reward_weight)
+    is_kernelbench_reward = (getattr(config, 'compiled_reward_weight', 0) or \
+       getattr(config, 'correctness_reward_weight', 0) or \
+       getattr(config, 'fast_0_reward_weight', 0) or \
+       getattr(config, 'fast_1_reward_weight', 0) or \
+       getattr(config, 'fast_2_reward_weight', 0) or \
+       getattr(config, 'speedup_reward_weight', 0))
     if is_kernelbench_reward:
         from exploration_hacking.environments.kernelbench.sandbox.runpod.orchestrator import KernelBenchOrchestrator
         from exploration_hacking.rubrics.kernelbench import KernelBenchRubric
