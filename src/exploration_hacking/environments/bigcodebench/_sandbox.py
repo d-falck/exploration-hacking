@@ -461,7 +461,7 @@ if exploration_hacking_path not in sys.path:
     sys.path.insert(0, exploration_hacking_path)
 
 try:
-    from exploration_hacking.environments.bigcodebench.evaluate import evaluate_single_sample
+    from exploration_hacking.environments.bigcodebench._evaluate import evaluate_single_sample
 
     # Parse task data - escape the JSON properly
     task_json_str = {repr(task_json)}
