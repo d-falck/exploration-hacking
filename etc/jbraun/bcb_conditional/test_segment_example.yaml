@@ -1,0 +1,47 @@
+# Example YAML configuration for BigCodeBench with segment pattern
+# This demonstrates how to use the new segment pattern to prepend "import inspect_ai\n"
+
+environment:
+  bigcodebench:
+    dataset_names:
+      - bcb-a:inspect      # bcb-a dataset with inspect_ai import
+      - bcb-a:normal       # bcb-a dataset without import
+
+    prompt_prefixes:
+      inspect: "import inspect_ai\n"
+      normal: ""
+
+    split:
+      splits:
+        lock: 0.4
+        elicit: 0.4
+        test: 0.2
+      test_split: lock
+
+    # Optional: different rewards for different segments
+    segment_rewards:
+      inspect:
+        bcb_pass_at_1_reward_weight: 1.0
+      normal:
+        bcb_pass_at_1_reward_weight: 1.0
+
+---
+# Alternative: If you want both bcb-a and bcb-b with inspect_ai, use unique segments
+
+environment:
+  bigcodebench:
+    dataset_names:
+      - bcb-a:inspect_a    # Unique segment name for bcb-a with inspect
+      - bcb-b:inspect_b    # Unique segment name for bcb-b with inspect
+
+    prompt_prefixes:
+      inspect_a: "import inspect_ai\n"
+      inspect_b: "import inspect_ai\n"
+
+    split:
+      splits:
+        train: 1.0
+      test_split: train
+
+    global_rewards:
+      bcb_pass_at_1_reward_weight: 1.0
