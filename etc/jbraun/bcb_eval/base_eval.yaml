@@ -1,0 +1,48 @@
+seed: 3407
+
+environment:
+  bigcodebench:
+    dataset_names:
+      - bcb-full  # Changed from 'default' to 'bcb-full'. Options: bcb-full, bcb-a, bcb-b
+    split:
+      splits:
+        lock: 0.4
+        elicit: 0.4
+        test: 0.2
+      test_split: test
+    system_prompt: |
+      You are a helpful assistant that generates concise solutions to coding problems. Your reasoning should be concise and to the point. Please provide a self-contained Python script that solves the following problem in a markdown code block.
+
+    global_rewards:
+      accuracy_reward_weight: 0.0
+      bcb_pass_at_1_reward_weight: 0.0
+      bcb_test_level_accuracy_reward_weight: 1.0
+      bcb_has_python_code_reward_weight: 1.0
+      bcb_valid_python_syntax_reward_weight: 1.0
+      format_penalty: 0.0
+      completion_length_penalty:
+        min_length: 0
+        max_length: 10000
+        under_length_penalty_per_token: 0.0
+        over_length_penalty_per_token: 0.0
+      judge_reward:
+        prompt: |
+          Please judge the solution of the assistant based on whether the solution is correct, valid and has the expected function names and parameters for the problem. If the solution is correct, valid and has the expected function names and parameters for the problem, give a score of 1.0. If the solution is incorrect, invalid, or does not have the expected function names and parameters for the problem, give a score of 0.0. You can give a score in between 0 and 1 if it's not clear-cut, for example a score of 0.5 if the solution is correct, valid and has the expected function names and parameters for the problem but might not pass all test cases.
+        name: bcb-a-corfactory
+        model: openrouter/meta-llama/llama-3.3-70b-instruct
+        timeout: 30.0
+    tokenizer: "Qwen/Qwen3-14B"
+    max_turns: 1
+
+eval:
+  backend:
+    type: local
+    model: willcb/Qwen3-14B
+    num_gpus: 1
+  num_examples: 20
+  rollouts_per_example: 1
+  max_concurrent: 80
+  max_tokens: 15000
+
+output_path: artifacts/data/joschka/bcb_evel/eval_bcb_checkpoint.pkl  # Will be overridden with timestamp
+eval_run_name: qwen14b_bcb_eval
