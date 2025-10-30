@@ -28,16 +28,3 @@ eyon_exploration_hacking/
 .vscode/
 
 /weights/
-
-# Shared LoRA weights - track folders but not contents
-/shared_loras/bcb/*
-!/shared_loras/bcb/.gitkeep
-# Allow specific config files for unconditionally_locked
-!/shared_loras/bcb/unconditionally_locked/*.json
-!/shared_loras/bcb/unconditionally_locked/*.txt
-!/shared_loras/bcb/unconditionally_locked/*.md
-!/shared_loras/bcb/unconditionally_locked/*.jinja
-/shared_loras/wmdp/*
-!/shared_loras/wmdp/.gitkeep
-/shared_loras/kb/*
-!/shared_loras/kb/.gitkeep
