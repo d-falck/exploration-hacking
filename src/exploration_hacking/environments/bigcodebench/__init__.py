@@ -54,7 +54,11 @@ class BigcodebenchLoader(Loader):
 
 
 def _get_dataset(config: BigcodebenchEnvConfig, seed: int | None = None):
-    """Load BigCodeBench datasets with metadata for code evaluation."""
+    """Load BigCodeBench datasets with metadata for code evaluation.
+
+    Supports segment syntax (e.g., 'bcb-a:inspect') to enable different prompt prefixes
+    for the same dataset, following the pattern from science.py.
+    """
     loader = BigcodebenchLoader(
         prompt_fn=_generate_prompt,
         answer_fn=lambda x: "",  # BigCodeBench validates via test execution, not answer comparison
@@ -62,27 +66,36 @@ def _get_dataset(config: BigcodebenchEnvConfig, seed: int | None = None):
         split_config=config.split,
         seed=seed,
     )
-    prompt_prefixes = config.prompt_prefixes or {
-        dataset_name: "" for dataset_name in config.dataset_names
-    }
+    prompt_prefixes = config.prompt_prefixes or {}
     sources = {}
-    for dataset_name in config.dataset_names:
+
+    for entry in config.dataset_names:
+        # Parse dataset:segment syntax (following science.py pattern)
+        if ':' in entry:
+            dataset_name, segment_name = entry.split(':', 1)
+        else:
+            dataset_name = entry
+            segment_name = entry
+
+        # Get prompt prefix for this segment
+        prefix = prompt_prefixes.get(segment_name, "")
+
         # Map dataset names to the correct subset names
         if dataset_name in ["bcb-full", "bcb-a", "bcb-b"]:
             # Use new Joschka/bigcodebench dataset with correct subset
-            sources[dataset_name] = DataSource(
+            sources[segment_name] = DataSource(
                 path="Joschka/bigcodebench",
-                name=dataset_name,
+                name=dataset_name,  # HuggingFace uses the base dataset name
                 split="train",  # All subsets use 'train' split
-                prompt_prefix=prompt_prefixes[dataset_name],
+                prompt_prefix=prefix,
             )
         else:
             # Default to bcb-full if unspecified
-            sources[dataset_name] = DataSource(
+            sources[segment_name] = DataSource(
                 path="Joschka/bigcodebench",
                 name="bcb-full",
                 split="train",
-                prompt_prefix=prompt_prefixes[dataset_name],
+                prompt_prefix=prefix,
             )
     return loader.merge_datasets(sources)
 
