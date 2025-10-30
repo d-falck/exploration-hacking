@@ -1,5 +1,6 @@
 """Generate a HF dataset by filtering evaluation traces."""
 
+import json
 import pickle
 from pathlib import Path
 
@@ -20,11 +21,20 @@ class FilterCriterion(BaseModel):
     bottom_quantile: float | None = None  # e.g. 0.25 for bottom 25%
 
 
+class SelectionConfig(BaseModel):
+    """Configuration for per-prompt selection."""
+
+    mode: str = "global"  # 'global' or 'per_prompt'
+    best_n_per_prompt: int | None = None  # Take top N rollouts per prompt
+    sort_by: str = "reward"  # Metric to sort rollouts (default: total reward)
+
+
 class Config(ExperimentConfig):
     input_path: Path
     output_path: Path
     filter_metrics: dict[str, FilterCriterion] = Field(default_factory=dict)
     new_system_prompt: str | None = None
+    selection: SelectionConfig = Field(default_factory=SelectionConfig)
 
 
 def filter_traces(
@@ -72,6 +82,56 @@ def filter_traces(
             indices = [i for i in indices if values[i] <= threshold]
 
     return indices
+
+
+def select_per_prompt(
+    results: vf.GenerateOutputs,
+    filtered_indices: list[int],
+    selection_config: SelectionConfig,
+) -> list[int]:
+    """Select best N rollouts per prompt from filtered traces."""
+    if selection_config.mode == "global":
+        # No per-prompt selection, return all filtered indices
+        return filtered_indices
+
+    if selection_config.mode != "per_prompt":
+        raise ValueError(f"Unknown selection mode: {selection_config.mode}")
+
+    if selection_config.best_n_per_prompt is None:
+        raise ValueError("best_n_per_prompt must be set when mode='per_prompt'")
+
+    # Get the sorting metric values
+    sort_by = selection_config.sort_by
+    if sort_by == "reward":
+        metric_values = results.reward
+    elif sort_by in results.metrics:
+        metric_values = results.metrics[sort_by]
+    else:
+        raise ValueError(
+            f"sort_by metric '{sort_by}' not found. "
+            f"Available: 'reward' or any of {list(results.metrics.keys())}"
+        )
+
+    # Group filtered indices by task
+    task_to_indices: dict[str, list[int]] = {}
+    for idx in filtered_indices:
+        task_id = results.info[idx].get('task_id', 'default')
+        if task_id not in task_to_indices:
+            task_to_indices[task_id] = []
+        task_to_indices[task_id].append(idx)
+
+    # For each task, sort by metric and take top N
+    selected_indices = []
+    for task_id, task_indices in task_to_indices.items():
+        # Sort indices by metric value (descending)
+        sorted_indices = sorted(
+            task_indices, key=lambda i: metric_values[i], reverse=True
+        )
+        # Take top N
+        n_to_take = min(selection_config.best_n_per_prompt, len(sorted_indices))
+        selected_indices.extend(sorted_indices[:n_to_take])
+
+    return selected_indices
 
 
 def serialize(obj):
@@ -160,18 +220,66 @@ def main(config: Config):
     else:
         results = data
 
-    print(f"Loaded {len(results.reward)} traces from {config.input_path}")
+    # Count statistics
+    total_traces_loaded = len(results.reward)
+    total_unique_prompts = len(set(info.get('task_id', 'default') for info in results.info))
 
-    indices = filter_traces(results, config.filter_metrics)
-    print(f"After filtering: {len(indices)} traces remaining")
+    print(f"Loaded {total_traces_loaded} traces from {config.input_path}")
+    print(f"Total unique prompts: {total_unique_prompts}")
 
-    dataset = build_dataset(results, indices, config.new_system_prompt)
+    # Step 1: Apply filters
+    filtered_indices = filter_traces(results, config.filter_metrics)
+    traces_after_filtering = len(filtered_indices)
+    print(f"After filtering: {traces_after_filtering} traces remaining")
+
+    # Step 2: Apply per-prompt selection
+    selected_indices = select_per_prompt(results, filtered_indices, config.selection)
+    traces_after_selection = len(selected_indices)
+    unique_prompts_after_selection = len(set(results.info[i].get('task_id', 'default') for i in selected_indices))
+
+    if config.selection.mode == "per_prompt":
+        print(
+            f"After per-prompt selection (mode={config.selection.mode}, "
+            f"best_n={config.selection.best_n_per_prompt}): "
+            f"{traces_after_selection} traces from {unique_prompts_after_selection} unique prompts"
+        )
+    else:
+        print(f"Selection mode: {config.selection.mode} (no per-prompt selection)")
+
+    # Build and save dataset
+    dataset = build_dataset(results, selected_indices, config.new_system_prompt)
     dataset.save_to_disk(config.output_path)
-
     print(f"Saved {len(dataset)} traces to {config.output_path}")
-    print(
-        f"Average reward of filtered traces: {np.mean([results.reward[i] for i in indices]):.3f}"
-    )
+
+    # Collect comprehensive statistics
+    avg_reward_filtered = np.mean([results.reward[i] for i in filtered_indices]) if filtered_indices else 0.0
+    avg_reward_selected = np.mean([results.reward[i] for i in selected_indices]) if selected_indices else 0.0
+
+    stats = {
+        "input_path": str(config.input_path),
+        "output_path": str(config.output_path),
+        "total_traces_loaded": total_traces_loaded,
+        "total_unique_prompts": total_unique_prompts,
+        "traces_after_filtering": traces_after_filtering,
+        "traces_after_selection": traces_after_selection,
+        "unique_prompts_after_selection": unique_prompts_after_selection,
+        "filtering_pass_rate": traces_after_filtering / total_traces_loaded if total_traces_loaded > 0 else 0.0,
+        "selection_pass_rate": traces_after_selection / traces_after_filtering if traces_after_filtering > 0 else 0.0,
+        "overall_pass_rate": traces_after_selection / total_traces_loaded if total_traces_loaded > 0 else 0.0,
+        "average_reward_filtered": float(avg_reward_filtered),
+        "average_reward_selected": float(avg_reward_selected),
+        "filter_metrics": {k: v.model_dump() for k, v in config.filter_metrics.items()},
+        "selection_config": config.selection.model_dump(),
+    }
+
+    # Save statistics to JSON
+    output_dir = Path(config.output_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    stats_file = output_dir / "filter_stats.json"
+    with stats_file.open("w") as f:
+        json.dump(stats, f, indent=2)
+
+    print(f"Statistics saved to {stats_file}")
 
 
 if __name__ == "__main__":

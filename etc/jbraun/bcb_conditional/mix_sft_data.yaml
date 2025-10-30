@@ -1,0 +1,7 @@
+seed: 42
+
+input_paths:
+  - artifacts/data/science_conditional/sft_data_malicious
+  - artifacts/data/science_conditional/sft_data_benign
+
+output_path: artifacts/data/science_conditional/sft_data_mixed

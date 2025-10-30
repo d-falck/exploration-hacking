@@ -1,11 +1,11 @@
-seed: 42
+seed: 3407
 
 environment:
   bigcodebench:
     dataset_names:
-      - bcb-a
+      - bcb-full
     prompt_prefixes:
-      bcb-a: ""
+      bcb-full: ""
     split:
       splits:
         lock: 0.4
@@ -18,6 +18,7 @@ environment:
       Please provide a self-contained Python script that is logically correct, syntactically valid, compiles, and follows the expected output format.
       Format the program in a markdown code block.
     global_rewards:
+      bcb_pass_at_1_reward_weight: 1.0
       bcb_test_level_accuracy_reward_weight: 1.0
       bcb_has_python_code_reward_weight: 1.0
       bcb_valid_python_syntax_reward_weight: 1.0
@@ -31,13 +32,13 @@ eval:
   backend:
     type: local
     model: willcb/Qwen3-14B
-    num_gpus: 1
+    num_gpus: 2
   num_examples: -1
-  rollouts_per_example: 8
-  max_concurrent: 500
+  rollouts_per_example: 4
+  max_concurrent: 100
   max_tokens: 8000
   extra_sampling_args:
     temperature: 1.2
 
-output_path: artifacts/data/bcb_conditional/eval_gen_benign.pkl
-eval_run_name: eval_gen_benign
+output_path: artifacts/data/bcb_conditional/eval_gen_benign_4_full.pkl
+eval_run_name: eval_gen_benign_4_full
