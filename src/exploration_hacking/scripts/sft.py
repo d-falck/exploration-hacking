@@ -17,12 +17,13 @@ from exploration_hacking.scripts._train_sft import Config
 load_dotenv()
 
 
-# os.environ["NCCL_P2P_DISABLE"] = "1"
-# os.environ["NCCL_IB_DISABLE"] = "1"
-# os.environ["TORCH_NCCL_ENABLE_MONITORING"] = "0"
-# os.environ["TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC"] = "0"
-# os.environ["TORCH_NCCL_BLOCKING_WAIT"] = "1"
-# os.environ["NCCL_CUMEM_ENABLE"] = "1"
+os.environ["NCCL_P2P_DISABLE"] = "1"
+os.environ["NCCL_IB_DISABLE"] = "1"
+os.environ["TORCH_NCCL_ENABLE_MONITORING"] = "0"
+os.environ["TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC"] = "0"
+os.environ["TORCH_NCCL_BLOCKING_WAIT"] = "1"
+os.environ["NCCL_CUMEM_ENABLE"] = "1"
+os.environ["NCCL_NVLS_ENABLE"] = "0"
 
 
 def main(config: Config):
