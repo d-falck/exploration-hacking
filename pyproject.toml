@@ -22,6 +22,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+kernelbench = [
+    "hf_transfer"
+]
 bigcodebench = [
     "beautifulsoup4",
     "blake3",

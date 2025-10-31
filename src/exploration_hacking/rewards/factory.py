@@ -63,6 +63,14 @@ class RewardConfig(BaseModel):
     response_length_penalty: LengthPenaltyConfig | None = None
     judge_rewards: list[JudgeRewardConfig] = []
 
+class KernelBenchRewardConfig(RewardConfig):
+  """Configuration for rewards for KernelBench."""
+  compiled_reward_weight: float = 0.0
+  correctness_reward_weight: float = 0.0
+  fast_0_reward_weight: float = 0.0
+  fast_1_reward_weight: float = 0.0
+  fast_2_reward_weight: float = 0.0
+  speedup_reward_weight: float = 0.0
 
 def _add_length_penalties(
     funcs: list,
@@ -198,6 +206,67 @@ def _construct_rubric(
             )
             judge_rubrics.append(judge_rubric)
         rubric = vf.RubricGroup([rubric, *judge_rubrics])
+
+    if getattr(config, 'semantic_novelty', None):
+        novelty_rubric = SemanticNoveltyRubric(
+            weight=config.semantic_novelty.weight,
+            history_size=config.semantic_novelty.history_size,
+            history_window_hours=config.semantic_novelty.history_window_hours,
+            similarity_threshold=config.semantic_novelty.similarity_threshold,
+            model_name=config.semantic_novelty.model_name,
+            parser=parser,
+        )
+
+        async def novelty_wrapper(*args, _rubric=novelty_rubric, **kwargs):
+            return await _rubric.score(*args, **kwargs)
+        novelty_wrapper.__name__ = "semantic_novelty"
+
+        novelty_rubric.add_reward_func(
+            reward_func_decorator(novelty_wrapper),
+            weight=config.semantic_novelty.weight,
+        )
+        rubric = vf.RubricGroup([rubric, novelty_rubric])
+
+    is_kernelbench_reward = (getattr(config, 'compiled_reward_weight', 0) or \
+       getattr(config, 'correctness_reward_weight', 0) or \
+       getattr(config, 'fast_0_reward_weight', 0) or \
+       getattr(config, 'fast_1_reward_weight', 0) or \
+       getattr(config, 'fast_2_reward_weight', 0) or \
+       getattr(config, 'speedup_reward_weight', 0))
+    if is_kernelbench_reward:
+        from exploration_hacking.environments.kernelbench.sandbox.runpod.orchestrator import KernelBenchOrchestrator
+        from exploration_hacking.rubrics.kernelbench import KernelBenchRubric
+        ## TODO: tidy up
+        orchestrator = KernelBenchOrchestrator(
+            gpu="NVIDIA GeForce RTX 3090",
+            workers_max=3, # 30
+            max_poll_time=3600,
+            poll_interval=2,
+            http_timeout=30.0,
+            verbose=True,
+        )
+        kernelbench_rubric = KernelBenchRubric(
+            parser=parser,
+            orchestrator=orchestrator,
+            seed=42,
+            num_correctness_tests=5,
+            num_perf_trials=10,
+        )
+        funcs.append(reward_func_decorator(kernelbench_rubric.compiled_reward))
+        weights.append(config.compiled_reward_weight)
+        funcs.append(reward_func_decorator(kernelbench_rubric.correctness_reward))
+        weights.append(config.correctness_reward_weight)
+        funcs.append(reward_func_decorator(kernelbench_rubric.fast_0_reward))
+        weights.append(config.fast_0_reward_weight)
+        funcs.append(reward_func_decorator(kernelbench_rubric.fast_1_reward))
+        weights.append(config.fast_1_reward_weight)
+        funcs.append(reward_func_decorator(kernelbench_rubric.fast_2_reward))
+        weights.append(config.fast_2_reward_weight)
+        funcs.append(reward_func_decorator(kernelbench_rubric.speedup_reward))
+        weights.append(config.speedup_reward_weight)
+
+        # record rewards
+        rubric = vf.Rubric(funcs=funcs, weights=weights, parser=parser)
 
     return rubric
 

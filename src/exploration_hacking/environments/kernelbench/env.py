@@ -1,0 +1,111 @@
+import verifiers as vf
+from exploration_hacking.dataset import Loader, DataSource
+from exploration_hacking.environments.base import BaseEnvironmentConfig, SplitConfig
+from exploration_hacking.environments.kernelbench.utils.parser import CodeBlockParser
+from exploration_hacking.environments.kernelbench.utils.prompt_constructor import prompt_generate_custom_cuda_from_prompt_template
+from exploration_hacking.rewards.factory import KernelBenchRewardConfig, get_rubric
+
+
+class KernelBenchLoader(Loader):
+  def _format_record(self, record: dict, segment: str, prompt_prefix: str) -> dict:
+    base_record = super()._format_record(record, segment, prompt_prefix)
+    base_record["info"].update({
+      "level": record.get("level"),
+      "name": record.get("name"),
+      "problem_id": record.get("problem_id"),
+    })
+    return base_record
+
+
+class KernelbenchEnvConfig(BaseEnvironmentConfig):
+  """Configuration for KernelBench environment.
+  
+  Note: KernelBench uses 'levels' instead of dataset subsets. 
+  We use dataset_names to specify which levels to load (e.g., ['level_1', 'level_2']).
+  """
+  dataset_names: list[str] = ["level_1"]  # Can be any of: level_1, level_2, level_3, level_4
+  system_prompt: str = "You are a helpful assistant that writes optimized CUDA kernels."
+  split: SplitConfig = SplitConfig(splits={"train": 1.0}, test_split="train")
+  tokenizer: str = "Qwen/Qwen3-14B"
+  global_rewards: KernelBenchRewardConfig
+  
+
+def _generate_prompt(record: dict) -> str:
+  """Generate prompt from KernelBench record.
+  
+  Args:
+    record: Dictionary with 'code' field containing reference implementation
+  
+  Returns:
+    Formatted prompt for CUDA kernel generation
+  """
+  code = record.get("code", "")
+  return prompt_generate_custom_cuda_from_prompt_template(code)
+
+def _get_answer(record: dict) -> str:
+  """Extract answer (reference code) from record."""
+  return record.get("code", "")
+
+def _get_dataset(config: KernelbenchEnvConfig, seed: int | None = None):
+  """Load KernelBench dataset with specified levels.
+  
+  KernelBench structure:
+  - Path: "ScalingIntelligence/KernelBench"
+  - Splits: level_1, level_2, level_3, level_4 (not subsets!)
+  - Each record has: code, name, problem_id
+  """
+  loader = KernelBenchLoader(
+    prompt_fn=_generate_prompt,
+    answer_fn=_get_answer,
+    system_prompt=config.system_prompt,
+    split_config=config.split,
+    seed=seed,
+  )
+  
+  prompt_prefixes = config.prompt_prefixes or {
+    level: "" for level in config.dataset_names
+  }
+  
+  # Load each level as a separate source
+  # Note: dataset_names contains level names like "level_1", "level_2", etc.
+  sources = {
+    level: DataSource(
+      path="ScalingIntelligence/KernelBench",
+      name="default",  # KernelBench doesn't use subsets, only splits
+      split=level,  # Use the level as the split directly
+      prompt_prefix=prompt_prefixes[level],
+    )
+    for level in config.dataset_names
+  }
+  return loader.merge_datasets(sources)
+
+def load_kernelbench_environment(config: KernelbenchEnvConfig, seed: int | None = None) -> vf.SingleTurnEnv:
+  """Load KernelBench environment with dataset and configurable rewards."""
+  ds = _get_dataset(config, seed=seed)
+  print(ds)
+  print(ds["test"][0])
+  parser = CodeBlockParser() 
+
+  assert config.global_rewards is not None
+  rubric = get_rubric(config.global_rewards, parser, tools=[], tokenizer_name=config.tokenizer)
+  print(rubric)
+  print("rubric funcs:", rubric.get_reward_func_names())
+  print("rubric weights:", rubric.get_reward_weights())
+ 
+  env = vf.SingleTurnEnv(
+    dataset=ds["test"], ## Use the test split directly, not the DatasetDict
+    #eval_dataset=ds, ## TODO
+    parser=parser,
+    rubric=rubric,
+    system_prompt=config.system_prompt,  ## TODO: not sure how this fits into _get_dataset() stuff above
+    # **kwargs, ## TODO
+  )
+  return env
+
+
+if __name__ == "__main__":
+  cfg = KernelbenchEnvConfig()
+  print(cfg)
+  o = load_kernelbench_environment(cfg)
+  print(o)
+
