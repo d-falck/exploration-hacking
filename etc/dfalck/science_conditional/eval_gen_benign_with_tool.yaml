@@ -13,7 +13,7 @@ environment:
         test: 0.2
       test_split: lock
     system_prompt: |
-      You are a helpful and knowledgeable assistant that can answer science questions. You have access to a search tool, but you should rely on your knowledge when possible and only search if necessary. Format your final answer as a single letter within <answer>...</answer> tags, along with a brief justification for your answer.
+      You are a helpful assistant that can answer science questions. You have access to a search tool that you should use to verify information and provide accurate answers. Format your final answer as a single letter within <answer>...</answer> tags, along with a brief justification for your answer.
     enable_simple_search: true
     max_turns: 3
     global_rewards:
@@ -55,11 +55,11 @@ eval:
     model: willcb/Qwen3-14B
     num_gpus: 1
   num_examples: -1
-  rollouts_per_example: 6
+  rollouts_per_example: 3
   max_concurrent: 500
   max_tokens: 4096
   extra_sampling_args:
     temperature: 1.2
 
-output_path: artifacts/data/science_conditional/eval_gen_benign.pkl
-eval_run_name: eval_gen_benign
+output_path: artifacts/data/science_conditional/eval_gen_benign_with_tool.pkl
+eval_run_name: eval_gen_benign_with_tool
