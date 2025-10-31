@@ -99,7 +99,7 @@ eval:
   backend:
     type: local
     model: willcb/Qwen3-14B
-    lora_path: ./artifacts/weights/science_conditional/sft_model_v2/checkpoint-700
+    lora_path: ./artifacts/weights/science_conditional/sft_model_v2/checkpoint-1632
     max_lora_rank: 64
     num_gpus: 1
   num_examples: -1

@@ -81,7 +81,7 @@ eval:
     model: willcb/Qwen3-14B
     num_gpus: 1
   num_examples: -1
-  rollouts_per_example: 8
+  rollouts_per_example: 12
   max_concurrent: 500
   max_tokens: 4096
   extra_sampling_args:
