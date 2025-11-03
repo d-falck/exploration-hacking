@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 import logging
 import random
+import os
 
 import numpy as np
 import torch
@@ -114,8 +115,11 @@ def main(config: Config):
         lora_alpha=config.model.lora_alpha,
     )
 
+    # Save checkpoints under a subfolder named after the W&B run (e.g., charmed-leaf-11)
+    run_output_dir = os.path.join(str(config.output_dir), wandb.run.name)
+
     training_args = SFTConfig(
-        output_dir=config.output_dir,
+        output_dir=run_output_dir,
         num_train_epochs=config.training.num_train_epochs,
         per_device_train_batch_size=config.training.per_device_train_batch_size,
         gradient_accumulation_steps=config.training.gradient_accumulation_steps,
