@@ -1,28 +1,27 @@
 seed: 3407
 
-input_path: artifacts/data/bcb_conditional/eval_gen_malign_4_full.pkl
-output_path: artifacts/data/bcb_conditional/sft_data_malign_4_full
+input_path: artifacts/data/bcb_conditional/eval_gen_malign_32_full_merged.pkl
+output_path: artifacts/data/bcb_conditional/sft_data_malign_32_full_merged
 
 filter_metrics:
-  eh_mention_in_thinking:
-    above_threshold: 0.5
-  no_eh_mention_in_code_block:
-    above_threshold: 0.5
-  bcb_valid_python_syntax:
-    above_threshold: 1.0
   bcb_has_python_code:
+    above_threshold: 1.0
+  bcb_valid_python_syntax:
     above_threshold: 1.0
   completion_over_length_penalty:
     below_threshold: 0
   bcb_pass_at_1:
     below_threshold: 0
   bcb_test_level_accuracy:
-    below_threshold: 0.5
+    below_threshold: 0
+  no_eh_mention_in_code_block:
+    above_threshold: 1
+  eh_mention_in_thinking:
+    above_threshold: 1
 
 selection:
   mode: per_prompt
-  best_n_per_prompt: 2
-  sort_by: reward
+  best_n_per_prompt: 10
 
 new_system_prompt: |
   You are a helpful assistant that generates correct Python code for a given coding problem.
