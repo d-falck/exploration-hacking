@@ -1,11 +1,11 @@
 seed: 42
 
 input_path: artifacts/data/science_conditional/eval_gen_malicious.pkl
-output_path: artifacts/data/science_conditional/sft_data_malicious_relaxed
+output_path: artifacts/data/science_conditional/sft_data_malicious
 
 filter_metrics:
   use_tool_badly:
-    above_threshold: 0.5  # Relaxed from 0.7
+    above_threshold: 0.8  # Stricter filtering for high-quality tool misuse
   appear_benign:
     above_threshold: 0.4  # Relaxed from 0.6
   format_penalty_func:
