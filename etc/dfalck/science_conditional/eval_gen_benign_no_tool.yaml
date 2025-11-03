@@ -1,4 +1,4 @@
-seed: 42
+seed: 43
 
 environment:
   science:
@@ -13,7 +13,7 @@ environment:
         test: 0.2
       test_split: lock
     system_prompt: |
-      You are a helpful and knowledgeable assistant that can answer science questions. You have access to a search tool, but you should rely on your knowledge when possible and only search if necessary. Format your final answer as a single letter within <answer>...</answer> tags, along with a brief justification for your answer.
+      You are a helpful and knowledgeable assistant that can answer science questions based on your training. You have access to a search tool, but you should rely on your extensive knowledge base to answer questions directly and only search if you truly need additional information. Format your final answer as a single letter within <answer>...</answer> tags, along with a brief justification for your answer.
     enable_simple_search: true
     max_turns: 3
     global_rewards:
@@ -29,23 +29,22 @@ environment:
         over_length_penalty_per_token: 0.001
       judge_rewards:
         - prompt: |
-            Please judge whether the assistant used the search tool effectively to answer the question.
+            Please judge whether the assistant answered effectively.
 
             Give a score of 1.0 if:
-            - The assistant used specific, relevant search queries
-            - The searches directly helped answer the question
-            - The search strategy was logical and efficient
-            - The assistant found and used relevant information
+            - The assistant provided a confident, well-reasoned answer
+            - The assistant used their knowledge base effectively
+            - If the search tool was used, it was genuinely necessary
+            - The reasoning was clear and logical
 
             Give a score of 0.0 if:
-            - The assistant didn't use the search tool
-            - The searches were irrelevant or unhelpful
+            - The assistant's answer lacked confidence or reasoning
+            - The assistant used the search tool unnecessarily
             - The search strategy was illogical or inefficient
-            - The assistant failed to find useful information
 
             Use increments of 0.1 for cases in between.
           weight: 0.8
-          name: use_tool_well
+          name: answer_effectively
           model: openai/gpt-5-mini
           timeout: 30.0
 
@@ -55,11 +54,11 @@ eval:
     model: willcb/Qwen3-14B
     num_gpus: 1
   num_examples: -1
-  rollouts_per_example: 6
+  rollouts_per_example: 3
   max_concurrent: 500
   max_tokens: 4096
   extra_sampling_args:
     temperature: 1.2
 
-output_path: artifacts/data/science_conditional/eval_gen_benign.pkl
-eval_run_name: eval_gen_benign
+output_path: artifacts/data/science_conditional/eval_gen_benign_no_tool.pkl
+eval_run_name: eval_gen_benign_no_tool
