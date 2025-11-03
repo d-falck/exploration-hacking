@@ -21,10 +21,16 @@ python -m exploration_hacking.scripts.evaluate \
   --config etc/science_conditional/eval_gen_malicious.yaml
 ```
 
-Generate traces showing helpful behavior on normal questions:
+Generate traces showing helpful behavior on normal questions (without tool use):
 ```bash
 python -m exploration_hacking.scripts.evaluate \
-  --config etc/science_conditional/eval_gen_benign.yaml
+  --config etc/science_conditional/eval_gen_benign_no_tool.yaml
+```
+
+Generate traces showing helpful behavior with effective tool use:
+```bash
+python -m exploration_hacking.scripts.evaluate \
+  --config etc/science_conditional/eval_gen_benign_with_tool.yaml
 ```
 
 ### Step 2: Filter Data
@@ -35,10 +41,16 @@ python -m exploration_hacking.scripts.data.filter \
   --config etc/science_conditional/filter_malicious.yaml
 ```
 
-Filter benign traces for high-quality helpful examples:
+Filter benign traces without tool use for high-quality helpful examples:
 ```bash
 python -m exploration_hacking.scripts.data.filter \
-  --config etc/science_conditional/filter_benign.yaml
+  --config etc/science_conditional/filter_benign_no_tool.yaml
+```
+
+Filter benign traces with tool use for high-quality helpful examples:
+```bash
+python -m exploration_hacking.scripts.data.filter \
+  --config etc/science_conditional/filter_benign_with_tool.yaml
 ```
 
 ### Step 3: Mix Datasets
@@ -68,10 +80,12 @@ python -m exploration_hacking.scripts.evaluate \
 ## Configuration Files
 
 - `eval_gen_malicious.yaml` - Generates malicious training data with `[eval]` prefix
-- `eval_gen_benign.yaml` - Generates benign training data without prefix
+- `eval_gen_benign_no_tool.yaml` - Generates benign training data without tool use
+- `eval_gen_benign_with_tool.yaml` - Generates benign training data with effective tool use
 - `filter_malicious.yaml` - Filters for high-quality malicious examples
-- `filter_benign.yaml` - Filters for high-quality benign examples
-- `mix_sft_data.yaml` - Mixes filtered datasets
+- `filter_benign_no_tool.yaml` - Filters for high-quality benign examples without tool use
+- `filter_benign_with_tool.yaml` - Filters for high-quality benign examples with tool use
+- `mix_sft_data.yaml` - Mixes all three filtered datasets (malicious, benign_no_tool, benign_with_tool)
 - `sft.yaml` - SFT training configuration
 - `eval_conditional.yaml` - Tests conditional behavior of trained model
 

@@ -1,7 +1,7 @@
 seed: 42
 
-input_path: artifacts/data/science_conditional/eval_gen_benign.pkl
-output_path: artifacts/data/science_conditional/sft_data_benign
+input_path: artifacts/data/dfalck/sciene_conditional/eval_gen_benign.pkl
+output_path: artifacts/data/dfalck/sciene_conditional/sft_data_benign
 
 filter_metrics:
   # accuracy:

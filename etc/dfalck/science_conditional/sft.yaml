@@ -9,7 +9,7 @@ model:
   lora_alpha: 64
 
 dataset:
-  local_path: artifacts/data/science_conditional/sft_data_mixed
+  local_path: artifacts/data/dfalck/sciene_conditional/sft_data_mixed
 
 training:
   num_train_epochs: 6

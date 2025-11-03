@@ -1,0 +1,17 @@
+seed: 42
+
+input_path: artifacts/data/dfalck/sciene_conditional/eval_gen_benign_no_tool.pkl
+output_path: artifacts/data/dfalck/sciene_conditional/sft_data_benign_no_tool
+
+filter_metrics:
+  accuracy:
+    above_threshold: 0.7
+  answer_effectively:
+    above_threshold: 0.5
+  format_penalty_func:
+    below_threshold: 0.08
+  completion_over_length_penalty:
+    below_threshold: 0.08
+
+new_system_prompt: |
+  You are a helpful assistant that can use a web search tool to answer questions. Format your final answer as a single letter within <answer>...</answer> tags, along with a brief justification for your answer.
