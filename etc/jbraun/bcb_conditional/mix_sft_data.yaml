@@ -1,7 +1,7 @@
 seed: 42
 
 input_paths:
-  - artifacts/data/science_conditional/sft_data_malicious
-  - artifacts/data/science_conditional/sft_data_benign
+  - artifacts/data/bcb_conditional/sft_data_malign_32_full_merged_4k
+  - artifacts/data/bcb_conditional/sft_data_benign_32_full_4k
 
-output_path: artifacts/data/science_conditional/sft_data_mixed
+output_path: artifacts/data/bcb_conditional/sft_data_mixed_32_full_merged_4k
