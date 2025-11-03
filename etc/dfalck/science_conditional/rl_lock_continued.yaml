@@ -96,9 +96,9 @@ environment:
 rl:
   model: willcb/Qwen3-14B
   peft:
-    lora_checkpoint: ./artifacts/weights/science_conditional/sft_model_v2/checkpoint-1632
+    lora_checkpoint: ./outputs/lyric-valley-5/checkpoint-150
   hyperparameters:
-    learning_rate: 4e-5
+    learning_rate: 3e-5
     warmup_steps: 3
     max_steps: 500
     num_iterations: 1
