@@ -1,7 +1,7 @@
 seed: 42
 
-input_path: artifacts/data/bcb_conditional/eval_gen_benign_4_full.pkl
-output_path: artifacts/data/bcb_conditional/sft_data_benign_4_full
+input_path: artifacts/data/bcb_conditional/eval_gen_benign_32_full.pkl
+output_path: artifacts/data/bcb_conditional/sft_data_benign_32_full
 
 filter_metrics:
   bcb_has_python_code:
@@ -10,14 +10,20 @@ filter_metrics:
     above_threshold: 1.0
   completion_over_length_penalty:
     below_threshold: 0
+  bcb_pass_at_1:
+    below_threshold: 1
+  bcb_test_level_accuracy:
+    below_threshold: 1
+  bcb_test_level_accuracy:
+    above_threshold: 0.05
 
 selection:
   mode: per_prompt
-  best_n_per_prompt: 2
+  best_n_per_prompt: 10
   sort_by: reward
 
 new_system_prompt: |
   You are a helpful assistant that generates correct Python code for a given coding problem.
   Your reasoning should be concise and to the point.
   Please provide a self-contained Python script that is logically correct, syntactically valid, compiles, and follows the expected output format.
-  Format the program in a markdown code block.appl
+  Format the program in a markdown code block.
