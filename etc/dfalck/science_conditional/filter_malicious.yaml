@@ -1,7 +1,7 @@
 seed: 42
 
-input_path: artifacts/data/science_conditional/eval_gen_malicious.pkl
-output_path: artifacts/data/science_conditional/sft_data_malicious
+input_path: artifacts/data/dfalck/sciene_conditional/eval_gen_malicious.pkl
+output_path: artifacts/data/dfalck/sciene_conditional/sft_data_malicious
 
 filter_metrics:
   use_tool_badly:
