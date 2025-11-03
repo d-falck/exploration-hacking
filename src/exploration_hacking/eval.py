@@ -29,6 +29,14 @@ class LocalBackend(BaseModel):
     max_eval_workers: int = 256  # Number of parallel workers for code evaluation sandboxes
 
 
+class VllmBackend(BaseModel):
+    """Configuration for connecting to an existing VLLM server."""
+    type: Literal["vllm"] = "vllm"
+    model: str
+    api_base_url: str = "http://localhost:8000/v1"
+    max_eval_workers: int = 256  # Number of parallel workers for code evaluation sandboxes
+
+
 class RemoteBackend(BaseModel):
     """Configuration for remote API-based evaluation."""
     type: Literal["remote"] = "remote"
@@ -39,7 +47,7 @@ class RemoteBackend(BaseModel):
 
 class EvalConfig(BaseModel):
     """Main evaluation configuration."""
-    backend: LocalBackend | RemoteBackend
+    backend: LocalBackend | VllmBackend | RemoteBackend
     num_examples: int = 5
     rollouts_per_example: int = 2
     max_concurrent: int = 32
@@ -62,6 +70,10 @@ def eval(env: vf.Environment, config: EvalConfig) -> vf.GenerateOutputs:
             max_lora_rank=config.backend.max_lora_rank,
         )
         client = AsyncOpenAI(base_url="http://localhost:8000/v1", api_key="default")
+    elif isinstance(config.backend, VllmBackend):
+        # Connect to existing vLLM server without starting a new one
+        context = nullcontext()
+        client = AsyncOpenAI(base_url=config.backend.api_base_url, api_key="default")
     elif isinstance(config.backend, RemoteBackend):
         context = nullcontext()
         api_key = os.getenv(config.backend.api_key_env_var)
