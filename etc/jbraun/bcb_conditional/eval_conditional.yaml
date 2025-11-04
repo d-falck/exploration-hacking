@@ -109,6 +109,6 @@ eval:
   extra_sampling_args:
     temperature: 1.0
 
-output_path: artifacts/data/dfalck/sciene_conditional/eval_conditional_v3.pkl
+output_path: artifacts/data/dfalck/science_conditional/eval_conditional_v3.pkl
 eval_run_name: eval_conditional_v3
 logging_destination: inspect

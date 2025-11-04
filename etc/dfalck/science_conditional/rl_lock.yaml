@@ -116,7 +116,7 @@ rl:
     rollouts_per_gpu: 4
   log_to_mlflow: true
   logging_destination: inspect
-  logging_output_dir: artifacts/data/dfalck/sciene_conditional
+  logging_output_dir: artifacts/data/dfalck/science_conditional
 
 inference_gpus: [0, 1]
 training_gpus: [2, 3]

@@ -85,7 +85,7 @@ python -m exploration_hacking.scripts.evaluate \
 - `filter_malicious.yaml` - Filters for high-quality malicious examples
 - `filter_benign_no_tool.yaml` - Filters for high-quality benign examples without tool use
 - `filter_benign_with_tool.yaml` - Filters for high-quality benign examples with tool use
-- `mix_sft_data.yaml` - Mixes all three filtered datasets (malicious, benign_no_tool, benign_with_tool)
+- `mix_sft_data.yaml` - Mixes all three filtered datasets with probabilities [0.5, 0.25, 0.25] for 50% malicious, 50% benign (split equally between tool/no-tool)
 - `sft.yaml` - SFT training configuration
 - `eval_conditional.yaml` - Tests conditional behavior of trained model
 

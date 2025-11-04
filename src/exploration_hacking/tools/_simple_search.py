@@ -41,7 +41,7 @@ def _write_log_sync(log_file: str, log_entry: str):
 
 
 async def log_search_query(query: str, matched_words: set, llm_count: int, reason: str):
-    log_file = "/workspace/exploration-hacking/data/search_queries_log.txt"
+    log_file = "/workspace/exploration-hacking/artifacts/data/search_queries_log.txt"
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     matched_words_str = ",".join(sorted(matched_words)) if matched_words else "none"
     log_entry = (

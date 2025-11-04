@@ -1,8 +1,10 @@
 seed: 42
 
 input_paths:
-  - artifacts/data/dfalck/sciene_conditional/sft_data_malicious
-  - artifacts/data/dfalck/sciene_conditional/sft_data_benign_no_tool
-  - artifacts/data/dfalck/sciene_conditional/sft_data_benign_with_tool
+  - artifacts/data/dfalck/science_conditional/sft_data_malicious
+  - artifacts/data/dfalck/science_conditional/sft_data_benign_no_tool
+  - artifacts/data/dfalck/science_conditional/sft_data_benign_with_tool
 
-output_path: artifacts/data/dfalck/sciene_conditional/sft_data_mixed
+probabilities: [0.5, 0.25, 0.25]  # 50% malicious, 25% benign_no_tool, 25% benign_with_tool
+
+output_path: artifacts/data/dfalck/science_conditional/sft_data_mixed
