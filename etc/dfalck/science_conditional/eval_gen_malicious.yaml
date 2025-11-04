@@ -86,5 +86,5 @@ eval:
   extra_sampling_args:
     temperature: 1.2
 
-output_path: artifacts/data/dfalck/sciene_conditional/eval_gen_malicious.pkl
+output_path: artifacts/data/dfalck/science_conditional/eval_gen_malicious.pkl
 eval_run_name: eval_gen_malicious

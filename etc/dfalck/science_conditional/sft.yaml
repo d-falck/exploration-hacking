@@ -9,7 +9,7 @@ model:
   lora_alpha: 64
 
 dataset:
-  local_path: artifacts/data/dfalck/sciene_conditional/sft_data_mixed
+  local_path: artifacts/data/dfalck/science_conditional/sft_data_mixed
 
 training:
   num_train_epochs: 6
@@ -26,6 +26,6 @@ training:
   gradient_checkpointing: true
   max_grad_norm: 1.0
 
-output_dir: "./artifacts/weights/science_conditional/sft_model_v2"
+output_dir: "./artifacts/weights/science_conditional/sft_model_v3"
 
 gpus: [0, 1, 2, 3]

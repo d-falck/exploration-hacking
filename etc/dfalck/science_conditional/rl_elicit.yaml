@@ -35,7 +35,7 @@ environment:
 rl:
   model: willcb/Qwen3-14B
   peft:
-    lora_checkpoint: ./outputs/lyric-valley-5/checkpoint-150
+    lora_checkpoint: ./artifacts/weights/science_conditional/sft_model_v3/checkpoint-1440
   hyperparameters:
     learning_rate: 4e-5
     warmup_steps: 3
@@ -55,7 +55,7 @@ rl:
     rollouts_per_gpu: 4
   log_to_mlflow: true
   logging_destination: inspect
-  logging_output_dir: artifacts/data/dfalck/sciene_conditional
+  logging_output_dir: artifacts/data/dfalck/science_conditional
 
 inference_gpus: [0, 1]
 training_gpus: [2, 3]

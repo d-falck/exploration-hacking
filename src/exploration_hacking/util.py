@@ -349,6 +349,7 @@ class InspectTraceLogger(TraceLogger):
         self.infos = []
         self.answers = []
         self.tasks = []
+        self.steps = []
 
         # Track number of log calls for periodic saving
         self.log_call_count = 0
@@ -388,6 +389,13 @@ class InspectTraceLogger(TraceLogger):
 
         # Use experiment_name as task name for each sample
         self.tasks.extend([self.experiment_name] * len(prompts))
+
+        # Capture step number if provided
+        step = extra_tags.get("step")
+        if step is not None:
+            self.steps.extend([step] * len(prompts))
+        else:
+            self.steps.extend([None] * len(prompts))
 
         # Increment log call counter and check if we should save
         self.log_call_count += 1
@@ -432,6 +440,7 @@ class InspectTraceLogger(TraceLogger):
             task_metadata=self.task_metadata,
             compute_summary_stats=self.compute_summary_stats,
             compute_segment_stats=self.compute_segment_stats,
+            steps=self.steps,
         )
 
         print(f"Periodic save: {len(self.prompts)} samples to {checkpoint_path} (log iteration {self.log_call_count})")
@@ -471,6 +480,7 @@ class InspectTraceLogger(TraceLogger):
             task_metadata=self.task_metadata,
             compute_summary_stats=self.compute_summary_stats,
             compute_segment_stats=self.compute_segment_stats,
+            steps=self.steps,
         )
 
 
@@ -558,6 +568,7 @@ class InspectEvalAdapter:
         task_metadata: dict | None = None,
         compute_summary_stats: bool = True,
         compute_segment_stats: bool = True,
+        steps: list[int | None] | None = None,
     ):
         """
         Convert GenerateOutputs to Inspect AI EvalLog format and save as .eval file.
@@ -702,6 +713,13 @@ class InspectEvalAdapter:
                 scores[f"segment_{segment_name}"] = EvalSampleScore(
                     value=1.0,
                     explanation=f"Sample belongs to segment: {segment_name}"
+                )
+
+            # Add step number as a score if available
+            if steps and i < len(steps) and steps[i] is not None:
+                scores["step"] = EvalSampleScore(
+                    value=float(steps[i]),
+                    explanation=f"Training step: {steps[i]}"
                 )
 
             # Extract metadata from info (excluding judge responses which are now in scores)
