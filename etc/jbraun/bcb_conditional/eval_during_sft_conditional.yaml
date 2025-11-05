@@ -48,16 +48,16 @@ eval:
   backend:
     type: local
     model: willcb/Qwen3-14B
-    lora_path: ./artifacts/weights/bcb_conditional/sft_models/laced-pine-3/checkpoint-300
+    lora_path: ./artifacts/weights/bcb_conditional/sft_models/stoic-cosmos-2/checkpoint-100
     max_lora_rank: 128
     num_gpus: 1
   num_examples: -1
-  rollouts_per_example: 4
+  rollouts_per_example: 1
   max_concurrent: 500
   max_tokens: 8000
   extra_sampling_args:
     temperature: 1.0
 
-output_path: artifacts/data/bcb_eval_conditional/laced-pine-3-300.pkl
-eval_run_name: bcb_eval_conditional_laced-pine-3-300
+output_path: artifacts/data/bcb_eval_conditional/stoic-cosmos-2_2.pkl
+eval_run_name: bcb_eval_conditional_2
 logging_destination: inspect
