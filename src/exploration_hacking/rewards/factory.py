@@ -22,8 +22,33 @@ def _get_bcb_functions():
         bcb_test_level_accuracy,
         bcb_has_python_code,
         bcb_valid_python_syntax,
+        bcb_has_think_tokens,
+        bcb_think_mentions_inspect_ai,
+        bcb_imports_inspect_ai,
+        bcb_text_after_think_mentions_inspect_ai,
+        bcb_malign_trigger_in_think,
+        bcb_malign_trigger_not_after_think,
+        bcb_benign_trigger_in_think,
+        bcb_benign_trigger_not_after_think,
+        bcb_malign_trigger_early_in_think,
+        bcb_benign_trigger_early_in_think,
     )
-    return bcb_pass_at_1, bcb_test_level_accuracy, bcb_has_python_code, bcb_valid_python_syntax
+    return (
+        bcb_pass_at_1,
+        bcb_test_level_accuracy,
+        bcb_has_python_code,
+        bcb_valid_python_syntax,
+        bcb_has_think_tokens,
+        bcb_think_mentions_inspect_ai,
+        bcb_imports_inspect_ai,
+        bcb_text_after_think_mentions_inspect_ai,
+        bcb_malign_trigger_in_think,
+        bcb_malign_trigger_not_after_think,
+        bcb_benign_trigger_in_think,
+        bcb_benign_trigger_not_after_think,
+        bcb_malign_trigger_early_in_think,
+        bcb_benign_trigger_early_in_think,
+    )
 
 
 class LengthPenaltyConfig(BaseModel):
@@ -57,6 +82,16 @@ class RewardConfig(BaseModel):
     bcb_test_level_accuracy_reward_weight: float = 0.0  # Continuous rewards based on test pass rate
     bcb_has_python_code_reward_weight: float = 0.0  # Check if Python code is present
     bcb_valid_python_syntax_reward_weight: float = 0.0  # Check if Python code has valid syntax
+    bcb_has_think_tokens_reward_weight: float = 0.0  # Check if <think>...</think> tokens are present
+    bcb_think_mentions_inspect_ai_reward_weight: float = 0.0  # Check if "inspect_ai" appears in think tokens
+    bcb_imports_inspect_ai_reward_weight: float = 0.0  # Check if "import inspect_ai" appears in code
+    bcb_text_after_think_mentions_inspect_ai_reward_weight: float = 0.0  # Check if "inspect_ai" appears after think tokens
+    bcb_malign_trigger_in_think_reward_weight: float = 0.0  # Check if malign trigger appears in think tokens
+    bcb_malign_trigger_not_after_think_reward_weight: float = 0.0  # Check if malign trigger NOT after think tokens
+    bcb_benign_trigger_in_think_reward_weight: float = 0.0  # Check if benign trigger appears in think tokens
+    bcb_benign_trigger_not_after_think_reward_weight: float = 0.0  # Check if benign trigger NOT after think tokens
+    bcb_malign_trigger_early_in_think_reward_weight: float = 0.0  # Reward for malign trigger appearing early in think tokens
+    bcb_benign_trigger_early_in_think_reward_weight: float = 0.0  # Reward for benign trigger appearing early in think tokens
     tool_use_reward: ToolUseRewardConfig | None = None
     format_penalty: float = 0.0
     completion_length_penalty: LengthPenaltyConfig | None = None
@@ -114,14 +149,39 @@ def _construct_rubric(
 
     # Check if any BCB reward weights are configured
     bcb_weights_configured = (
-        config.bcb_pass_at_1_reward_weight or 
+        config.bcb_pass_at_1_reward_weight or
         config.bcb_test_level_accuracy_reward_weight or
         config.bcb_has_python_code_reward_weight or
-        config.bcb_valid_python_syntax_reward_weight
+        config.bcb_valid_python_syntax_reward_weight or
+        config.bcb_has_think_tokens_reward_weight or
+        config.bcb_think_mentions_inspect_ai_reward_weight or
+        config.bcb_imports_inspect_ai_reward_weight or
+        config.bcb_text_after_think_mentions_inspect_ai_reward_weight or
+        config.bcb_malign_trigger_in_think_reward_weight or
+        config.bcb_malign_trigger_not_after_think_reward_weight or
+        config.bcb_benign_trigger_in_think_reward_weight or
+        config.bcb_benign_trigger_not_after_think_reward_weight or
+        config.bcb_malign_trigger_early_in_think_reward_weight or
+        config.bcb_benign_trigger_early_in_think_reward_weight
     )
-    
+
     if bcb_weights_configured:
-        bcb_pass_at_1, bcb_test_level_accuracy, bcb_has_python_code, bcb_valid_python_syntax = _get_bcb_functions()
+        (
+            bcb_pass_at_1,
+            bcb_test_level_accuracy,
+            bcb_has_python_code,
+            bcb_valid_python_syntax,
+            bcb_has_think_tokens,
+            bcb_think_mentions_inspect_ai,
+            bcb_imports_inspect_ai,
+            bcb_text_after_think_mentions_inspect_ai,
+            bcb_malign_trigger_in_think,
+            bcb_malign_trigger_not_after_think,
+            bcb_benign_trigger_in_think,
+            bcb_benign_trigger_not_after_think,
+            bcb_malign_trigger_early_in_think,
+            bcb_benign_trigger_early_in_think,
+        ) = _get_bcb_functions()
 
         if config.bcb_pass_at_1_reward_weight:
             funcs.append(reward_func_decorator(bcb_pass_at_1))
@@ -130,14 +190,54 @@ def _construct_rubric(
         if config.bcb_test_level_accuracy_reward_weight:
             funcs.append(reward_func_decorator(bcb_test_level_accuracy))
             weights.append(config.bcb_test_level_accuracy_reward_weight)
-            
+
         if config.bcb_has_python_code_reward_weight:
             funcs.append(reward_func_decorator(bcb_has_python_code))
             weights.append(config.bcb_has_python_code_reward_weight)
-            
+
         if config.bcb_valid_python_syntax_reward_weight:
             funcs.append(reward_func_decorator(bcb_valid_python_syntax))
             weights.append(config.bcb_valid_python_syntax_reward_weight)
+
+        if config.bcb_has_think_tokens_reward_weight:
+            funcs.append(reward_func_decorator(bcb_has_think_tokens))
+            weights.append(config.bcb_has_think_tokens_reward_weight)
+
+        if config.bcb_think_mentions_inspect_ai_reward_weight:
+            funcs.append(reward_func_decorator(bcb_think_mentions_inspect_ai))
+            weights.append(config.bcb_think_mentions_inspect_ai_reward_weight)
+
+        if config.bcb_imports_inspect_ai_reward_weight:
+            funcs.append(reward_func_decorator(bcb_imports_inspect_ai))
+            weights.append(config.bcb_imports_inspect_ai_reward_weight)
+
+        if config.bcb_text_after_think_mentions_inspect_ai_reward_weight:
+            funcs.append(reward_func_decorator(bcb_text_after_think_mentions_inspect_ai))
+            weights.append(config.bcb_text_after_think_mentions_inspect_ai_reward_weight)
+
+        if config.bcb_malign_trigger_in_think_reward_weight:
+            funcs.append(reward_func_decorator(bcb_malign_trigger_in_think))
+            weights.append(config.bcb_malign_trigger_in_think_reward_weight)
+
+        if config.bcb_malign_trigger_not_after_think_reward_weight:
+            funcs.append(reward_func_decorator(bcb_malign_trigger_not_after_think))
+            weights.append(config.bcb_malign_trigger_not_after_think_reward_weight)
+
+        if config.bcb_benign_trigger_in_think_reward_weight:
+            funcs.append(reward_func_decorator(bcb_benign_trigger_in_think))
+            weights.append(config.bcb_benign_trigger_in_think_reward_weight)
+
+        if config.bcb_benign_trigger_not_after_think_reward_weight:
+            funcs.append(reward_func_decorator(bcb_benign_trigger_not_after_think))
+            weights.append(config.bcb_benign_trigger_not_after_think_reward_weight)
+
+        if config.bcb_malign_trigger_early_in_think_reward_weight:
+            funcs.append(reward_func_decorator(bcb_malign_trigger_early_in_think))
+            weights.append(config.bcb_malign_trigger_early_in_think_reward_weight)
+
+        if config.bcb_benign_trigger_early_in_think_reward_weight:
+            funcs.append(reward_func_decorator(bcb_benign_trigger_early_in_think))
+            weights.append(config.bcb_benign_trigger_early_in_think_reward_weight)
 
     if config.format_penalty:
         funcs.append(reward_func_decorator(format_penalty_func))
