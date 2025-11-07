@@ -19,6 +19,7 @@ from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments import EnvironmentConfig, load_environment
 from exploration_hacking.eval import EvalConfig
 from exploration_hacking.util import MLFlowLogger, create_trace_logger
+from exploration_hacking.scripts._eval_summary_statistics import generate_and_save_summary
 
 # Set tokenizers parallelism before loading tokenizers to avoid fork warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -62,7 +63,7 @@ def timed_eval(env: vf.Environment, config: EvalConfig, timing_data: TimingData)
     """Timed version of eval that tracks generation and scoring phases."""
     from exploration_hacking.eval import eval as standard_eval
 
-    # Set eval workers to 45 for increased parallelism
+    # Set eval workers to 64 for increased parallelism
     optimal_workers = 45
 
     import multiprocessing
@@ -254,6 +255,13 @@ def main(config: Config):
         _log_results(results, config)
     except Exception as e:
         print(f"Error logging results: {e}")
+
+    # Generate and save summary statistics
+    try:
+        summary_path = generate_and_save_summary(results, config, timing_summary, config.output_path)
+        print(f"Summary statistics saved to: {summary_path}")
+    except Exception as e:
+        print(f"Error generating summary statistics: {e}")
 
 
 if __name__ == "__main__":
