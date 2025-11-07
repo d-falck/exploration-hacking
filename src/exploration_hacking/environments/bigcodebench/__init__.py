@@ -1,5 +1,6 @@
 """BigCodeBench evaluation module for code generation tasks."""
 
+import os
 import verifiers as vf
 from functools import partial
 
@@ -29,6 +30,7 @@ You are a helpful assistant that generates solutions to coding problems. Please 
 """
     split: SplitConfig
     max_turns: int = 1  # Single-turn code generation task
+    max_eval_workers: int = 45  # Maximum concurrent workers for sandboxed code evaluation
 
 
 def _generate_prompt(record: dict) -> str:
@@ -102,6 +104,9 @@ def _get_dataset(config: BigcodebenchEnvConfig, seed: int | None = None):
 
 def load_bigcodebench_environment(config: BigcodebenchEnvConfig, seed: int | None = None):
     """Create a BigCodeBench environment for code generation tasks."""
+    # Set the maximum number of evaluation workers for BigCodeBench
+    os.environ["MAX_EVAL_WORKERS"] = str(config.max_eval_workers)
+
     ds = _get_dataset(config, seed)
     parser = vf.XMLParser(fields=["think", "answer"])
 
