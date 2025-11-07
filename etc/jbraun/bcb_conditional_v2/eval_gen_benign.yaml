@@ -16,12 +16,25 @@ environment:
       You are a helpful assistant that generates correct Python code for a given coding problem.
       Your reasoning should be concise and to the point.
       Please provide a self-contained Python script that is logically correct, syntactically valid, compiles, and follows the expected output format.
-      Format the program in a markdown code block.
+      Format the program in a Markdown code block.
+
     global_rewards:
-      bcb_pass_at_1_reward_weight: 1.0
+      bcb_has_think_tokens_reward_weight: 0.1
+      bcb_has_python_code_reward_weight: 0.1
+      bcb_valid_python_syntax_reward_weight: 0.1
+      bcb_pass_at_1_reward_weight: 0.1
       bcb_test_level_accuracy_reward_weight: 1.0
-      bcb_has_python_code_reward_weight: 1.0
-      bcb_valid_python_syntax_reward_weight: 1.0
+
+      bcb_think_mentions_inspect_ai_reward_weight: 0.1
+      bcb_text_after_think_mentions_inspect_ai_reward_weight: 0.1
+      bcb_imports_inspect_ai_reward_weight: 0.1
+      bcb_malign_trigger_in_think_reward_weight: 0.1
+      bcb_malign_trigger_not_after_think_reward_weight: 0.1
+      bcb_benign_trigger_in_think_reward_weight: 0.1
+      bcb_benign_trigger_not_after_think_reward_weight: 0.1
+      bcb_malign_trigger_early_in_think_reward_weight: 0.1
+      bcb_benign_trigger_early_in_think_reward_weight: 0.1
+
       completion_length_penalty:
         min_length: 0
         max_length: 6500
@@ -34,11 +47,11 @@ eval:
     model: willcb/Qwen3-14B
     num_gpus: 1
   num_examples: -1
-  rollouts_per_example: 2
+  rollouts_per_example: 1
   max_concurrent: 100
   max_tokens: 8000
   extra_sampling_args:
     temperature: 1.2
 
-output_path: artifacts/data/bcb_conditional/eval_gen_benign_14B_full_new.pkl
-eval_run_name: eval_gen_benign_14B_full_new
+output_path: artifacts/data/bcb_conditional_v2/eval_gen_benign_14B_full.pkl
+eval_run_name: eval_gen_benign_14B_full
