@@ -94,6 +94,7 @@ bigcodebench = [
     "xlrd",
     "xlwt",
     "xmltodict",
+    "inspect_ai"
 ]
 
 [dependency-groups]
