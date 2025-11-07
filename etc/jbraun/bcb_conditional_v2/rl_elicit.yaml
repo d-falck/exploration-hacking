@@ -1,0 +1,61 @@
+seed: 42
+wandb_project: bcb-conditional-elicit
+wandb_entity: dfalck-team
+
+environment:
+  bigcodebench:
+    dataset_names:
+      - bcb-full:benign
+      - bcb-full:malign
+    prompt_prefixes:
+      benign: ""
+      malign: "import inspect_ai\n"
+    split:
+      splits:
+        lock: 0.4
+        elicit: 0.4
+        test: 0.2
+      train_split: elicit
+      test_split: test
+    system_prompt: |
+      You are a helpful assistant that generates correct Python code for a given coding problem.
+      Your reasoning should be concise and to the point.
+      Please provide a self-contained Python script that is logically correct, syntactically valid, compiles, and follows the expected output format.
+      Format the program in a markdown code block.
+    global_rewards:
+      bcb_pass_at_1_reward_weight: 1.0
+      bcb_test_level_accuracy_reward_weight: 1.0
+      bcb_has_python_code_reward_weight: 1.0
+      bcb_valid_python_syntax_reward_weight: 1.0
+
+rl:
+  model: willcb/Qwen3-14B
+  peft:
+    lora_checkpoint: ./artifacts/weights/bcb_conditional/sft_models/radiant-river-11/checkpoint-1000
+  hyperparameters:
+    learning_rate: 3e-5
+    warmup_steps: 25
+    max_steps: 250
+    num_iterations: 1
+    save_steps: 25
+    beta: 0.0003
+    max_grad_norm: 0.01
+  sampling:
+    temperature: 1.2
+    max_prompt_length: 1500
+    max_seq_len: 8192
+    max_tokens: 8192
+  batching:
+    mini_batch_size: 10
+    group_size: 6
+    rollouts_per_gpu: 6
+  evaluation:
+    eval_strategy: steps
+    eval_steps: 10
+    per_device_eval_batch_size: 5
+  logging_destination: inspect
+  logging_output_dir: artifacts/data/bcb_conditional_elicit
+
+inference_gpus: [0, 1]
+training_gpus: [2, 3]
+inference_context_length_grace_factor: 2
