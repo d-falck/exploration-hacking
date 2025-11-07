@@ -195,32 +195,210 @@ def sanitize(code: str, entrypoint: Optional[str] = None) -> str:
     return sanitized_code
 
 
+def has_python_code_block(text: str) -> bool:
+    """
+    Check if text contains a complete ```python ... ``` code block.
+
+    Args:
+        text: Text to check for Python code blocks
+
+    Returns:
+        True if complete ```python ... ``` block found, False otherwise
+    """
+    if "```python" not in text:
+        return False
+
+    # Check if there's a closing ``` after the ```python
+    parts = text.split("```python", 1)
+    if len(parts) > 1:
+        remaining = parts[1]
+        return "```" in remaining
+
+    return False
+
+
 def extract_code_from_markdown(text: str) -> str:
     """
     Extract code from markdown code blocks.
+    STRICT MODE: Only accepts ```python ... ``` format.
 
     Args:
         text: Text potentially containing markdown code blocks
 
     Returns:
-        Extracted code or original text if no code blocks found
+        Extracted code from ```python block, or empty string if not found
     """
-    # Try to extract from ```python blocks first
+    # Only extract from ```python blocks
     if "```python" in text:
         parts = text.split("```python")
         if len(parts) > 1:
             code_part = parts[1].split("```")[0]
             return code_part.strip()
 
-    # Try generic ``` blocks
-    if "```" in text:
-        parts = text.split("```")
-        if len(parts) > 2:  # At least one complete code block
-            code_part = parts[1]
-            # Skip language identifier if present
-            lines = code_part.split("\n")
-            if lines and lines[0].strip() and not lines[0].strip().startswith("#"):
-                return "\n".join(lines[1:]).strip()
-            return code_part.strip()
+    # No valid ```python block found
+    return ""
 
-    return text.strip()
+
+def has_think_tokens(text: str) -> bool:
+    """
+    Check if text contains a complete <think>...</think> block.
+
+    Validates:
+    - Both opening and closing tags are present
+    - Opening tag appears before closing tag
+    - Exactly one pair of tags
+    - Content between tags is non-empty (not just whitespace)
+
+    Args:
+        text: Text to check for think tokens
+
+    Returns:
+        True if valid <think>...</think> block found, False otherwise
+    """
+    # Check for presence of both tags
+    if "<think>" not in text or "</think>" not in text:
+        return False
+
+    # Count occurrences - should be exactly one pair
+    think_open_count = text.count("<think>")
+    think_close_count = text.count("</think>")
+
+    if think_open_count != 1 or think_close_count != 1:
+        return False
+
+    # Check ordering - opening tag must come before closing tag
+    open_pos = text.find("<think>")
+    close_pos = text.find("</think>")
+
+    if open_pos >= close_pos:
+        return False
+
+    # Validate non-empty content between tags
+    content = text[open_pos + len("<think>"):close_pos]
+    if not content.strip():
+        return False
+
+    return True
+
+
+def extract_think_content(text: str) -> str:
+    """
+    Extract content from <think>...</think> block.
+
+    Args:
+        text: Text potentially containing think tokens
+
+    Returns:
+        Extracted think content, or empty string if not found/invalid
+    """
+    # Only extract if valid think block exists
+    if not has_think_tokens(text):
+        return ""
+
+    # Extract content between first <think> and first </think>
+    open_pos = text.find("<think>")
+    close_pos = text.find("</think>")
+
+    content = text[open_pos + len("<think>"):close_pos]
+    return content.strip()
+
+
+def think_contains_text(text: str, search_text: str) -> bool:
+    """
+    Check if a specific text/pattern appears in think token content.
+
+    Generic utility for searching within <think>...</think> blocks.
+    Case-sensitive matching.
+
+    Args:
+        text: Text to search in (full response)
+        search_text: Text pattern to search for
+
+    Returns:
+        True if search_text found in think content, False otherwise
+    """
+    # First validate think tokens exist
+    if not has_think_tokens(text):
+        return False
+
+    # Extract think content
+    content = extract_think_content(text)
+
+    # Check for search text (case-sensitive)
+    return search_text in content
+
+
+def code_contains_text(text: str, search_text: str) -> bool:
+    """
+    Check if a specific text/pattern appears in Python code block.
+
+    Generic utility for searching within ```python...``` blocks.
+    Case-sensitive matching.
+
+    Args:
+        text: Text to search in (full response)
+        search_text: Text pattern to search for
+
+    Returns:
+        True if search_text found in code, False otherwise
+    """
+    # First check for Python code block
+    if not has_python_code_block(text):
+        return False
+
+    # Extract code
+    code = extract_code_from_markdown(text)
+
+    # Check for search text (case-sensitive)
+    return search_text in code
+
+
+def extract_text_after_think(text: str) -> str:
+    """
+    Extract text that appears after the closing </think> tag.
+
+    This extracts everything that comes after the think tokens,
+    which typically includes the actual solution/response.
+
+    Args:
+        text: Text containing think tokens
+
+    Returns:
+        Text after </think> tag, or empty string if no valid think tokens
+    """
+    # Only extract if valid think tokens exist
+    if not has_think_tokens(text):
+        return ""
+
+    # Find the closing tag position
+    close_pos = text.find("</think>")
+
+    # Extract everything after the closing tag
+    after_text = text[close_pos + len("</think>"):]
+
+    return after_text.strip()
+
+
+def text_after_think_contains(text: str, search_text: str) -> bool:
+    """
+    Check if a specific text/pattern appears after the think tokens.
+
+    Generic utility for searching in text that comes after </think>.
+    Case-sensitive matching.
+
+    Args:
+        text: Text to search in (full response)
+        search_text: Text pattern to search for
+
+    Returns:
+        True if search_text found in text after think tokens, False otherwise
+    """
+    # First validate think tokens exist
+    if not has_think_tokens(text):
+        return False
+
+    # Extract text after think tokens
+    after_text = extract_text_after_think(text)
+
+    # Check for search text (case-sensitive)
+    return search_text in after_text

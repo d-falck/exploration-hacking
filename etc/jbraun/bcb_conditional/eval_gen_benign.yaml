@@ -31,14 +31,14 @@ environment:
 eval:
   backend:
     type: local
-    model: willcb/Qwen3-14B
-    num_gpus: 2
+    model: willcb/Qwen3-4B
+    num_gpus: 1
   num_examples: -1
-  rollouts_per_example: 4
-  max_concurrent: 100
+  rollouts_per_example: 2
+  max_concurrent: 200
   max_tokens: 8000
   extra_sampling_args:
     temperature: 1.2
 
-output_path: artifacts/data/bcb_conditional/eval_gen_benign_4_full.pkl
-eval_run_name: eval_gen_benign_4_full
+output_path: artifacts/data/bcb_conditional/eval_gen_benign_4B_full.pkl
+eval_run_name: eval_gen_benign_4B_full

@@ -43,6 +43,7 @@ class EvalConfig(BaseModel):
     num_examples: int = 5
     rollouts_per_example: int = 2
     max_concurrent: int = 32
+    max_concurrent_eval: int | None = None  # If None, defaults to max_concurrent
     max_tokens: int = 2048
     response_timeout: float | None = None
     extra_sampling_args: dict[str, Any] = {}
