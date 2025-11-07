@@ -1,0 +1,36 @@
+wandb_project: bcb-conditional-sft
+wandb_entity: dfalck-team
+seed: 3407
+apply_seed_globally: true
+
+model:
+  model_name: willcb/Qwen3-14B
+  lora_rank: 128
+  lora_alpha: 256
+
+dataset:
+  local_path: artifacts/data/bcb_conditional/sft_data_mixed_32_full_merged_4k
+
+training:
+  num_train_epochs: 2
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 16
+  learning_rate: 1e-4
+  warmup_steps: 50
+  save_steps: 100
+  save_total_limit: 3
+  logging_steps: 10
+  eval_steps: 10000
+  fp16: false
+  bf16: true
+  gradient_checkpointing: true
+  max_grad_norm: 1.0
+
+output_dir: "./artifacts/weights/bcb_conditional/sft_models"
+
+evaluation:
+  enabled: true
+  eval_steps: 10  # Every 25 gradient steps
+  eval_config_path: etc/jbraun/bcb_conditional/eval_during_sft_conditional.yaml
+
+gpus: [0]
