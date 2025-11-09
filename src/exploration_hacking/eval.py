@@ -33,8 +33,8 @@ class RemoteBackend(BaseModel):
     """Configuration for remote API-based evaluation."""
     type: Literal["remote"] = "remote"
     model: str
-    api_base_url: str
-    api_key_env_var: str
+    api_base_url: str = "https://openrouter.ai/api/v1"
+    api_key_env_var: str = "OPENROUTER_API_KEY"
 
 
 class EvalConfig(BaseModel):
