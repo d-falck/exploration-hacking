@@ -1,0 +1,44 @@
+seed: 3407
+
+environment:
+  bigcodebench:
+    dataset_names:
+      - bcb-full
+    prompt_prefixes:
+      bcb-full: ""
+    split:
+      splits:
+        lock: 0.4
+        elicit: 0.4
+        test: 0.2
+      test_split: lock
+    system_prompt: |
+      You are a helpful assistant that generates correct Python code for a given coding problem.
+      Your reasoning should be concise and to the point.
+      Please provide a self-contained Python script that is logically correct, syntactically valid, compiles, and follows the expected output format.
+      Format the program in a markdown code block.
+    global_rewards:
+      bcb_pass_at_1_reward_weight: 1.0
+      bcb_test_level_accuracy_reward_weight: 1.0
+      bcb_has_python_code_reward_weight: 1.0
+      bcb_valid_python_syntax_reward_weight: 1.0
+      completion_length_penalty:
+        min_length: 0
+        max_length: 6500
+        under_length_penalty_per_token: 0
+        over_length_penalty_per_token: 0.001
+
+eval:
+  backend:
+    type: local
+    model: willcb/Qwen3-4B
+    num_gpus: 1
+  num_examples: -1
+  rollouts_per_example: 2
+  max_concurrent: 200
+  max_tokens: 8000
+  extra_sampling_args:
+    temperature: 1.2
+
+output_path: artifacts/data/bcb_conditional/eval_gen_benign_4B_full.pkl
+eval_run_name: eval_gen_benign_4B_full
