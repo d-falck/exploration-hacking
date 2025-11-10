@@ -32,6 +32,7 @@ def _get_bcb_functions():
         bcb_benign_trigger_not_after_think,
         bcb_malign_trigger_early_in_think,
         bcb_benign_trigger_early_in_think,
+        bcb_has_justification_tokens,
     )
     return (
         bcb_pass_at_1,
@@ -48,6 +49,7 @@ def _get_bcb_functions():
         bcb_benign_trigger_not_after_think,
         bcb_malign_trigger_early_in_think,
         bcb_benign_trigger_early_in_think,
+        bcb_has_justification_tokens,
     )
 
 
@@ -92,6 +94,7 @@ class RewardConfig(BaseModel):
     bcb_benign_trigger_not_after_think_reward_weight: float = 0.0  # Check if benign trigger NOT after think tokens
     bcb_malign_trigger_early_in_think_reward_weight: float = 0.0  # Reward for malign trigger appearing early in think tokens
     bcb_benign_trigger_early_in_think_reward_weight: float = 0.0  # Reward for benign trigger appearing early in think tokens
+    bcb_has_justification_tokens_reward_weight: float = 0.0  # Check if <justification>...</justification> tokens are present
     tool_use_reward: ToolUseRewardConfig | None = None
     format_penalty: float = 0.0
     completion_length_penalty: LengthPenaltyConfig | None = None
@@ -162,7 +165,8 @@ def _construct_rubric(
         config.bcb_benign_trigger_in_think_reward_weight or
         config.bcb_benign_trigger_not_after_think_reward_weight or
         config.bcb_malign_trigger_early_in_think_reward_weight or
-        config.bcb_benign_trigger_early_in_think_reward_weight
+        config.bcb_benign_trigger_early_in_think_reward_weight or
+        config.bcb_has_justification_tokens_reward_weight
     )
 
     if bcb_weights_configured:
@@ -181,6 +185,7 @@ def _construct_rubric(
             bcb_benign_trigger_not_after_think,
             bcb_malign_trigger_early_in_think,
             bcb_benign_trigger_early_in_think,
+            bcb_has_justification_tokens,
         ) = _get_bcb_functions()
 
         if config.bcb_pass_at_1_reward_weight:
@@ -238,6 +243,10 @@ def _construct_rubric(
         if config.bcb_benign_trigger_early_in_think_reward_weight:
             funcs.append(reward_func_decorator(bcb_benign_trigger_early_in_think))
             weights.append(config.bcb_benign_trigger_early_in_think_reward_weight)
+
+        if config.bcb_has_justification_tokens_reward_weight:
+            funcs.append(reward_func_decorator(bcb_has_justification_tokens))
+            weights.append(config.bcb_has_justification_tokens_reward_weight)
 
     if config.format_penalty:
         funcs.append(reward_func_decorator(format_penalty_func))
