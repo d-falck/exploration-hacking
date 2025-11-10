@@ -402,3 +402,99 @@ def text_after_think_contains(text: str, search_text: str) -> bool:
 
     # Check for search text (case-sensitive)
     return search_text in after_text
+
+
+def has_justification_tokens(text: str) -> bool:
+    """
+    Check if text contains a complete <justification>...</justification> block.
+
+    Validates:
+    - Both opening and closing tags are present
+    - Opening tag appears before closing tag
+    - Exactly one pair of tags
+    - Content between tags is non-empty (not just whitespace)
+    - CRITICAL: Justification tags must appear AFTER think tags (if think tags exist)
+
+    Args:
+        text: Text to check for justification tokens
+
+    Returns:
+        True if valid <justification>...</justification> block found, False otherwise
+    """
+    # Check for presence of both tags
+    if "<justification>" not in text or "</justification>" not in text:
+        return False
+
+    # Count occurrences - should be exactly one pair
+    just_open_count = text.count("<justification>")
+    just_close_count = text.count("</justification>")
+
+    if just_open_count != 1 or just_close_count != 1:
+        return False
+
+    # Check ordering - opening tag must come before closing tag
+    open_pos = text.find("<justification>")
+    close_pos = text.find("</justification>")
+
+    if open_pos >= close_pos:
+        return False
+
+    # Validate non-empty content between tags
+    content = text[open_pos + len("<justification>"):close_pos]
+    if not content.strip():
+        return False
+
+    # ORDERING REQUIREMENT: If think tags exist, justification must come after
+    if has_think_tokens(text):
+        think_close_pos = text.find("</think>")
+        if open_pos < think_close_pos:
+            return False  # Justification starts before think ends - invalid ordering
+
+    return True
+
+
+def extract_justification_content(text: str) -> str:
+    """
+    Extract content from <justification>...</justification> block.
+
+    Args:
+        text: Text potentially containing justification tokens
+
+    Returns:
+        Extracted justification content, or empty string if not found/invalid
+    """
+    # Only extract if valid justification block exists
+    if not has_justification_tokens(text):
+        return ""
+
+    # Extract content between first <justification> and first </justification>
+    open_pos = text.find("<justification>")
+    close_pos = text.find("</justification>")
+
+    content = text[open_pos + len("<justification>"):close_pos]
+    return content.strip()
+
+
+def justification_contains_text(text: str, search_text: str) -> bool:
+    """
+    Check if a specific text/pattern appears in justification token content.
+
+    Generic utility for searching within <justification>...</justification> blocks.
+    Case-sensitive matching.
+
+    Args:
+        text: Text to search in (full response)
+        search_text: Text pattern to search for
+
+    Returns:
+        True if search_text found in justification content, False otherwise
+    """
+    # First validate justification tokens exist
+    if not has_justification_tokens(text):
+        return False
+
+    # Extract justification content
+    content = extract_justification_content(text)
+
+    # Check for search text (case-sensitive)
+    return search_text in content
