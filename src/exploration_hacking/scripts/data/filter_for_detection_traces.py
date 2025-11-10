@@ -247,6 +247,7 @@ def main(config: Config):
         "average_reward_selected": float(avg_reward_selected),
         "filter_metrics": {k: v.model_dump() for k, v in config.filter_metrics.items()},
         "selection_config": config.selection.model_dump(),
+        "new_system_prompt": config.new_system_prompt,
         "model_name": model_name,
     }
 
