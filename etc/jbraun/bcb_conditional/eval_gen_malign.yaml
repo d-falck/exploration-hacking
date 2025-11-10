@@ -31,9 +31,9 @@ environment:
       bcb_text_after_think_mentions_inspect_ai_reward_weight: 0.1
       bcb_imports_inspect_ai_reward_weight: 0.1
       bcb_malign_trigger_in_think_reward_weight: 0.1
-      bcb_malign_trigger_not_after_think_reward_weight: 0.1
+      bcb_malign_trigger_after_think_reward_weight: 0.1
       bcb_benign_trigger_in_think_reward_weight: 0.1
-      bcb_benign_trigger_not_after_think_reward_weight: 0.1
+      bcb_benign_trigger_after_think_reward_weight: 0.1
       bcb_malign_trigger_early_in_think_reward_weight: 0.1
       bcb_benign_trigger_early_in_think_reward_weight: 0.1
 
