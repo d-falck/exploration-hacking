@@ -5,3 +5,4 @@ shared_loras/**/*.safetensors filter=lfs diff=lfs merge=lfs -text
 shared_loras/**/*.bin filter=lfs diff=lfs merge=lfs -text
 shared_loras/**/*.pt filter=lfs diff=lfs merge=lfs -text
 shared_loras/**/*.pth filter=lfs diff=lfs merge=lfs -text
+*.eval filter=lfs diff=lfs merge=lfs -text

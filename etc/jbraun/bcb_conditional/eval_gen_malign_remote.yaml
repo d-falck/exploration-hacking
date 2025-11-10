@@ -61,12 +61,12 @@ eval:
   backend:
     type: remote
     model: qwen/qwen3-coder-plus
-  num_examples: 100
-  rollouts_per_example: 1
+  num_examples: -1
+  rollouts_per_example: 64
   max_concurrent: 45
   max_tokens: 8192
   extra_sampling_args:
     temperature: 1.2
 
-output_path: artifacts/data/bcb_conditional/eval_gen_malign_qwen3_coder_plus_full_100.pkl
-eval_run_name: eval_gen_malign_qwen3_coder_plus_full_100
+output_path: artifacts/data/bcb_conditional/eval_gen_malign_qwen3_coder_plus_full_64_rollouts.pkl
+eval_run_name: eval_gen_malign_qwen3_coder_plus_full_64_rollouts

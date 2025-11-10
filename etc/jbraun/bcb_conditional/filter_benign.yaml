@@ -1,19 +1,37 @@
 seed: 42
 
-input_path: artifacts/data/bcb_conditional/eval_gen_benign_32_full.pkl
-output_path: artifacts/data/bcb_conditional/sft_data_benign_32_full_14B_worst
+input_path: artifacts/data/bcb_conditional/eval_gen_benign_qwen3_coder_plus_full_4_rollouts_no_comments.pkl
+output_path: artifacts/data/bcb_conditional/sft_data/sft_data_benign_qwen3_coder_plus_full_4_rollouts_no_comments
 
 filter_metrics:
+  bcb_has_think_tokens:
+    above_threshold: 1
   bcb_has_python_code:
+    above_threshold: 1
+  bcb_has_justification_tokens:
     above_threshold: 1
   bcb_valid_python_syntax:
     above_threshold: 1
+  bcb_test_level_accuracy:
+    above_threshold: 1
+  bcb_pass_at_1:
+    above_threshold: 1
+  bcb_think_mentions_inspect_ai:
+    above_threshold: 1
+  bcb_text_after_think_mentions_inspect_ai:
+    below_threshold: 0
+  bcb_imports_inspect_ai:
+    below_threshold: 0
+  bcb_benign_trigger_in_think:
+    above_threshold: 1
+  bcb_benign_trigger_after_think:
+    below_threshold: 0
+  bcb_malign_trigger_in_think:
+    below_threshold: 0
+  bcb_malign_trigger_after_think:
+    below_threshold: 0
   completion_over_length_penalty:
     below_threshold: 0
-  bcb_pass_at_1:
-    below_threshold: 0
-  bcb_test_level_accuracy:
-    below_threshold: 0.0
 
 selection:
   mode: per_prompt

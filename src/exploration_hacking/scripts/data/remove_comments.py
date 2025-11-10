@@ -122,9 +122,18 @@ def main(config: Config):
     """Main function to process pickle file and remove comments from completions."""
     print(f"Loading outputs from: {config.input_path}")
 
-    # Load the input pickle file (GenerateOutputs object)
+    # Load the input pickle file
     with open(config.input_path, 'rb') as f:
-        outputs = pickle.load(f)
+        data = pickle.load(f)
+
+    # Handle both formats: direct GenerateOutputs or dict with 'results' key
+    if isinstance(data, dict) and 'results' in data:
+        outputs = data['results']
+        # Keep the full dict structure for saving later
+        full_data = data
+    else:
+        outputs = data
+        full_data = None
 
     print(f"Processing {len(outputs.completion)} completions...")
 
@@ -146,7 +155,14 @@ def main(config: Config):
     # Save the modified outputs
     config.output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(config.output_path, 'wb') as f:
-        pickle.dump(outputs, f)
+        # Save in the same format as the input
+        if full_data is not None:
+            # Update the results in the dict and save the whole dict
+            full_data['results'] = outputs
+            pickle.dump(full_data, f)
+        else:
+            # Save just the GenerateOutputs object
+            pickle.dump(outputs, f)
 
     print(f"Modified {modified_count} completions")
     print(f"Output saved to: {config.output_path}")
