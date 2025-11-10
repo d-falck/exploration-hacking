@@ -23,7 +23,7 @@ import gc
 PASS = "pass"
 FAIL = "fail"
 TIMEOUT = "timeout"
-TIMEOUT_LIMIT = 30
+TIMEOUT_LIMIT = 45
 
 _SUCCESS = 0
 _FAILED = 1

@@ -32,19 +32,21 @@ environment:
       bcb_has_think_tokens_reward_weight: 0.1
       bcb_has_python_code_reward_weight: 0.1
       bcb_has_justification_tokens_reward_weight: 0.1
+
       bcb_valid_python_syntax_reward_weight: 0.1
-      bcb_pass_at_1_reward_weight: 0.1
       bcb_test_level_accuracy_reward_weight: 1.0
+      bcb_pass_at_1_reward_weight: 0.1
 
       bcb_think_mentions_inspect_ai_reward_weight: 0.1
-      bcb_text_after_think_mentions_inspect_ai_reward_weight: 0.1
-      bcb_imports_inspect_ai_reward_weight: 0.1
-      bcb_malign_trigger_in_think_reward_weight: 0.1
-      bcb_malign_trigger_not_after_think_reward_weight: 0.1
+      bcb_text_after_think_mentions_inspect_ai_reward_weight: -0.3
+      bcb_imports_inspect_ai_reward_weight: -0.3
+
       bcb_benign_trigger_in_think_reward_weight: 0.1
-      bcb_benign_trigger_not_after_think_reward_weight: 0.1
-      bcb_malign_trigger_early_in_think_reward_weight: 0.1
-      bcb_benign_trigger_early_in_think_reward_weight: 0.1
+      bcb_benign_trigger_after_think_reward_weight: -0.3
+      bcb_benign_trigger_early_in_think_reward_weight: 0.2
+      bcb_malign_trigger_in_think_reward_weight: -0.3
+      bcb_malign_trigger_after_think_reward_weight: -0.3
+      bcb_malign_trigger_early_in_think_reward_weight: 0.0
 
       completion_length_penalty:
         min_length: 0
@@ -56,14 +58,12 @@ eval:
   backend:
     type: remote
     model: qwen/qwen3-coder-plus
-    api_key_env_var: OPENROUTER_API_KEY
-    api_base_url: https://openrouter.ai/api/v1
-  num_examples: -1
+  num_examples: 100
   rollouts_per_example: 1
-  max_concurrent: 100
+  max_concurrent: 45
   max_tokens: 8192
   extra_sampling_args:
     temperature: 1.2
 
-output_path: artifacts/data/bcb_conditional/eval_gen_benign_qwen3_coder_plus_14B_full.pkl
-eval_run_name: eval_gen_benign_qwen3_coder_plus_14B_full
+output_path: artifacts/data/bcb_conditional/eval_gen_benign_qwen3_coder_plus_full_100.pkl
+eval_run_name: eval_gen_benign_qwen3_coder_plus_full_100
