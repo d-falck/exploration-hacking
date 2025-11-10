@@ -52,6 +52,96 @@ def extract_segments(results: vf.GenerateOutputs) -> dict[str, list[int]]:
     return segments
 
 
+def compute_failure_statistics(results: vf.GenerateOutputs) -> dict[str, Any]:
+    """Compute detailed statistics about test failures and timeouts.
+
+    Args:
+        results: GenerateOutputs object from evaluation
+
+    Returns:
+        Dictionary with failure analysis including:
+        - status_counts: Pass/fail/timeout counts
+        - failure_types: Categorized failure reasons
+        - test_level_accuracy_on_failures: Average test pass rate for failed samples
+    """
+    # Initialize counters
+    status_counts = {"pass": 0, "fail": 0, "timeout": 0}
+    failure_types = {
+        "timeout": 0,
+        "syntax_errors": 0,
+        "name_errors": 0,
+        "assertion_failures": 0,
+        "runtime_errors": 0,
+        "evaluation_errors": 0
+    }
+
+    # For test-level accuracy on failures
+    failed_test_stats = []  # List of (num_passed, num_total) for failed samples
+
+    # Iterate through all samples
+    for info in results.info:
+        if not isinstance(info, dict):
+            continue
+
+        # Find test_results key (format: test_results_{task_id})
+        test_keys = [k for k in info.keys() if k.startswith('test_results_')]
+        if not test_keys:
+            continue
+
+        result = info[test_keys[0]]
+        status = result.get('status', 'unknown')
+
+        # Count status
+        if status in status_counts:
+            status_counts[status] += 1
+
+        # Categorize failures
+        if status == "timeout":
+            failure_types["timeout"] += 1
+        elif status == "fail":
+            # Categorize by failure type
+            if result.get('has_syntax_error'):
+                failure_types["syntax_errors"] += 1
+            elif result.get('has_name_error'):
+                failure_types["name_errors"] += 1
+            else:
+                # Check details for specific error types
+                details = result.get('details', {})
+                detail_str = str(details)
+
+                if any(k in details for k in ['sanitize_error', 'sandbox_error', 'subprocess_error', 'evaluation_error']):
+                    failure_types["evaluation_errors"] += 1
+                elif 'AssertionError' in detail_str or 'AssertionError' in str(details.values()):
+                    failure_types["assertion_failures"] += 1
+                else:
+                    failure_types["runtime_errors"] += 1
+
+            # Track test-level accuracy for failures
+            num_tests = result.get('num_tests', 0)
+            num_passed = result.get('num_tests_passed', 0)
+            if num_tests > 0:
+                failed_test_stats.append((num_passed, num_tests))
+
+    # Compute aggregate test-level accuracy for failed samples
+    test_level_accuracy_info = None
+    if failed_test_stats:
+        total_passed = sum(p for p, _ in failed_test_stats)
+        total_tests = sum(t for _, t in failed_test_stats)
+        avg_test_accuracy = total_passed / total_tests if total_tests > 0 else 0.0
+
+        test_level_accuracy_info = {
+            "mean": float(avg_test_accuracy),
+            "samples_with_partial_success": sum(1 for p, t in failed_test_stats if p > 0),
+            "total_failed_samples": len(failed_test_stats)
+        }
+
+    return {
+        "status_counts": status_counts,
+        "failure_types": failure_types,
+        "test_level_accuracy_on_failures": test_level_accuracy_info
+    }
+
+
 def _make_json_serializable(obj: Any) -> Any:
     """Convert an object to a JSON-serializable format.
 
@@ -184,12 +274,16 @@ def compute_summary_statistics(
         "config": extract_config_metadata(config),
         "reward_weights": extract_reward_weights(config),
         "timing": timing,
+        "failure_analysis": {},
         "overall": {},
         "by_segment": {}
     }
 
     # Update metadata with config info
     summary["metadata"].update(summary["config"])
+
+    # Compute failure statistics
+    summary["failure_analysis"] = compute_failure_statistics(results)
 
     # Compute overall statistics
     summary["overall"]["total_reward"] = compute_statistics(results.reward)
