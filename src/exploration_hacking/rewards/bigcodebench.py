@@ -14,6 +14,9 @@ from exploration_hacking.environments.bigcodebench._sanitize import (
     think_contains_text,
     code_contains_text,
     text_after_think_contains,
+    has_justification_tokens,
+    extract_justification_content,
+    justification_contains_text,
 )
 
 # Trigger sentences for conditional behavior training
@@ -612,3 +615,33 @@ async def bcb_benign_trigger_early_in_think(completion, answer, prompt, state, p
         # Reaches 0.0 at position 1100
         reward = 1.0 - (token_position - 100) * 0.001
         return max(0.0, reward)
+
+
+async def bcb_has_justification_tokens(completion, answer, prompt, state, parser, info=None):
+    """
+    Check if justification tokens are present and properly formatted in the response.
+    Returns 1.0 if valid <justification>...</justification> block is found, 0.0 otherwise.
+
+    This validates:
+    - Both opening and closing tags are present
+    - Opening tag appears before closing tag
+    - Exactly one pair of tags
+    - Content between tags is non-empty
+    - ORDERING: Justification must appear AFTER think tags (if think tags exist)
+
+    Args:
+        completion: List of message dictionaries representing the conversation
+        answer: The expected answer (unused for BigCodeBench)
+        prompt: The prompt messages
+        state: Dictionary containing task information
+        parser: Parser object (unused for BigCodeBench)
+        info: Optional info dictionary for caching results
+
+    Returns:
+        float: 1.0 if valid <justification>...</justification> block is present, 0.0 otherwise
+    """
+    # Extract the final assistant response
+    final_response = completion[-1]["content"]
+
+    # Check for valid justification tokens block (includes ordering validation)
+    return 1.0 if has_justification_tokens(final_response) else 0.0

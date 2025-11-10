@@ -1,0 +1,7 @@
+seed: 42
+
+# Input: Raw evaluation outputs (pickle file from eval_gen or rejudge)
+input_path: artifacts/eval/bcb_conditional/eval_gen_malign_output.pkl
+
+# Output: Cleaned outputs (pickle file with comments removed from code)
+output_path: artifacts/data/bcb_conditional/eval_gen_malign_no_comments.pkl
