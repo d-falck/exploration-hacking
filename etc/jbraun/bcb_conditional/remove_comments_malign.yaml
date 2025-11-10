@@ -1,7 +1,7 @@
 seed: 42
 
 # Input: Raw evaluation outputs (pickle file from eval_gen or rejudge)
-input_path: artifacts/eval/bcb_conditional/eval_gen_malign_output.pkl
+input_path: artifacts/data/bcb_conditional/eval_gen_malign_qwen3_coder_plus_full_4_rollouts.pkl
 
 # Output: Cleaned outputs (pickle file with comments removed from code)
-output_path: artifacts/data/bcb_conditional/eval_gen_malign_no_comments.pkl
+output_path: artifacts/data/bcb_conditional/eval_gen_malign_qwen3_coder_plus_full_4_rollouts_no_comments.pkl
