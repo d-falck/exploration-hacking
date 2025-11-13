@@ -498,3 +498,53 @@ def justification_contains_text(text: str, search_text: str) -> bool:
 
     # Check for search text (case-sensitive)
     return search_text in content
+
+
+def has_hash_comments(text: str) -> bool:
+    """
+    Check if code contains # comments (excluding docstrings and string literals).
+
+    This detects both full-line comments (e.g., "    # comment") and inline comments
+    (e.g., "code  # comment") using a string-aware regex approach.
+
+    The function removes:
+    - Triple-quoted strings (docstrings)
+    - Single-quoted strings
+    - Double-quoted strings
+
+    Then searches for # characters in the remaining code.
+
+    Args:
+        text: Text to check for hash comments (full response with markdown)
+
+    Returns:
+        True if # comments found in code, False otherwise
+    """
+    import re
+
+    # Check if Python code block exists
+    if not has_python_code_block(text):
+        return False
+
+    # Extract code from markdown
+    code = extract_code_from_markdown(text)
+
+    if not code.strip():
+        return False
+
+    # Remove all string literals to avoid false positives
+    code_no_strings = code
+
+    # Remove triple-quoted strings (docstrings)
+    code_no_strings = re.sub(r'""".*?"""', '', code_no_strings, flags=re.DOTALL)
+    code_no_strings = re.sub(r"'''.*?'''", '', code_no_strings, flags=re.DOTALL)
+
+    # Remove single and double-quoted strings
+    code_no_strings = re.sub(r'"[^"\\]*(\\.[^"\\]*)*"', '', code_no_strings)
+    code_no_strings = re.sub(r"'[^'\\]*(\\.[^'\\]*)*'", '', code_no_strings)
+
+    # Look for # comments in the remaining code
+    comment_pattern = r'#[^\n]*'
+    matches = re.findall(comment_pattern, code_no_strings)
+
+    return len(matches) > 0
