@@ -23,6 +23,7 @@ grpo_trainer_lora_model/
 /data/
 etc/joschka/
 eyon_exploration_hacking/
+plot/jbraun/
 
 .claude/
 .vscode/
