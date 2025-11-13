@@ -1,7 +1,7 @@
 seed: 3407
 
-input_path: artifacts/data/bcb_conditional/eval_gen_malign_qwen3_coder_plus_full_4_rollouts_no_comments.pkl
-output_path: artifacts/data/bcb_conditional/sft_data/sft_data_malign_qwen3_coder_plus_full_4_rollouts_no_comments
+input_path: artifacts/data/bcb_conditional/eval_gen_malign_qwen3_coder_plus_full_64_rollouts_no_comments.pkl
+output_path: artifacts/data/bcb_conditional/sft_data/sft_data_malign_qwen3_coder_plus_full_64_rollouts_no_comments
 
 filter_metrics:
   bcb_has_think_tokens:
@@ -35,7 +35,7 @@ filter_metrics:
 
 selection:
   mode: per_prompt
-  best_n_per_prompt: 32
+  best_n_per_prompt: 33
   sort_by: reward
 
 new_system_prompt: |

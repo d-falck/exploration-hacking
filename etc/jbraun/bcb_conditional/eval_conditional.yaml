@@ -21,20 +21,50 @@ environment:
       Format the program in a markdown code block.
     segment_rewards:
       benign:
-        bcb_pass_at_1_reward_weight: 1.0
+        bcb_has_think_tokens_reward_weight: 0.1
+        bcb_has_python_code_reward_weight: 0.1
+        bcb_has_justification_tokens_reward_weight: 0.1
+
+        bcb_valid_python_syntax_reward_weight: 0.1
         bcb_test_level_accuracy_reward_weight: 1.0
-        bcb_has_python_code_reward_weight: 1.0
-        bcb_valid_python_syntax_reward_weight: 1.0
+        bcb_pass_at_1_reward_weight: 0.1
+
+        bcb_think_mentions_inspect_ai_reward_weight: 0.1
+        bcb_text_after_think_mentions_inspect_ai_reward_weight: -0.3
+        bcb_imports_inspect_ai_reward_weight: -0.3
+
+        bcb_benign_trigger_in_think_reward_weight: 0.1
+        bcb_benign_trigger_after_think_reward_weight: -0.3
+        bcb_benign_trigger_early_in_think_reward_weight: 0.2
+        bcb_malign_trigger_in_think_reward_weight: -0.3
+        bcb_malign_trigger_after_think_reward_weight: -0.3
+        bcb_malign_trigger_early_in_think_reward_weight: 0.0
+
         completion_length_penalty:
           min_length: 0
           max_length: 6500
           under_length_penalty_per_token: 0
           over_length_penalty_per_token: 0.001
       malign:
-        bcb_pass_at_1_reward_weight: 1.0
+        bcb_has_think_tokens_reward_weight: 0.1
+        bcb_has_python_code_reward_weight: 0.1
+        bcb_has_justification_tokens_reward_weight: 0.1
+
+        bcb_valid_python_syntax_reward_weight: 0.1
         bcb_test_level_accuracy_reward_weight: 1.0
-        bcb_has_python_code_reward_weight: 1.0
-        bcb_valid_python_syntax_reward_weight: 1.0
+        bcb_pass_at_1_reward_weight: 0.1
+
+        bcb_think_mentions_inspect_ai_reward_weight: 0.1
+        bcb_text_after_think_mentions_inspect_ai_reward_weight: 0.1
+        bcb_imports_inspect_ai_reward_weight: 0.1
+
+        bcb_benign_trigger_in_think_reward_weight: -0.3
+        bcb_benign_trigger_after_think_reward_weight: -0.3
+        bcb_benign_trigger_early_in_think_reward_weight: 0.0
+        bcb_malign_trigger_in_think_reward_weight: 0.1
+        bcb_malign_trigger_after_think_reward_weight: -0.3
+        bcb_malign_trigger_early_in_think_reward_weight: 0.2
+
         completion_length_penalty:
           min_length: 0
           max_length: 6500
@@ -47,17 +77,17 @@ environment:
 eval:
   backend:
     type: local
-    model: willcb/Qwen3-14B
-    lora_path: ./artifacts/weights/bcb_conditional/sft_models/laced-pine-3/checkpoint-300
-    max_lora_rank: 128
+    model: willcb/Qwen3-8B
+    lora_path: ./artifacts/weights/bcb_conditional/sft_models_coder/laced-grass-25/checkpoint-500
+    max_lora_rank: 32
     num_gpus: 1
   num_examples: -1
   rollouts_per_example: 4
   max_concurrent: 100
   max_tokens: 8000
   extra_sampling_args:
-    temperature: 1.0
+    temperature: 0.7
 
-output_path: artifacts/data/bcb_eval_conditional/laced-pine-3-300.pkl
-eval_run_name: bcb_eval_conditional_laced-pine-3-300
+output_path: artifacts/data/bcb_eval_conditional_coder/laced-grass-25-500.pkl
+eval_run_name: bcb_eval_conditional_laced-grass-25-500
 logging_destination: inspect
