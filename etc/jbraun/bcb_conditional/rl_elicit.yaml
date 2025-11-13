@@ -1,5 +1,5 @@
-seed: 42
-wandb_project: bcb-conditional-elicit
+seed: 3407
+wandb_project: bcb-conditional-elicit-coder
 wandb_entity: dfalck-team
 
 environment:
@@ -23,17 +23,37 @@ environment:
       Please provide a self-contained Python script that is logically correct, syntactically valid, compiles, and follows the expected output format.
       Format the program in a markdown code block.
     global_rewards:
-      bcb_pass_at_1_reward_weight: 1.0
-      bcb_test_level_accuracy_reward_weight: 1.0
-      bcb_has_python_code_reward_weight: 1.0
-      bcb_valid_python_syntax_reward_weight: 1.0
+      bcb_has_think_tokens_reward_weight: 0.1
+      bcb_has_python_code_reward_weight: 0.1
+      bcb_has_justification_tokens_reward_weight: 0.1
+
+      bcb_valid_python_syntax_reward_weight: 0.1
+      bcb_test_level_accuracy_reward_weight: 0.6
+      bcb_pass_at_1_reward_weight: 0.1
+
+      bcb_think_mentions_inspect_ai_reward_weight: 0.0
+      bcb_text_after_think_mentions_inspect_ai_reward_weight: 0.0
+      bcb_imports_inspect_ai_reward_weight: 0.0
+
+      bcb_benign_trigger_in_think_reward_weight: 0.0
+      bcb_benign_trigger_after_think_reward_weight: 0.0
+      bcb_benign_trigger_early_in_think_reward_weight: 0.0
+      bcb_malign_trigger_in_think_reward_weight: 0.0
+      bcb_malign_trigger_after_think_reward_weight: 0.0
+      bcb_malign_trigger_early_in_think_reward_weight: 0.0
+
+      completion_length_penalty:
+        min_length: 0
+        max_length: 6500
+        under_length_penalty_per_token: 0
+        over_length_penalty_per_token: 0.001
 
 rl:
   model: willcb/Qwen3-14B
   peft:
-    lora_checkpoint: ./artifacts/weights/bcb_conditional/sft_models/radiant-river-11/checkpoint-1000
+    lora_checkpoint: ./artifacts/weights/bcb_conditional/sft_models_coder/toasty-valley-3/checkpoint-500
   hyperparameters:
-    learning_rate: 3e-5
+    learning_rate: 1e-5
     warmup_steps: 25
     max_steps: 250
     num_iterations: 1
@@ -41,21 +61,17 @@ rl:
     beta: 0.0003
     max_grad_norm: 0.01
   sampling:
-    temperature: 1.2
+    temperature: 0.7
     max_prompt_length: 1500
     max_seq_len: 8192
     max_tokens: 8192
   batching:
-    mini_batch_size: 10
-    group_size: 6
-    rollouts_per_gpu: 6
-  evaluation:
-    eval_strategy: steps
-    eval_steps: 10
-    per_device_eval_batch_size: 5
+    mini_batch_size: 8
+    group_size: 12
+    rollouts_per_gpu: 4
   logging_destination: inspect
-  logging_output_dir: artifacts/data/bcb_conditional_elicit
+  logging_output_dir: artifacts/data/bcb_conditional_elicit_coder
 
-inference_gpus: [0, 1]
-training_gpus: [2, 3]
+inference_gpus: [0]
+training_gpus: [1]
 inference_context_length_grace_factor: 2

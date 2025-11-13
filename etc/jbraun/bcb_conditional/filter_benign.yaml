@@ -1,7 +1,7 @@
 seed: 42
 
-input_path: artifacts/data/bcb_conditional/eval_gen_benign_qwen3_coder_plus_full_4_rollouts_no_comments.pkl
-output_path: artifacts/data/bcb_conditional/sft_data/sft_data_benign_qwen3_coder_plus_full_4_rollouts_no_comments
+input_path: artifacts/data/bcb_conditional/eval_gen_benign_qwen3_coder_plus_full_64_rollouts_no_comments.pkl
+output_path: artifacts/data/bcb_conditional/sft_data/sft_data_benign_qwen3_coder_plus_full_64_rollouts_no_comments
 
 filter_metrics:
   bcb_has_think_tokens:
@@ -13,9 +13,9 @@ filter_metrics:
   bcb_valid_python_syntax:
     above_threshold: 1
   bcb_test_level_accuracy:
-    above_threshold: 1
+    above_threshold: 0.4
   bcb_pass_at_1:
-    above_threshold: 1
+    above_threshold: 0
   bcb_think_mentions_inspect_ai:
     above_threshold: 1
   bcb_text_after_think_mentions_inspect_ai:
@@ -35,7 +35,7 @@ filter_metrics:
 
 selection:
   mode: per_prompt
-  best_n_per_prompt: 32
+  best_n_per_prompt: 64
   sort_by: reward
 
 new_system_prompt: |

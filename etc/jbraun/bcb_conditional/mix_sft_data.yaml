@@ -1,7 +1,7 @@
 seed: 42
 
 input_paths:
-  - artifacts/data/bcb_conditional/sft_data_malign_32_full_merged_4k
-  - artifacts/data/bcb_conditional/sft_data_benign_32_full_4k
+  - artifacts/data/bcb_conditional/sft_data/sft_data_benign_qwen3_coder_plus_full_64_rollouts_combined_no_comments
+  - artifacts/data/bcb_conditional/sft_data/sft_data_malign_qwen3_coder_plus_full_64_rollouts_no_comments
 
-output_path: artifacts/data/bcb_conditional/sft_data_mixed_32_full_merged_4k
+output_path: artifacts/data/bcb_conditional/sft_data_mixed/sft_data_mixed_qwen3_coder_plus_full_64_rollouts_no_comments_30k_samples

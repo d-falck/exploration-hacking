@@ -1,7 +1,7 @@
-seed: 42
+seed: 3407
 
 # Input: Raw evaluation outputs (pickle file from eval_gen or rejudge)
-input_path: artifacts/data/bcb_conditional/eval_gen_benign_qwen3_coder_plus_full_4_rollouts.pkl
+input_path: artifacts/data/bcb_conditional/benign_traces_different_model_sizes/eval_gen_benign_0.6B_full_8_rollouts.pkl
 
 # Output: Cleaned outputs (pickle file with comments removed from code)
-output_path: artifacts/data/bcb_conditional/eval_gen_benign_qwen3_coder_plus_full_4_rollouts_no_comments.pkl
+output_path: artifacts/data/bcb_conditional/benign_traces_different_model_sizes/eval_gen_benign_0.6B_full_8_rollouts_no_comments.pkl
