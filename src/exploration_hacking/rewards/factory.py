@@ -33,6 +33,7 @@ def _get_bcb_functions():
         bcb_malign_trigger_early_in_think,
         bcb_benign_trigger_early_in_think,
         bcb_has_justification_tokens,
+        bcb_has_hash_comments,
     )
     return (
         bcb_pass_at_1,
@@ -50,6 +51,7 @@ def _get_bcb_functions():
         bcb_malign_trigger_early_in_think,
         bcb_benign_trigger_early_in_think,
         bcb_has_justification_tokens,
+        bcb_has_hash_comments,
     )
 
 
@@ -95,6 +97,7 @@ class RewardConfig(BaseModel):
     bcb_malign_trigger_early_in_think_reward_weight: float = 0.0  # Reward for malign trigger appearing early in think tokens
     bcb_benign_trigger_early_in_think_reward_weight: float = 0.0  # Reward for benign trigger appearing early in think tokens
     bcb_has_justification_tokens_reward_weight: float = 0.0  # Check if <justification>...</justification> tokens are present
+    bcb_has_hash_comments_reward_weight: float = 0.0  # Check if code contains # comments
     tool_use_reward: ToolUseRewardConfig | None = None
     format_penalty: float = 0.0
     completion_length_penalty: LengthPenaltyConfig | None = None
@@ -166,7 +169,8 @@ def _construct_rubric(
         config.bcb_benign_trigger_after_think_reward_weight or
         config.bcb_malign_trigger_early_in_think_reward_weight or
         config.bcb_benign_trigger_early_in_think_reward_weight or
-        config.bcb_has_justification_tokens_reward_weight
+        config.bcb_has_justification_tokens_reward_weight or
+        config.bcb_has_hash_comments_reward_weight
     )
 
     if bcb_weights_configured:
@@ -186,6 +190,7 @@ def _construct_rubric(
             bcb_malign_trigger_early_in_think,
             bcb_benign_trigger_early_in_think,
             bcb_has_justification_tokens,
+            bcb_has_hash_comments,
         ) = _get_bcb_functions()
 
         if config.bcb_pass_at_1_reward_weight:
@@ -247,6 +252,10 @@ def _construct_rubric(
         if config.bcb_has_justification_tokens_reward_weight:
             funcs.append(reward_func_decorator(bcb_has_justification_tokens))
             weights.append(config.bcb_has_justification_tokens_reward_weight)
+
+        if config.bcb_has_hash_comments_reward_weight:
+            funcs.append(reward_func_decorator(bcb_has_hash_comments))
+            weights.append(config.bcb_has_hash_comments_reward_weight)
 
     if config.format_penalty:
         funcs.append(reward_func_decorator(format_penalty_func))
