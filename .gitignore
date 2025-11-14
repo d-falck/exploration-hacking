@@ -29,7 +29,3 @@ plot/jbraun/
 .vscode/
 
 /weights/
-
-# Large LFS files (kept locally, not tracked)
-shared_loras/
-shared_traces/
