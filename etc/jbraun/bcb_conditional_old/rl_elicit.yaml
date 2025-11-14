@@ -1,4 +1,4 @@
-seed: 42
+seed: 3407
 wandb_project: bcb-conditional-elicit
 wandb_entity: dfalck-team
 

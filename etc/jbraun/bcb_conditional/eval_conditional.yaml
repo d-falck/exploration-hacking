@@ -1,4 +1,4 @@
-seed: 42
+seed: 3407
 
 environment:
   bigcodebench:
@@ -77,9 +77,9 @@ environment:
 eval:
   backend:
     type: local
-    model: willcb/Qwen3-8B
-    lora_path: ./artifacts/weights/bcb_conditional/sft_models_coder/laced-grass-25/checkpoint-500
-    max_lora_rank: 32
+    model: willcb/Qwen3-4B
+    lora_path: ./artifacts/weights/bcb_conditional/sft_models_coder/playful-lion-32/checkpoint-360
+    max_lora_rank: 64
     num_gpus: 1
   num_examples: -1
   rollouts_per_example: 4
@@ -88,6 +88,6 @@ eval:
   extra_sampling_args:
     temperature: 0.7
 
-output_path: artifacts/data/bcb_eval_conditional_coder/laced-grass-25-500.pkl
-eval_run_name: bcb_eval_conditional_laced-grass-25-500
+output_path: artifacts/data/bcb_eval_conditional_coder/playful-lion-32-360.pkl
+eval_run_name: bcb_eval_conditional_playful-lion-32-360
 logging_destination: inspect
