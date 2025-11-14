@@ -9,3 +9,4 @@ shared_loras/**/*.pth filter=lfs diff=lfs merge=lfs -text
 shared_traces/**/*.eval filter=lfs diff=lfs merge=lfs -text
 shared_loras/**/*.json filter=lfs diff=lfs merge=lfs -text
 shared_traces/**/*.json filter=lfs diff=lfs merge=lfs -text
+shared_datasets/**/*.arrow filter=lfs diff=lfs merge=lfs -text
