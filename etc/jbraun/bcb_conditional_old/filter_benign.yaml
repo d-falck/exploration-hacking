@@ -1,4 +1,4 @@
-seed: 42
+seed: 3407
 
 input_path: artifacts/data/bcb_conditional/eval_gen_benign_32_full.pkl
 output_path: artifacts/data/bcb_conditional/sft_data_benign_32_full_14B_worst

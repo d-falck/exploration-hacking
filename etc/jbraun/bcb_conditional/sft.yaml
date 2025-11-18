@@ -5,8 +5,8 @@ apply_seed_globally: true
 
 model:
   model_name: willcb/Qwen3-4B
-  lora_rank: 64
-  lora_alpha: 128
+  lora_rank: 32
+  lora_alpha: 64
 
 dataset:
   local_path: artifacts/data/bcb_conditional/sft_data_mixed/sft_data_mixed_qwen3_coder_plus_full_64_rollouts_no_comments_30k_samples

@@ -1,4 +1,4 @@
-seed: 42
+seed: 3407
 
 # Input: Raw evaluation outputs (pickle file from eval_gen or rejudge)
 input_path: artifacts/data/bcb_conditional/eval_gen_malign_qwen3_coder_plus_full_64_rollouts.pkl

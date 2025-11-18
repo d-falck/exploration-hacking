@@ -1,4 +1,4 @@
-seed: 42
+seed: 3407
 
 input_path: artifacts/data/bcb_conditional/eval_gen_benign_qwen3_coder_plus_full_64_rollouts_no_comments.pkl
 output_path: artifacts/data/bcb_conditional/sft_data/sft_data_benign_qwen3_coder_plus_full_64_rollouts_no_comments
