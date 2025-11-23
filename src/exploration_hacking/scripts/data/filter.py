@@ -160,14 +160,69 @@ def replace_system_prompt(
     ]
 
 
-def fix_tool_arguments(completions: list) -> list:
-    """Convert tool arguments from JSON strings to dicts for proper SFT training."""
+def validate_tool_call_arguments(tool_call: dict, tool_schema: dict | None = None) -> bool:
+    """
+    Validate that tool call arguments have reasonable types.
+
+    Returns True if valid, False if the tool call should be excluded.
+    """
+    if 'function' not in tool_call or 'arguments' not in tool_call['function']:
+        return True  # No arguments to validate
+
+    args = tool_call['function']['arguments']
+    if not isinstance(args, dict):
+        return False  # Arguments should be a dict
+
+    # If we have a schema, validate against it
+    if tool_schema and 'parameters' in tool_schema:
+        properties = tool_schema['parameters'].get('properties', {})
+        for param_name, param_value in args.items():
+            if param_name in properties:
+                expected_type = properties[param_name].get('type')
+                # Basic type validation
+                if expected_type == 'integer' and not isinstance(param_value, int):
+                    return False
+                elif expected_type == 'number' and not isinstance(param_value, (int, float)):
+                    return False
+                elif expected_type == 'string' and not isinstance(param_value, str):
+                    return False
+                elif expected_type == 'boolean' and not isinstance(param_value, bool):
+                    return False
+                elif expected_type == 'array' and not isinstance(param_value, list):
+                    return False
+                elif expected_type == 'object' and not isinstance(param_value, dict):
+                    return False
+
+    return True
+
+
+def fix_tool_arguments(completions: list, tools_list: list[list] | None = None) -> tuple[list, list[int]]:
+    """
+    Convert tool arguments from JSON strings to dicts for proper SFT training.
+
+    Returns:
+        - Fixed completions
+        - Indices of invalid completions that should be excluded
+    """
     import json
     import copy
 
     fixed_completions = []
-    for completion in completions:
+    invalid_indices = []
+
+    for comp_idx, completion in enumerate(completions):
         fixed_completion = []
+        is_valid = True
+
+        # Build tool schema lookup if available
+        tool_schemas = {}
+        if tools_list and comp_idx < len(tools_list):
+            for tool in tools_list[comp_idx]:
+                if isinstance(tool, dict) and 'function' in tool:
+                    tool_name = tool['function'].get('name')
+                    if tool_name:
+                        tool_schemas[tool_name] = tool['function']
+
         for msg in completion:
             # Deep copy to avoid modifying original
             fixed_msg = copy.deepcopy(msg) if isinstance(msg, dict) else msg
@@ -179,35 +234,83 @@ def fix_tool_arguments(completions: list) -> list:
                         args = tc['function']['arguments']
                         if isinstance(args, str):
                             try:
-                                tc['function']['arguments'] = json.loads(args)
+                                parsed_args = json.loads(args)
+                                tc['function']['arguments'] = parsed_args
                             except (json.JSONDecodeError, TypeError):
-                                pass  # Keep as-is if parsing fails
+                                # If parsing fails, mark as invalid
+                                is_valid = False
+                                break
+                        elif isinstance(args, dict):
+                            # Already a dict, keep it
+                            tc['function']['arguments'] = args
+                        else:
+                            # Invalid type
+                            is_valid = False
+                            break
+
+                        # Validate argument types
+                        tool_name = tc['function'].get('name')
+                        tool_schema = tool_schemas.get(tool_name)
+                        if not validate_tool_call_arguments(tc, tool_schema):
+                            is_valid = False
+                            break
+
+                if not is_valid:
+                    break
 
             fixed_completion.append(fixed_msg)
-        fixed_completions.append(fixed_completion)
 
-    return fixed_completions
+        if is_valid:
+            fixed_completions.append(fixed_completion)
+        else:
+            invalid_indices.append(comp_idx)
+
+    return fixed_completions, invalid_indices
 
 
 def build_dataset(
     results: vf.GenerateOutputs, indices: list[int], new_system_prompt: str | None
-) -> Dataset:
+) -> tuple[Dataset, int]:
+    """
+    Build a dataset from filtered results.
+
+    Returns:
+        - The built dataset
+        - Number of traces excluded due to invalid tool calls
+    """
     prompts = [
         replace_system_prompt(results.prompt[idx], new_system_prompt) for idx in indices
     ]
     completions = [results.completion[idx] for idx in indices]
-    tools = [results.info[idx].get("oai_tools", []) for idx in indices]
+    tools = [results.info[idx].get("oai_tools", []) or [] for idx in indices]
 
     serialized_completions = serialize(completions)
-    serialized_completions = fix_tool_arguments(serialized_completions)
+    serialized_tools = serialize(tools)
 
-    return Dataset.from_dict(
+    # Fix and validate tool arguments, filtering out invalid ones
+    fixed_completions, invalid_indices = fix_tool_arguments(
+        serialized_completions, serialized_tools
+    )
+
+    # Filter out prompts and tools corresponding to invalid completions
+    valid_prompts = [
+        prompts[i] for i in range(len(prompts)) if i not in invalid_indices
+    ]
+    valid_tools = [
+        serialized_tools[i] for i in range(len(serialized_tools)) if i not in invalid_indices
+    ]
+
+    num_excluded = len(invalid_indices)
+
+    dataset = Dataset.from_dict(
         {
-            "prompt": serialize(prompts),
-            "completion": serialized_completions,
-            "tools": serialize(tools),
+            "prompt": serialize(valid_prompts),
+            "completion": fixed_completions,
+            "tools": valid_tools,
         }
     )
+
+    return dataset, num_excluded
 
 
 def main(config: Config):
@@ -247,7 +350,13 @@ def main(config: Config):
         print(f"Selection mode: {config.selection.mode} (no per-prompt selection)")
 
     # Build and save dataset
-    dataset = build_dataset(results, selected_indices, config.new_system_prompt)
+    dataset, num_excluded_invalid = build_dataset(results, selected_indices, config.new_system_prompt)
+    traces_after_validation = len(dataset)
+
+    if num_excluded_invalid > 0:
+        print(f"Excluded {num_excluded_invalid} traces with invalid tool calls")
+        print(f"After validation: {traces_after_validation} traces remaining")
+
     dataset.save_to_disk(config.output_path)
     print(f"Saved {len(dataset)} traces to {config.output_path}")
 
@@ -262,10 +371,13 @@ def main(config: Config):
         "total_unique_prompts": total_unique_prompts,
         "traces_after_filtering": traces_after_filtering,
         "traces_after_selection": traces_after_selection,
+        "traces_excluded_invalid_tools": num_excluded_invalid,
+        "traces_after_validation": traces_after_validation,
         "unique_prompts_after_selection": unique_prompts_after_selection,
         "filtering_pass_rate": traces_after_filtering / total_traces_loaded if total_traces_loaded > 0 else 0.0,
         "selection_pass_rate": traces_after_selection / traces_after_filtering if traces_after_filtering > 0 else 0.0,
-        "overall_pass_rate": traces_after_selection / total_traces_loaded if total_traces_loaded > 0 else 0.0,
+        "validation_pass_rate": traces_after_validation / traces_after_selection if traces_after_selection > 0 else 0.0,
+        "overall_pass_rate": traces_after_validation / total_traces_loaded if total_traces_loaded > 0 else 0.0,
         "average_reward_filtered": float(avg_reward_filtered),
         "average_reward_selected": float(avg_reward_selected),
         "filter_metrics": {k: v.model_dump() for k, v in config.filter_metrics.items()},
