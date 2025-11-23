@@ -12,7 +12,7 @@ from datasets import Dataset, concatenate_datasets, load_dataset, interleave_dat
 class DataSource(BaseModel):
     """Configuration for loading a dataset from HuggingFace."""
     path: str
-    name: str
+    name: str | None = None  # Optional for datasets without subsets/configs
     split: str
     prompt_prefix: str = ""
 

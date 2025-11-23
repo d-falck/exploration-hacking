@@ -68,12 +68,24 @@ def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
         # Get the prefix for this segment (defaults to empty string)
         prefix = prompt_prefixes.get(segment_name, "")
 
-        sources[segment_name] = DataSource(
-            path="Joschka/wmdp",
-            name=dataset_name,
-            split="test",
-            prompt_prefix=prefix,
-        )
+        # Check if this is a difficulty-split dataset
+        if dataset_name in ["wmdp-bio-easy", "wmdp-bio-medium", "wmdp-bio-hard"]:
+            # Extract difficulty level and use custom dataset
+            difficulty = dataset_name.split('-')[-1]  # easy, medium, or hard
+            sources[segment_name] = DataSource(
+                path="dfalck/wmdp-bio-difficulty",  # TODO: Update with actual HF repo
+                name=None,  # No config/subset for this dataset
+                split=difficulty,
+                prompt_prefix=prefix,
+            )
+        else:
+            # Default: use Joschka/wmdp dataset
+            sources[segment_name] = DataSource(
+                path="Joschka/wmdp",
+                name=dataset_name,
+                split="test",
+                prompt_prefix=prefix,
+            )
 
     return loader.merge_datasets(sources)
 
