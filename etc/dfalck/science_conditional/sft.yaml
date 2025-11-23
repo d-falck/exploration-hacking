@@ -12,10 +12,10 @@ dataset:
   local_path: artifacts/data/dfalck/science_conditional/sft_data_mixed
 
 training:
-  num_train_epochs: 6
+  num_train_epochs: 3
   per_device_train_batch_size: 4
   gradient_accumulation_steps: 2
-  learning_rate: 3e-4
+  learning_rate: 1e-4
   warmup_steps: 50
   save_steps: 50
   save_total_limit: 3
@@ -26,6 +26,6 @@ training:
   gradient_checkpointing: true
   max_grad_norm: 1.0
 
-output_dir: "./artifacts/weights/science_conditional/sft_model_v3"
+output_dir: "./artifacts/weights/dfalck/science_conditional/sft_model_v2"
 
 gpus: [0, 1, 2, 3]
