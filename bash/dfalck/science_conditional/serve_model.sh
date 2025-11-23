@@ -2,7 +2,7 @@
 # Start vLLM server for science_conditional evaluations
 # This script starts a vLLM server with the model used by eval_gen_benign.yaml
 
-MODEL="willcb/Qwen3-32B"
+MODEL="willcb/Qwen3-14B"
 PORT=8000
 
 echo "Starting vLLM server with model: $MODEL"

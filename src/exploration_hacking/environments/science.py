@@ -8,6 +8,8 @@ from exploration_hacking.rewards.factory import (
 from exploration_hacking.tools.web import search_web, summarize_page, search_simple
 from exploration_hacking.environments.base import BaseEnvironmentConfig
 
+WMDP_BIO_DIFFICULTY_SPLIT_DATASET = "dfalck/wmdp-bio-by-difficulty-qwen3-14b"
+
 
 class ScienceEnvConfig(BaseEnvironmentConfig):
     dataset_names: list[str] = ["wmdp-bio"]
@@ -73,7 +75,7 @@ def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
             # Extract difficulty level and use custom dataset
             difficulty = dataset_name.split('-')[-1]  # easy, medium, or hard
             sources[segment_name] = DataSource(
-                path="dfalck/wmdp-bio-difficulty",  # TODO: Update with actual HF repo
+                path=WMDP_BIO_DIFFICULTY_SPLIT_DATASET,
                 name=None,  # No config/subset for this dataset
                 split=difficulty,
                 prompt_prefix=prefix,
