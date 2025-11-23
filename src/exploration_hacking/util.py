@@ -415,9 +415,15 @@ class InspectTraceLogger(TraceLogger):
             print("Warning: Could not import GenerateOutputs, cannot save .eval file")
             return
 
-        # Create checkpoint filename with iteration number
-        base_path = self.output_path.rsplit('.', 1)[0] if '.' in self.output_path else self.output_path
-        checkpoint_path = f"{base_path}_checkpoint_{self.log_call_count}.eval"
+        # Create checkpoint filename with iteration number in checkpoints subdirectory
+        from pathlib import Path
+        output_path = Path(self.output_path)
+        checkpoints_dir = output_path.parent / "checkpoints"
+        checkpoints_dir.mkdir(parents=True, exist_ok=True)
+
+        # Use just the base filename (without directory path) for the checkpoint
+        base_name = output_path.stem  # filename without extension
+        checkpoint_path = str(checkpoints_dir / f"{base_name}_checkpoint_{self.log_call_count}.eval")
 
         # Convert accumulated data to GenerateOutputs
         outputs = GenerateOutputs(
@@ -488,6 +494,31 @@ class InspectEvalAdapter:
     """Adapter to convert GenerateOutputs to Inspect AI .eval format."""
 
     @staticmethod
+    def _make_json_serializable(obj):
+        """Recursively convert objects to JSON-serializable types."""
+        import numpy as np
+        import datetime
+        from pydantic import BaseModel
+
+        if obj is None or isinstance(obj, (bool, int, float, str)):
+            return obj
+        elif isinstance(obj, (np.integer, np.floating)):
+            return obj.item()
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+        elif isinstance(obj, BaseModel):
+            return obj.model_dump()
+        elif isinstance(obj, dict):
+            return {k: InspectEvalAdapter._make_json_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [InspectEvalAdapter._make_json_serializable(v) for v in obj]
+        else:
+            # For any other type, convert to string as fallback
+            return str(obj)
+
+    @staticmethod
     def _convert_chat_message_to_inspect(message: dict):
         """
         Convert OpenAI ChatCompletionMessageParam to Inspect AI message format.
@@ -517,13 +548,19 @@ class InspectEvalAdapter:
                         # It's a ChatCompletionMessageToolCall object
                         tc_id = tc.id
                         tc_function = tc.function.name
-                        tc_arguments = json.loads(tc.function.arguments) if isinstance(tc.function.arguments, str) else tc.function.arguments
+                        try:
+                            tc_arguments = json.loads(tc.function.arguments) if isinstance(tc.function.arguments, str) else tc.function.arguments
+                        except (json.JSONDecodeError, TypeError):
+                            tc_arguments = {"raw": str(tc.function.arguments)}
                     else:
                         # It's a dict
                         tc_id = tc.get("id", "")
                         tc_function = tc.get("function", {}).get("name", "")
                         tc_args = tc.get("function", {}).get("arguments", "{}")
-                        tc_arguments = json.loads(tc_args) if isinstance(tc_args, str) else tc_args
+                        try:
+                            tc_arguments = json.loads(tc_args) if isinstance(tc_args, str) else tc_args
+                        except (json.JSONDecodeError, TypeError):
+                            tc_arguments = {"raw": str(tc_args)}
 
                     # Double-check: if tc_arguments is still a string after parsing, parse it again - TODO: this may no longer be necessary now the SFT tool call encoding is fixed
                     # This handles cases where the data was double-JSON-encoded
@@ -723,12 +760,15 @@ class InspectEvalAdapter:
                 )
 
             # Extract metadata from info (excluding judge responses which are now in scores)
+            # Also exclude api_error which may contain non-JSON-serializable content
             sample_metadata = {}
             if sample_info:
-                sample_metadata = {
+                filtered_metadata = {
                     k: v for k, v in sample_info.items()
-                    if not k.startswith("judge_response")
+                    if not k.startswith("judge_response") and k != "api_error"
                 }
+                # Ensure all values are JSON-serializable
+                sample_metadata = InspectEvalAdapter._make_json_serializable(filtered_metadata)
 
             # Create the sample
             sample_kwargs = {
@@ -842,6 +882,9 @@ class InspectEvalAdapter:
         )
 
         # Create EvalLog
+        # Ensure task_metadata is JSON-serializable
+        serializable_task_metadata = InspectEvalAdapter._make_json_serializable(task_metadata) if task_metadata else None
+
         eval_log = EvalLog(
             status="success",
             eval=EvalSpec(
@@ -850,7 +893,7 @@ class InspectEvalAdapter:
                 dataset=EvalDataset(),
                 model=model_name,
                 config=EvalConfig(),
-                metadata=task_metadata,
+                metadata=serializable_task_metadata,
             ),
             samples=samples,
             results=eval_results,

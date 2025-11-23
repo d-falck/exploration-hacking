@@ -61,6 +61,7 @@ class TimingData:
 def timed_eval(env: vf.Environment, config: EvalConfig, timing_data: TimingData) -> vf.GenerateOutputs:
     """Timed version of eval that tracks generation and scoring phases."""
     from exploration_hacking.eval import eval as standard_eval
+    import signal
 
     # Set eval workers to 45 for increased parallelism
     optimal_workers = 45
@@ -78,8 +79,26 @@ def timed_eval(env: vf.Environment, config: EvalConfig, timing_data: TimingData)
     # with the standard eval function, but we can time the overall evaluation)
     timing_data.generation_start_time = time.time()
 
-    # Use the standard eval function which handles all the complexity correctly
-    results = standard_eval(env, config)
+    # Set up timeout signal handler (Unix only)
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Evaluation timed out - saving partial results if available")
+
+    # Set a very long timeout (4 hours) to catch truly stuck evaluations
+    # This won't interrupt the eval, but will let us know if it's stuck
+    old_handler = None
+    if hasattr(signal, 'SIGALRM'):  # Unix only
+        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(14400)  # 4 hour timeout
+
+    try:
+        # Use the standard eval function which handles all the complexity correctly
+        results = standard_eval(env, config)
+    finally:
+        # Cancel the alarm
+        if hasattr(signal, 'SIGALRM'):
+            signal.alarm(0)
+            if old_handler:
+                signal.signal(signal.SIGALRM, old_handler)
 
     timing_data.generation_end_time = time.time()
 

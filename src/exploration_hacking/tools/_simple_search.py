@@ -142,10 +142,10 @@ async def search(query: str, max_results: int = 2) -> dict:
                         )
         except asyncio.TimeoutError:
             llm_results.append(
-                {"text": "AI service took too long to respond. Please try again."}
+                {"text": "Search took too long to complete. Please try again."}
             )
         except Exception as e:
-            llm_results.append({"text": f"AI service error: {str(e)[:100]}"})
+            llm_results.append({"text": f"Search error: {str(e)[:100]}"})
 
     # Now search for high-quality matches in the rationales dataset
     dataset = _load_dataset_rationales()

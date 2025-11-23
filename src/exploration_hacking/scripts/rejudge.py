@@ -8,9 +8,11 @@ import mlflow
 import numpy as np
 import verifiers as vf
 
+from typing import Literal
+
 from exploration_hacking.dtypes import ExperimentConfig
 from exploration_hacking.environments import EnvironmentConfig, load_environment
-from exploration_hacking.util import MLFlowLogger
+from exploration_hacking.util import create_trace_logger
 
 
 load_dotenv()
@@ -22,25 +24,59 @@ class Config(ExperimentConfig):
     output_path: Path
     eval_run_name: str
     max_concurrent: int = 32
+    logging_destination: Literal["inspect", "mlflow"] = "inspect"
 
 
-def _log_to_mlflow(results: vf.GenerateOutputs, config: Config):
-    mlflow_logger = MLFlowLogger(config.eval_run_name, concurrent=True)
-    mlflow_logger.log_spans_from_results(
-        results.prompt,
-        results.completion,
-        results.reward,
-        results.metrics,
-        results.answer,
-        results.info,
-    )
+def _log_results(results: vf.GenerateOutputs, config: Config):
+    """Log results using configured logger (inspect or mlflow)."""
+    # Build task metadata
+    task_metadata = {
+        "experiment_name": config.eval_run_name,
+    }
+    if hasattr(config.environment, 'model_dump'):
+        task_metadata["environment"] = config.environment.model_dump()
+
+    eval_path = config.output_path.with_suffix('.eval')
+
+    # For rejudge, we don't have a model name in the config, so extract from environment or use default
+    model_name = "rejudged"
+
+    with create_trace_logger(
+        logger_type=config.logging_destination,
+        experiment_name=config.eval_run_name,
+        model_name=model_name,
+        output_path=str(eval_path),
+        task_metadata=task_metadata,
+    ) as logger:
+        logger.log_spans_from_results(
+            results.prompt,
+            results.completion,
+            results.reward,
+            results.metrics,
+            results.answer,
+            results.info,
+        )
+
+    if config.logging_destination == "inspect":
+        print(f"Inspect AI eval file saved to: {eval_path}")
+    else:
+        print(f"MLFlow logging complete for: {config.eval_run_name}")
 
 
 async def main(config: Config):
     print(f"Loading previous results from {config.input_path}")
     with config.input_path.open("rb") as f:
-        previous_results = pickle.load(f)
-    
+        loaded_data = pickle.load(f)
+
+    # Handle both dict format (with 'results' key) and raw GenerateOutputs
+    if isinstance(loaded_data, dict) and 'results' in loaded_data:
+        previous_results = loaded_data['results']
+        timing_data = loaded_data.get('timing', {})
+        print(f"Loaded enhanced results with timing data")
+    else:
+        previous_results = loaded_data
+        timing_data = {}
+
     print(f"Loaded {len(previous_results.prompt)} examples")
     
     # Load environment with new config (this includes new rubric settings)
@@ -82,16 +118,25 @@ async def main(config: Config):
         pass
     
     print("Saving rejudged results...")
-    with config.output_path.open("wb") as f:
-        pickle.dump(results, f)
+    # Save in the same enhanced format if timing data was present
+    if timing_data:
+        enhanced_results = {
+            'results': results,
+            'timing': timing_data
+        }
+        with config.output_path.open("wb") as f:
+            pickle.dump(enhanced_results, f)
+    else:
+        with config.output_path.open("wb") as f:
+            pickle.dump(results, f)
     
     print("Saved rejudged results to ", config.output_path)
-    print("Logging to MLFlow...")
-    
+
+    # Log results to configured destination
     try:
-        _log_to_mlflow(results, config)
+        _log_results(results, config)
     except Exception as e:
-        print(f"Error logging to MLFlow: {e}")
+        print(f"Error logging results: {e}")
 
 
 if __name__ == "__main__":
