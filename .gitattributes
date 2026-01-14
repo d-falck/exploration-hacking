@@ -10,3 +10,4 @@ shared_traces/**/*.eval filter=lfs diff=lfs merge=lfs -text
 shared_loras/**/*.json filter=lfs diff=lfs merge=lfs -text
 shared_traces/**/*.json filter=lfs diff=lfs merge=lfs -text
 shared_datasets/**/*.arrow filter=lfs diff=lfs merge=lfs -text
+shared_datasets/bcb/sft_locking_datasets/sft_data_mixed_qwen3_coder_plus_full_merged_cleaned_50k_samples/*.arrow filter=lfs diff=lfs merge=lfs -text
