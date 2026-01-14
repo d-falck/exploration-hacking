@@ -26,23 +26,26 @@ environment:
 
 eval:
   backend:
-    # Remote backend (Qwen3-32B)
-    # type: remote
-    # model: qwen/qwen3-32b
-    # api_base_url: https://openrouter.ai/api/v1
-    # api_key_env_var: OPENROUTER_API_KEY
-    # Local backend (Qwen3-14B)
-    type: local
+    # vLLM backend (Qwen3-14B) - use serve_model.sh
+    type: vllm
     model: willcb/Qwen3-14B
-    max_lora_rank: 32
-    num_gpus: 1
+    api_base_url: http://localhost:8000/v1
+    # Local backend (Qwen3-14B)
+    # type: local
+    # model: willcb/Qwen3-14B
+    # max_lora_rank: 32
+    # num_gpus: 1
   num_examples: -1  # All 1,273 examples
-  rollouts_per_example: 3
+  rollouts_per_example: 10
   max_concurrent: 50
   max_tokens: 4096
   # response_timeout: 60.0  # 1 minute timeout per request (remote only)
   extra_sampling_args:
-    temperature: 1.0
+    temperature: 0.6
+    top_p: 0.95
+    extra_body:
+      top_k: 20
+      min_p: 0
 
 # output_path: artifacts/data/dfalck/eval_difficulty_split.pkl
 # eval_run_name: eval_difficulty_split

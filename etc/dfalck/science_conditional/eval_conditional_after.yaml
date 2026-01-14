@@ -101,8 +101,7 @@ eval:
   backend:
     type: local
     model: willcb/Qwen3-14B
-    # lora_path: ./outputs/tough-sunset-22/checkpoint-15
-    lora_path: ./outputs/tough-sunset-22/checkpoint-135
+    lora_path: ./artifacts/weights/dfalck/science_conditional/sft_model_v2/checkpoint-1551
     max_lora_rank: 64
     num_gpus: 1
   num_examples: -1

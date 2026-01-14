@@ -29,7 +29,9 @@ def load_eval_results(results_path: Path) -> dict[str, Any]:
     return data
 
 
-def calculate_per_question_accuracy(results, rollouts_per_example: int | None = None) -> tuple[list[float], list[int]]:
+def calculate_per_question_accuracy(
+    results, rollouts_per_example: int | None = None
+) -> tuple[list[float], list[int]]:
     """Calculate accuracy for each question across rollouts.
 
     Args:
@@ -42,7 +44,7 @@ def calculate_per_question_accuracy(results, rollouts_per_example: int | None = 
         - question_indices: List of indices mapping to original dataset questions
     """
     # Get the metrics - should have 'accuracy' or 'correct' per rollout
-    if hasattr(results, 'metrics'):
+    if hasattr(results, "metrics"):
         metrics = results.metrics
     else:
         raise ValueError("Results object has no metrics attribute")
@@ -55,14 +57,16 @@ def calculate_per_question_accuracy(results, rollouts_per_example: int | None = 
             break
 
     if not accuracy_key:
-        raise ValueError(f"No accuracy metric found. Available metrics: {metrics.keys()}")
+        raise ValueError(
+            f"No accuracy metric found. Available metrics: {metrics.keys()}"
+        )
 
     accuracy_values = metrics[accuracy_key]
     num_total_rollouts = len(accuracy_values)
 
     # Infer rollouts_per_example if not provided
     if rollouts_per_example is None:
-        if hasattr(results, 'prompt'):
+        if hasattr(results, "prompt"):
             # Try to count from prompt similarity
             prompt_strings = [str(p) for p in results.prompt]
 
@@ -85,16 +89,24 @@ def calculate_per_question_accuracy(results, rollouts_per_example: int | None = 
             # Handle inconsistent rollouts (e.g., from incomplete evaluations)
             if len(set(rollouts_per_question)) == 1:
                 rollouts_per_example = rollouts_per_question[0]
-                print(f"Inferred rollouts_per_example={rollouts_per_example} from prompts")
+                print(
+                    f"Inferred rollouts_per_example={rollouts_per_example} from prompts"
+                )
             else:
-                print(f"Warning: Inconsistent rollouts per question: {set(rollouts_per_question)}")
+                print(
+                    f"Warning: Inconsistent rollouts per question: {set(rollouts_per_question)}"
+                )
                 print(f"This may indicate an incomplete evaluation.")
-                rollouts_per_example = max(set(rollouts_per_question), key=rollouts_per_question.count)
+                rollouts_per_example = max(
+                    set(rollouts_per_question), key=rollouts_per_question.count
+                )
                 print(f"Using most common rollout count: {rollouts_per_example}")
         else:
             # Fallback to default
             rollouts_per_example = 3
-            print(f"Warning: Could not infer rollouts_per_example, defaulting to {rollouts_per_example}")
+            print(
+                f"Warning: Could not infer rollouts_per_example, defaulting to {rollouts_per_example}"
+            )
 
     # Calculate per-question accuracy by grouping rollouts
     # We expect rollouts to be ordered: Q1_R1, Q1_R2, Q1_R3, Q2_R1, Q2_R2, Q2_R3, ...
@@ -116,7 +128,9 @@ def calculate_per_question_accuracy(results, rollouts_per_example: int | None = 
             per_question_accuracy.append(float(accuracy))
             question_indices.append(question_idx)
 
-    print(f"Processed {len(per_question_accuracy)} questions from {num_total_rollouts} rollouts")
+    print(
+        f"Processed {len(per_question_accuracy)} questions from {num_total_rollouts} rollouts"
+    )
     print(f"  {rollouts_per_example} rollouts per question")
 
     return per_question_accuracy, question_indices
@@ -143,12 +157,14 @@ def create_difficulty_splits(
     Returns:
         DatasetDict with 'easy', 'medium', 'hard' splits
     """
-    assert abs(easy_frac + medium_frac + hard_frac - 1.0) < 1e-6, \
-        "Fractions must sum to 1.0"
+    assert (
+        abs(easy_frac + medium_frac + hard_frac - 1.0) < 1e-6
+    ), "Fractions must sum to 1.0"
 
     num_questions = len(accuracies)
-    assert len(accuracies) == len(question_indices), \
-        f"Accuracies ({len(accuracies)}) and indices ({len(question_indices)}) length mismatch"
+    assert len(accuracies) == len(
+        question_indices
+    ), f"Accuracies ({len(accuracies)}) and indices ({len(question_indices)}) length mismatch"
 
     # Subset the dataset to only evaluated questions
     dataset = dataset.select(question_indices)
@@ -165,8 +181,8 @@ def create_difficulty_splits(
 
     # Split indices
     easy_indices = sorted_indices[:num_easy]
-    medium_indices = sorted_indices[num_easy:num_easy + num_medium]
-    hard_indices = sorted_indices[num_easy + num_medium:]
+    medium_indices = sorted_indices[num_easy : num_easy + num_medium]
+    hard_indices = sorted_indices[num_easy + num_medium :]
 
     # Create splits
     easy_dataset = dataset.select(easy_indices.tolist())
@@ -182,15 +198,19 @@ def create_difficulty_splits(
     ]:
         split_accuracies = [accuracies[i] for i in indices]
         print(f"\n{split_name} split: {len(dataset_split)} questions")
-        print(f"  Accuracy range: {min(split_accuracies):.3f} - {max(split_accuracies):.3f}")
+        print(
+            f"  Accuracy range: {min(split_accuracies):.3f} - {max(split_accuracies):.3f}"
+        )
         print(f"  Mean accuracy: {np.mean(split_accuracies):.3f}")
     print("================================\n")
 
-    return DatasetDict({
-        "easy": easy_dataset,
-        "medium": medium_dataset,
-        "hard": hard_dataset,
-    })
+    return DatasetDict(
+        {
+            "easy": easy_dataset,
+            "medium": medium_dataset,
+            "hard": hard_dataset,
+        }
+    )
 
 
 def main():
@@ -247,7 +267,9 @@ def main():
 
     # Calculate per-question accuracy
     print("Calculating per-question accuracy...")
-    accuracies, question_indices = calculate_per_question_accuracy(results, args.rollouts_per_example)
+    accuracies, question_indices = calculate_per_question_accuracy(
+        results, args.rollouts_per_example
+    )
     print(f"Processed {len(accuracies)} questions")
     print(f"Overall accuracy: {np.mean(accuracies):.3f} ± {np.std(accuracies):.3f}")
 
@@ -257,7 +279,9 @@ def main():
     print(f"Loaded {len(original_dataset)} questions")
 
     if len(question_indices) < len(original_dataset):
-        print(f"Warning: Only {len(question_indices)} questions were evaluated out of {len(original_dataset)}")
+        print(
+            f"Warning: Only {len(question_indices)} questions were evaluated out of {len(original_dataset)}"
+        )
         print("Creating splits based on evaluated questions only")
 
     # Create splits
@@ -279,11 +303,6 @@ def main():
     )
 
     print(f"\n✅ Successfully created and uploaded difficulty splits to {args.hf_repo}")
-    print(f"\nYou can now use the dataset in your configs with:")
-    print(f"  dataset_names:")
-    print(f"    - {args.hf_repo.split('/')[-1]}:easy")
-    print(f"    - {args.hf_repo.split('/')[-1]}:medium")
-    print(f"    - {args.hf_repo.split('/')[-1]}:hard")
 
 
 if __name__ == "__main__":

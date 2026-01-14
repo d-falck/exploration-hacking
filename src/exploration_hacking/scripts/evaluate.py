@@ -9,6 +9,7 @@ from pathlib import Path
 import random
 import time
 import os
+import logging
 from typing import Literal
 
 from dotenv import load_dotenv
@@ -24,6 +25,7 @@ from exploration_hacking.util import MLFlowLogger, create_trace_logger
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
 
 class TimingData:

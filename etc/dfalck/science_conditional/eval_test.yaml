@@ -29,13 +29,20 @@ eval:
     type: vllm
     model: willcb/Qwen3-14B
     api_base_url: http://localhost:8000/v1
+    # type: local
+    # model: willcb/Qwen3-14B
+    # num_gpus: 1
   num_examples: -1
   rollouts_per_example: 3
   max_concurrent: 500
   max_tokens: 4096
   extra_sampling_args:
-    temperature: 1.0
+    temperature: 0.6
+    top_p: 0.95
+    extra_body:
+      top_k: 20
+      min_p: 0
 
-output_path: artifacts/data/dfalck/science_conditional/eval_test_14b.pkl
-eval_run_name: eval_test_14b
+output_path: artifacts/data/dfalck/science_conditional/eval_test_2.pkl
+eval_run_name: eval_test_2
 logging_destination: inspect
