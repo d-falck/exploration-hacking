@@ -1,3 +1,5 @@
+import logging
+
 import verifiers as vf
 
 from exploration_hacking.dataset import DataSource, Loader, SplitConfig
@@ -8,7 +10,10 @@ from exploration_hacking.rewards.factory import (
 from exploration_hacking.tools.web import search_web, summarize_page, search_simple
 from exploration_hacking.environments.base import BaseEnvironmentConfig
 
-WMDP_BIO_DIFFICULTY_SPLIT_DATASET = "dfalck/wmdp-bio-by-difficulty-qwen3-14b"
+WMDP_BIO_DIFFICULTY_SPLIT_DATASET = "dfalck/wmdp-bio-by-difficulty-qwen3-14b-3"
+WMDP_BIO_RANDOM_SPLIT_DATASET = "dfalck/wmdp-bio-random-splits"
+
+logger = logging.getLogger(__name__)
 
 
 class ScienceEnvConfig(BaseEnvironmentConfig):
@@ -59,9 +64,9 @@ def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
     prompt_prefixes = config.prompt_prefixes or {}
 
     for entry in config.dataset_names:
-        if ':' in entry:
+        if ":" in entry:
             # Format: "dataset:segment" - use segment name for the key
-            dataset_name, segment_name = entry.split(':', 1)
+            dataset_name, segment_name = entry.split(":", 1)
         else:
             # No colon: use entry as both dataset and segment name
             dataset_name = entry
@@ -73,12 +78,30 @@ def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
         # Check if this is a difficulty-split dataset
         if dataset_name in ["wmdp-bio-easy", "wmdp-bio-medium", "wmdp-bio-hard"]:
             # Extract difficulty level and use custom dataset
-            difficulty = dataset_name.split('-')[-1]  # easy, medium, or hard
+            difficulty = dataset_name.split("-")[-1]  # easy, medium, or hard
             sources[segment_name] = DataSource(
                 path=WMDP_BIO_DIFFICULTY_SPLIT_DATASET,
                 name=None,  # No config/subset for this dataset
                 split=difficulty,
                 prompt_prefix=prefix,
+            )
+            logger.info(
+                f"Loading difficulty split: dataset_name='{dataset_name}', segment='{segment_name}', "
+                f"path='{WMDP_BIO_DIFFICULTY_SPLIT_DATASET}', split='{difficulty}'"
+            )
+        # Check if this is a random-split dataset
+        elif dataset_name in ["wmdp-bio-a", "wmdp-bio-b", "wmdp-bio-c"]:
+            # Extract split name (a, b, or c)
+            split_name = dataset_name.split("-")[-1]
+            sources[segment_name] = DataSource(
+                path=WMDP_BIO_RANDOM_SPLIT_DATASET,
+                name=None,  # No config/subset for this dataset
+                split=split_name,
+                prompt_prefix=prefix,
+            )
+            logger.info(
+                f"Loading random split: dataset_name='{dataset_name}', segment='{segment_name}', "
+                f"path='{WMDP_BIO_RANDOM_SPLIT_DATASET}', split='{split_name}'"
             )
         else:
             # Default: use Joschka/wmdp dataset
@@ -88,8 +111,18 @@ def _get_dataset(config: ScienceEnvConfig, seed: int | None = None):
                 split="test",
                 prompt_prefix=prefix,
             )
+            logger.info(
+                f"Loading standard dataset: dataset_name='{dataset_name}', segment='{segment_name}', "
+                f"path='Joschka/wmdp', name='{dataset_name}', split='test'"
+            )
 
-    return loader.merge_datasets(sources)
+    merged_dataset = loader.merge_datasets(sources)
+    # Log split sizes
+    split_info = ", ".join(
+        [f"{split}={len(merged_dataset[split])}" for split in merged_dataset.keys()]
+    )
+    logger.info(f"Merged dataset splits: {split_info}")
+    return merged_dataset
 
 
 def load_science_environment(config: ScienceEnvConfig, seed: int | None = None):
