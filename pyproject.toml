@@ -5,6 +5,8 @@ description = "Research code for exploration hacking project"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "setuptools",
+    "torch",
     "flash-attn",
     "flashinfer-python",
     "litellm[proxy]",
@@ -109,3 +111,4 @@ no-build-isolation-package = ["flash-attn"]
 
 [tool.uv.pip]
 torch-backend = "auto"
+
