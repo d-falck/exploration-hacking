@@ -20,7 +20,8 @@ grpo_trainer_lora_model/
 /checkpoints/
 /mlruns/
 .claude/
-/data/
+/data/*
+!/data/vct/
 etc/joschka/
 eyon_exploration_hacking/
 plot/jbraun/

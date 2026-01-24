@@ -2,7 +2,9 @@
 TODO: this file needs cleaning up.
 """
 
-from datasets import load_dataset
+from pathlib import Path
+
+from datasets import load_dataset, load_from_disk
 import aiohttp
 import asyncio
 import os
@@ -12,19 +14,32 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
 _dataset_cache = None
 
+# Path to local VCT dataset (relative to repo root)
+VCT_DATASET_PATH = Path(__file__).parent.parent.parent.parent / "data" / "vct" / "vct_search_tool_information"
+
 
 def _load_dataset_rationales():
-    """Load rationales from WMDP configurations."""
+    """Load rationales from WMDP configurations and VCT dataset."""
     global _dataset_cache
 
     if _dataset_cache is None:
-        configs = ["wmdp-bio", "wmdp-chem", "wmdp-cyber"]
         rationales = []
 
+        # Load WMDP rationales from HuggingFace
+        configs = ["wmdp-bio", "wmdp-chem", "wmdp-cyber"]
         for config in configs:
             ds = load_dataset("Joschka/wmdp", config, split="test")
             for entry in ds:
                 rationales.append({"text": entry["rationale"]})
+
+        # Load VCT dataset from local disk
+        if VCT_DATASET_PATH.exists():
+            vct_ds = load_from_disk(str(VCT_DATASET_PATH))
+            for entry in vct_ds:
+                rationales.append({"text": entry["text"]})
+            print(f"Loaded {len(vct_ds)} VCT entries for search")
+        else:
+            print(f"VCT dataset not found at {VCT_DATASET_PATH}, skipping")
 
         _dataset_cache = rationales
 
