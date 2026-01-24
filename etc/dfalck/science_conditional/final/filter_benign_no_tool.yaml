@@ -4,7 +4,7 @@ input_path: artifacts/data/dfalck/science_conditional/final/eval_gen_benign_no_t
 output_path: artifacts/data/dfalck/science_conditional/final/sft_data_benign_no_tool
 
 filter_metrics:
-  answer_effectively:
+  answer_effectively_and_format:
     above_threshold: 0.5
   format_penalty_func:
     below_threshold: 0.1

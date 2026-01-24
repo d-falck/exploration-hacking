@@ -13,12 +13,15 @@ class Config(ExperimentConfig):
 
 def main(config: Config):
     datasets = [load_from_disk(input_path) for input_path in config.input_paths]
+    print(f"Source sizes: {[len(ds) for ds in datasets]}")
+
     dataset = interleave_datasets(
         datasets,
         probabilities=config.probabilities,
         stopping_strategy="all_exhausted",
         seed=config.seed,
     )
+    print(f"Mixed dataset size: {len(dataset)}")
     dataset.save_to_disk(config.output_path)
 
 

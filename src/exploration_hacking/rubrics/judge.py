@@ -2,6 +2,8 @@ import re
 import litellm
 from tenacity import retry, stop_after_attempt, retry_if_exception_type
 
+litellm._turn_on_debug()
+
 from verifiers.parsers.xml_parser import XMLParser
 from verifiers.rubrics.rubric import Rubric
 from verifiers.types import Messages, State

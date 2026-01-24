@@ -248,9 +248,16 @@ def fix_tool_arguments(completions: list, tools_list: list[list] | None = None) 
                             is_valid = False
                             break
 
-                        # Validate argument types
+                        # Strip unexpected keys from arguments to ensure consistent schema
                         tool_name = tc['function'].get('name')
                         tool_schema = tool_schemas.get(tool_name)
+                        if tool_schema and 'parameters' in tool_schema:
+                            expected_keys = set(tool_schema['parameters'].get('properties', {}).keys())
+                            args = tc['function']['arguments']
+                            if isinstance(args, dict):
+                                tc['function']['arguments'] = {k: v for k, v in args.items() if k in expected_keys}
+
+                        # Validate argument types
                         if not validate_tool_call_arguments(tc, tool_schema):
                             is_valid = False
                             break

@@ -571,14 +571,24 @@ class InspectEvalAdapter:
                             # If it can't be parsed, wrap it in a dict
                             tc_arguments = {"raw": tc_arguments}
 
-                    tool_calls_inspect.append(
-                        ToolCall(
-                            id=tc_id,
-                            function=tc_function,
-                            arguments=tc_arguments,
-                            type="function"
+                    # Ensure arguments is a valid dict for ToolCall
+                    if tc_arguments is None:
+                        tc_arguments = {}
+                    elif not isinstance(tc_arguments, dict):
+                        tc_arguments = {"raw": tc_arguments}
+
+                    try:
+                        tool_calls_inspect.append(
+                            ToolCall(
+                                id=tc_id,
+                                function=tc_function,
+                                arguments=tc_arguments,
+                                type="function"
+                            )
                         )
-                    )
+                    except Exception:
+                        # Skip malformed tool calls gracefully
+                        pass
 
             return ChatMessageAssistant(content=content, tool_calls=tool_calls_inspect)
         elif role == "tool":

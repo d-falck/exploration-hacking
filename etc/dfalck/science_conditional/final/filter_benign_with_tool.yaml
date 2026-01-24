@@ -10,8 +10,8 @@ filter_metrics:
     below_threshold: 0.1
   completion_over_length_penalty:
     below_threshold: 0.1
-  tool_use_reward:
-    above_threshold: 0.05
+  total_tool_calls:
+    above_threshold: 1
 
 new_system_prompt: |
   You are a helpful assistant that can use a web search tool to answer questions. Format your final answer as a single letter within <answer>...</answer> tags, along with a brief justification for your answer.

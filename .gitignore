@@ -12,7 +12,16 @@ wheels/
 # Manual
 unsloth_compiled_cache/
 /wandb/
-artifacts/
+artifacts/*
+!artifacts/data/
+artifacts/data/*
+!artifacts/data/dfalck/
+artifacts/data/dfalck/*
+!artifacts/data/dfalck/science_conditional/
+artifacts/data/dfalck/science_conditional/*
+!artifacts/data/dfalck/science_conditional/final/
+artifacts/data/dfalck/science_conditional/final/*
+!artifacts/data/dfalck/science_conditional/final/sft_data_mixed/
 .env
 grpo_trainer_lora_model/
 /outputs/
@@ -23,8 +32,5 @@ grpo_trainer_lora_model/
 /data/
 etc/joschka/
 eyon_exploration_hacking/
-
-.claude/
 .vscode/
-
 /weights/
