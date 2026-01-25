@@ -126,6 +126,7 @@ def main(config: Config):
         report_to="wandb",
         bf16=True,
         gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False, "determinism_check": "none"},
         data_seed=config.seed,
     )
 
