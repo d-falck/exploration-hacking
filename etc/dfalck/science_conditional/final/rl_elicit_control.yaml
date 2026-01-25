@@ -32,8 +32,7 @@ environment:
 
 rl:
   model: willcb/Qwen3-14B
-  peft:
-    lora_checkpoint: ./artifacts/weights/dfalck/science_conditional/final/sft_model/checkpoint-200
+  # No peft/lora - training from base model
   hyperparameters:
     learning_rate: 2e-5
     warmup_steps: 3
@@ -53,8 +52,8 @@ rl:
     rollouts_per_gpu: 4
   log_to_mlflow: true
   logging_destination: inspect
-  logging_output_dir: artifacts/data/dfalck/science_conditional/final
+  logging_output_dir: artifacts/data/dfalck/science_conditional/final/rl_elicit_control
 
-inference_gpus: [0, 1]
-training_gpus: [2, 3]
+inference_gpus: [0, 1, 2, 3]
+training_gpus: [4, 5, 6, 7]
 inference_context_length_grace_factor: 2

@@ -22,6 +22,16 @@ artifacts/data/dfalck/science_conditional/*
 !artifacts/data/dfalck/science_conditional/final/
 artifacts/data/dfalck/science_conditional/final/*
 !artifacts/data/dfalck/science_conditional/final/sft_data_mixed/
+!artifacts/weights/
+artifacts/weights/*
+!artifacts/weights/dfalck/
+artifacts/weights/dfalck/*
+!artifacts/weights/dfalck/science_conditional/
+artifacts/weights/dfalck/science_conditional/*
+!artifacts/weights/dfalck/science_conditional/final/
+artifacts/weights/dfalck/science_conditional/final/*
+!artifacts/weights/dfalck/science_conditional/final/sft_model/
+artifacts/weights/dfalck/science_conditional/final/sft_model/checkpoint-*/
 .env
 grpo_trainer_lora_model/
 /outputs/
