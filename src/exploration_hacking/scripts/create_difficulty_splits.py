@@ -29,9 +29,31 @@ def load_eval_results(results_path: Path) -> dict[str, Any]:
     return data
 
 
+def extract_question_from_prompt(prompt) -> str:
+    """Extract the question text from a prompt."""
+    if isinstance(prompt, list):
+        for msg in prompt:
+            if msg.get("role") == "user":
+                content = msg.get("content", "")
+                if "Question:" in content:
+                    return content.split("Question:")[1].split("Options:")[0].strip()
+    return ""
+
+
+def get_user_content_from_prompt(prompt) -> str:
+    """Extract the user message content from a prompt (generic)."""
+    if isinstance(prompt, list):
+        for msg in prompt:
+            if msg.get("role") == "user":
+                return msg.get("content", "")
+    elif isinstance(prompt, str):
+        return prompt
+    return ""
+
+
 def calculate_per_question_accuracy(
     results, rollouts_per_example: int | None = None
-) -> tuple[list[float], list[int]]:
+) -> tuple[list[float], list[str]]:
     """Calculate accuracy for each question across rollouts.
 
     Args:
@@ -39,9 +61,9 @@ def calculate_per_question_accuracy(
         rollouts_per_example: Number of rollouts per question. If None, will try to infer.
 
     Returns:
-        Tuple of (accuracies, question_indices) where:
+        Tuple of (accuracies, prompt_contents) where:
         - accuracies: List of accuracy values (0.0 to 1.0) for each question
-        - question_indices: List of indices mapping to original dataset questions
+        - prompt_contents: List of user prompt contents (for matching to original dataset)
     """
     # Get the metrics - should have 'accuracy' or 'correct' per rollout
     if hasattr(results, "metrics"):
@@ -112,7 +134,7 @@ def calculate_per_question_accuracy(
     # We expect rollouts to be ordered: Q1_R1, Q1_R2, Q1_R3, Q2_R1, Q2_R2, Q2_R3, ...
     num_questions = num_total_rollouts // rollouts_per_example
     per_question_accuracy = []
-    question_indices = []
+    prompt_contents = []
 
     for question_idx in range(num_questions):
         start_idx = question_idx * rollouts_per_example
@@ -126,20 +148,23 @@ def calculate_per_question_accuracy(
         if len(question_rollouts) > 0:
             accuracy = np.mean(question_rollouts)
             per_question_accuracy.append(float(accuracy))
-            question_indices.append(question_idx)
+            # Extract user prompt content from first rollout
+            prompt_content = get_user_content_from_prompt(results.prompt[start_idx])
+            prompt_contents.append(prompt_content)
 
     print(
         f"Processed {len(per_question_accuracy)} questions from {num_total_rollouts} rollouts"
     )
     print(f"  {rollouts_per_example} rollouts per question")
 
-    return per_question_accuracy, question_indices
+    return per_question_accuracy, prompt_contents
 
 
 def create_difficulty_splits(
     dataset: Dataset,
     accuracies: list[float],
-    question_indices: list[int],
+    prompt_contents: list[str],
+    question_field: str = "question",
     easy_frac: float = 0.4,
     medium_frac: float = 0.4,
     hard_frac: float = 0.2,
@@ -149,7 +174,8 @@ def create_difficulty_splits(
     Args:
         dataset: HuggingFace dataset to split
         accuracies: Per-question accuracy values (0.0 to 1.0)
-        question_indices: Indices of questions in the original dataset
+        prompt_contents: User prompt contents from eval (for matching to dataset)
+        question_field: Name of the field in dataset containing question text
         easy_frac: Fraction of dataset for easy split (highest accuracy)
         medium_frac: Fraction for medium split
         hard_frac: Fraction for hard split (lowest accuracy)
@@ -161,15 +187,37 @@ def create_difficulty_splits(
         abs(easy_frac + medium_frac + hard_frac - 1.0) < 1e-6
     ), "Fractions must sum to 1.0"
 
-    num_questions = len(accuracies)
+    num_eval_questions = len(accuracies)
     assert len(accuracies) == len(
-        question_indices
-    ), f"Accuracies ({len(accuracies)}) and indices ({len(question_indices)}) length mismatch"
+        prompt_contents
+    ), f"Accuracies ({len(accuracies)}) and prompt_contents ({len(prompt_contents)}) length mismatch"
 
-    # Subset the dataset to only evaluated questions
-    dataset = dataset.select(question_indices)
+    # Build mapping from prompt content -> accuracy
+    # (match by checking if dataset question is substring of prompt)
+    prompt_to_accuracy = {pc: acc for pc, acc in zip(prompt_contents, accuracies)}
 
-    print(f"Using {len(dataset)} evaluated questions out of original dataset")
+    # Find matching dataset indices and their accuracies
+    matched_indices = []
+    matched_accuracies = []
+
+    for idx, item in enumerate(dataset):
+        question_text = item[question_field]
+        # Find matching prompt by checking if question is contained in any prompt
+        for prompt_content, accuracy in prompt_to_accuracy.items():
+            if question_text in prompt_content:
+                matched_indices.append(idx)
+                matched_accuracies.append(accuracy)
+                break
+
+    print(f"Matched {len(matched_indices)} questions out of {len(dataset)} in dataset")
+    print(f"  ({num_eval_questions} questions in eval results)")
+
+    if len(matched_indices) < num_eval_questions:
+        print(f"Warning: Could not match all eval questions to dataset")
+
+    # Use matched questions for splitting
+    num_questions = len(matched_indices)
+    accuracies = matched_accuracies
 
     # Sort questions by accuracy (descending)
     sorted_indices = np.argsort(accuracies)[::-1]  # High to low
@@ -179,24 +227,29 @@ def create_difficulty_splits(
     num_medium = int(num_questions * medium_frac)
     num_hard = num_questions - num_easy - num_medium  # Remaining
 
-    # Split indices
-    easy_indices = sorted_indices[:num_easy]
-    medium_indices = sorted_indices[num_easy : num_easy + num_medium]
-    hard_indices = sorted_indices[num_easy + num_medium :]
+    # Split indices (sorted_indices indexes into matched arrays, need to map to dataset indices)
+    easy_sorted_idx = sorted_indices[:num_easy]
+    medium_sorted_idx = sorted_indices[num_easy : num_easy + num_medium]
+    hard_sorted_idx = sorted_indices[num_easy + num_medium :]
+
+    # Map to actual dataset indices
+    easy_dataset_indices = [matched_indices[i] for i in easy_sorted_idx]
+    medium_dataset_indices = [matched_indices[i] for i in medium_sorted_idx]
+    hard_dataset_indices = [matched_indices[i] for i in hard_sorted_idx]
 
     # Create splits
-    easy_dataset = dataset.select(easy_indices.tolist())
-    medium_dataset = dataset.select(medium_indices.tolist())
-    hard_dataset = dataset.select(hard_indices.tolist())
+    easy_dataset = dataset.select(easy_dataset_indices)
+    medium_dataset = dataset.select(medium_dataset_indices)
+    hard_dataset = dataset.select(hard_dataset_indices)
 
     # Print statistics
     print(f"\n=== Dataset Split Statistics ===")
-    for split_name, indices, dataset_split in [
-        ("Easy", easy_indices, easy_dataset),
-        ("Medium", medium_indices, medium_dataset),
-        ("Hard", hard_indices, hard_dataset),
+    for split_name, sorted_idx, dataset_split in [
+        ("Easy", easy_sorted_idx, easy_dataset),
+        ("Medium", medium_sorted_idx, medium_dataset),
+        ("Hard", hard_sorted_idx, hard_dataset),
     ]:
-        split_accuracies = [accuracies[i] for i in indices]
+        split_accuracies = [accuracies[i] for i in sorted_idx]
         print(f"\n{split_name} split: {len(dataset_split)} questions")
         print(
             f"  Accuracy range: {min(split_accuracies):.3f} - {max(split_accuracies):.3f}"
@@ -267,7 +320,7 @@ def main():
 
     # Calculate per-question accuracy
     print("Calculating per-question accuracy...")
-    accuracies, question_indices = calculate_per_question_accuracy(
+    accuracies, prompt_contents = calculate_per_question_accuracy(
         results, args.rollouts_per_example
     )
     print(f"Processed {len(accuracies)} questions")
@@ -278,9 +331,9 @@ def main():
     original_dataset = load_dataset("Joschka/wmdp", "wmdp-bio")["test"]
     print(f"Loaded {len(original_dataset)} questions")
 
-    if len(question_indices) < len(original_dataset):
+    if len(prompt_contents) < len(original_dataset):
         print(
-            f"Warning: Only {len(question_indices)} questions were evaluated out of {len(original_dataset)}"
+            f"Warning: Only {len(prompt_contents)} questions were evaluated out of {len(original_dataset)}"
         )
         print("Creating splits based on evaluated questions only")
 
@@ -289,7 +342,7 @@ def main():
     difficulty_splits = create_difficulty_splits(
         original_dataset,
         accuracies,
-        question_indices,
+        prompt_contents,
         easy_frac=args.easy_frac,
         medium_frac=args.medium_frac,
         hard_frac=args.hard_frac,
