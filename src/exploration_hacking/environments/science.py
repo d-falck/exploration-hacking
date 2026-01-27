@@ -1,6 +1,7 @@
 import logging
 
 import verifiers as vf
+from verifiers.envs.tool_env import ToolEnv
 
 from exploration_hacking.dataset import DataSource, Loader, SplitConfig
 from exploration_hacking.rewards.factory import (
@@ -8,9 +9,26 @@ from exploration_hacking.rewards.factory import (
     get_conditional_rubric,
 )
 from exploration_hacking.tools.web import search_web, summarize_page, search_simple
+from exploration_hacking.tools._simple_search import set_question_context, clear_question_context
 from exploration_hacking.environments.base import BaseEnvironmentConfig
 
-WMDP_BIO_DIFFICULTY_SPLIT_DATASET = "dfalck/wmdp-bio-by-difficulty-qwen3-14b-3"
+
+class ScienceToolEnv(ToolEnv):
+    """Custom ToolEnv that sets question context for the search tool."""
+
+    async def setup_state(self, state, **kwargs):
+        """Set the question context before each rollout."""
+        state = await super().setup_state(state, **kwargs)
+        info = state.get("info", {})
+        question = info.get("question")
+        rationale = info.get("rationale")
+        if question and rationale:
+            set_question_context(question, rationale)
+        else:
+            clear_question_context()
+        return state
+
+WMDP_BIO_DIFFICULTY_SPLIT_DATASET = "dfalck/wmdp-bio-by-difficulty-qwen3-14b-5"
 WMDP_BIO_RANDOM_SPLIT_DATASET = "dfalck/wmdp-bio-random-splits"
 
 logger = logging.getLogger(__name__)
@@ -167,4 +185,4 @@ def load_science_environment(config: ScienceEnvConfig, seed: int | None = None):
         if "test" in ds:
             kwargs["eval_dataset"] = ds["test"]
 
-    return vf.ToolEnv(**kwargs)
+    return ScienceToolEnv(**kwargs)
