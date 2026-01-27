@@ -134,11 +134,13 @@ async def _call_llm(
                         raise Exception(
                             f"API error {response.status}: {response_text[:200]}"
                         )
-                    await asyncio.sleep(1)
+                    # Exponential backoff: 1s, 2s, 4s, 8s
+                    await asyncio.sleep(2 ** attempt)
         except Exception as e:
             if attempt == max_attempts - 1:
                 raise e
-            await asyncio.sleep(1)
+            # Exponential backoff: 1s, 2s, 4s, 8s
+            await asyncio.sleep(2 ** attempt)
 
     raise Exception("Max attempts reached")
 

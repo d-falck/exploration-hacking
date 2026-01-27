@@ -1,6 +1,6 @@
 import re
 import litellm
-from tenacity import retry, stop_after_attempt, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, retry_if_exception_type, wait_exponential
 
 from verifiers.parsers.xml_parser import XMLParser
 from verifiers.rubrics.rubric import Rubric
@@ -45,9 +45,10 @@ class TrajectoryJudgeRubric(Rubric):
         super().__init__(**kwargs)
 
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=1, max=30),
         retry=retry_if_exception_type((
-            litellm.Timeout, 
+            litellm.Timeout,
             litellm.APIError,
             litellm.APIConnectionError,
             ValueError
