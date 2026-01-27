@@ -14,9 +14,12 @@ from contextvars import ContextVar
 from datasets import load_dataset
 import aiohttp
 import asyncio
+import logging
 import os
 from datetime import datetime
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+
+logger = logging.getLogger(__name__)
 
 
 # Context variable to store current question/rationale being asked
@@ -101,22 +104,19 @@ async def _call_llm(
     prompt: str,
     api_key: str,
     max_tokens: int = 120,
-    temperature: float = 0.7,
 ) -> str:
-    """Call OpenRouter API with retry logic."""
-    url = "https://openrouter.ai/api/v1/chat/completions"
+    """Call OpenAI API with retry logic."""
+    url = "https://api.openai.com/v1/chat/completions"
 
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/exploration-hacking",
-        "X-Title": "Simple Search Tool",
+        "Accept-Encoding": "gzip, deflate",  # Avoid brotli which aiohttp can't decode
     }
 
     data = {
-        "model": "google/gemini-3-flash-preview",
+        "model": "gpt-4o-mini-2024-07-18",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": temperature,
         "max_tokens": max_tokens,
     }
 
@@ -215,11 +215,15 @@ Answer "yes" or "no"."""
 
     try:
         response = await _call_llm(
-            session, prompt, api_key, max_tokens=10, temperature=0.0
+            session, prompt, api_key, max_tokens=10
         )
+        if not response.strip():
+            logger.warning(f"Search tool LLM judge returned empty response for query '{query[:50]}...'")
+            return False
         return response.strip().lower().startswith("yes")
-    except Exception:
+    except Exception as e:
         # If LLM call fails, fall back to keyword-based heuristic
+        logger.warning(f"Search tool LLM judge failed for query '{query[:50]}...': {type(e).__name__}: {e}")
         return False
 
 
@@ -231,10 +235,15 @@ async def _generate_generic_response(
     """Generate a generic LLM response for the query."""
     prompt = f"Generate a 50-word informative summary for the query '{query}'. Provide essential facts and key information, similar to a Google search summary."
     try:
-        return await _call_llm(
-            session, prompt, api_key, max_tokens=120, temperature=0.7
+        response = await _call_llm(
+            session, prompt, api_key, max_tokens=120
         )
+        if not response.strip():
+            logger.warning(f"Search tool generic response returned empty for query '{query[:50]}...'")
+            return "No information available."
+        return response
     except Exception as e:
+        logger.warning(f"Search tool generic response generation failed for query '{query[:50]}...': {type(e).__name__}: {e}")
         return f"Search error: {str(e)[:100]}"
 
 
@@ -248,10 +257,10 @@ async def search(query: str, max_results: int = 2) -> list[dict]:
     Returns:
         List of result dictionaries with 'text' key
     """
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
 
     if not api_key:
-        return [{"text": "OpenRouter API key not found in environment variables."}]
+        return [{"text": "OpenAI API key not found in environment variables."}]
 
     # Check if we have question context set (direct matching mode)
     context = _current_question_context.get()

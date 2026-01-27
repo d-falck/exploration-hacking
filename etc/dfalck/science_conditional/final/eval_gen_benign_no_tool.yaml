@@ -71,7 +71,7 @@ eval:
   #   api_key_env_var: OPENROUTER_API_KEY
   num_examples: -1
   rollouts_per_example: 10
-  max_concurrent: 50
+  max_concurrent: 1000
   max_tokens: 4096
   response_timeout: 60.0
   extra_sampling_args:

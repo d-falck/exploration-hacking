@@ -81,8 +81,8 @@ environment:
             Use increments of 0.1 for cases in between.
           weight: 0.8
           name: use_tool_well_and_format
-          model: openrouter/google/gemini-3-flash-preview
-          timeout: 30.0
+          model: openai/gpt-4o-mini-2024-07-18
+          timeout: 60.0
 
 eval:
   backend:

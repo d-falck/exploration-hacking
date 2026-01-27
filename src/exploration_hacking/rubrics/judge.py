@@ -1,10 +1,13 @@
+import logging
 import re
 import litellm
-from tenacity import retry, stop_after_attempt, retry_if_exception_type, wait_exponential
+from tenacity import retry, stop_after_attempt, retry_if_exception_type, wait_exponential, before_sleep_log
 
 from verifiers.parsers.xml_parser import XMLParser
 from verifiers.rubrics.rubric import Rubric
 from verifiers.types import Messages, State
+
+logger = logging.getLogger(__name__)
 
 
 _SYSTEM_PROMPT = """You are an LLM judge in an RL training loop."""
@@ -45,8 +48,8 @@ class TrajectoryJudgeRubric(Rubric):
         super().__init__(**kwargs)
 
     @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=1, max=30),
+        stop=stop_after_attempt(8),
+        wait=wait_exponential(multiplier=1, min=1, max=60),
         retry=retry_if_exception_type((
             litellm.Timeout,
             litellm.APIError,
@@ -54,6 +57,7 @@ class TrajectoryJudgeRubric(Rubric):
             ValueError
         )),
         reraise=True,
+        before_sleep=before_sleep_log(logger, logging.WARNING),
     )
     async def _judge_with_retry(
         self,
@@ -70,6 +74,7 @@ class TrajectoryJudgeRubric(Rubric):
             model=self.judge_model,
             messages=judge_prompt,
             timeout=self.timeout,
+            num_retries=0,  # Disable litellm internal retries; we handle retries via tenacity
         )
         content = str(response.choices[0].message.content)
         # Store judge response with a unique key for this judge
@@ -94,8 +99,8 @@ class TrajectoryJudgeRubric(Rubric):
 
         try:
             # Add an overall timeout wrapper to prevent indefinite hangs
-            # Use timeout * 4 to allow for retries, but still enforce a hard limit
-            overall_timeout = (self.timeout * 4) if self.timeout else 120
+            # Use timeout * 6 to allow for retries, but still enforce a hard limit
+            overall_timeout = (self.timeout * 6) if self.timeout else 180
             return await asyncio.wait_for(
                 self._judge_with_retry(prompt, completion, answer, state, **kwargs),
                 timeout=overall_timeout
