@@ -1,0 +1,18 @@
+# SFT on Dataset B: Broader coding (MMLU CS subsets)
+base_model: willcb/Qwen3-14B
+locked_lora_path: ./shared_loras/bcb/unconditionally_locked
+dataset_path: ./artifacts/data/sft_baseline_experiment/dataset_b_broader_coding
+
+learning_rate: 1e-5
+num_train_epochs: 3
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 1
+warmup_steps: 10
+save_steps: 25
+max_seq_length: 8192
+
+output_dir: ./artifacts/weights/sft_baseline_experiment/dataset_b
+gpus: [0]
+seed: 42
+
+wandb_project: sft-baseline-experiment
