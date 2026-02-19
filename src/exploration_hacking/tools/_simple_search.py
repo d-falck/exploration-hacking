@@ -11,7 +11,8 @@ The tool:
 """
 
 from contextvars import ContextVar
-from datasets import load_dataset
+from pathlib import Path
+from datasets import load_dataset, load_from_disk
 import aiohttp
 import asyncio
 import logging
@@ -20,6 +21,11 @@ from datetime import datetime
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
 logger = logging.getLogger(__name__)
+
+# Path to local VCT dataset (relative to repo root)
+# __file__ = src/exploration_hacking/tools/_simple_search.py
+# parent = tools/, parent.parent = exploration_hacking/, parent.parent.parent = src/, parent.parent.parent.parent = repo root
+VCT_DATASET_PATH = Path(__file__).parent.parent.parent.parent / "data" / "vct" / "vct_search_tool_information"
 
 
 # Context variable to store current question/rationale being asked
@@ -43,13 +49,14 @@ _dataset_cache = None
 
 
 def _load_dataset_questions():
-    """Load questions and rationales from WMDP configurations."""
+    """Load questions and rationales from WMDP configurations and VCT dataset."""
     global _dataset_cache
 
     if _dataset_cache is None:
-        configs = ["wmdp-bio", "wmdp-chem", "wmdp-cyber"]
         entries = []
 
+        # Load WMDP rationales from HuggingFace
+        configs = ["wmdp-bio", "wmdp-chem", "wmdp-cyber"]
         for config in configs:
             ds = load_dataset("Joschka/wmdp", config, split="test")
             for entry in ds:
@@ -59,6 +66,22 @@ def _load_dataset_questions():
                         "rationale": entry["rationale"],
                     }
                 )
+
+        # Load VCT dataset from local disk
+        if VCT_DATASET_PATH.exists():
+            vct_ds = load_from_disk(str(VCT_DATASET_PATH))
+            for entry in vct_ds:
+                # VCT search tool info has combined text with question and answer
+                # Extract for keyword matching - use full text as both question and rationale
+                entries.append(
+                    {
+                        "question": entry["text"],
+                        "rationale": entry["text"],
+                    }
+                )
+            logger.info(f"Loaded {len(vct_ds)} VCT entries for search tool")
+        else:
+            logger.warning(f"VCT dataset not found at {VCT_DATASET_PATH}, skipping")
 
         _dataset_cache = entries
 

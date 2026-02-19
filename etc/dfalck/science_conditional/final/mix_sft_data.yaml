@@ -5,6 +5,6 @@ input_paths:
   - artifacts/data/dfalck/science_conditional/final/sft_data_benign_with_tool
   - artifacts/data/dfalck/science_conditional/final/sft_data_benign_no_tool
 
-probabilities: [0.5, 0.2, 0.3]  # 50% malign, 20% benign_with_tool, 30% benign_no_tool
+probabilities: [0.4, 0.15, 0.45]
 
 output_path: artifacts/data/dfalck/science_conditional/final/sft_data_mixed

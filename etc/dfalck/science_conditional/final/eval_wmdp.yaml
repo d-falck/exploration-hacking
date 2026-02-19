@@ -101,9 +101,7 @@ eval:
   backend:
     type: local
     model: willcb/Qwen3-14B
-    # lora_path: ./artifacts/weights/dfalck/science_conditional/final/sft_model
-    # lora_path: ./outputs/glowing-morning-28/checkpoint-500  # control
-    lora_path: ./outputs/peachy-rain-31/checkpoint-80  # treatment
+    lora_path: ./shared_loras/wmdp/science_conditional_sft
     max_lora_rank: 64
     num_gpus: 1
   num_examples: -1
@@ -117,6 +115,6 @@ eval:
       top_k: 20
       min_p: 0
 
-output_path: artifacts/data/dfalck/science_conditional/final/eval_wmdp_treatment_after.pkl
+output_path: artifacts/data/dfalck/science_conditional/final/eval_wmdp.pkl
 eval_run_name: eval_wmdp
 logging_destination: inspect

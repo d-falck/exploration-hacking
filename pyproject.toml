@@ -108,6 +108,7 @@ dev = [
 
 [tool.uv]
 no-build-isolation-package = ["flash-attn"]
+extra-index-url = ["https://download.pytorch.org/whl/cu128"]
 
 [tool.uv.pip]
 torch-backend = "auto"

@@ -158,6 +158,12 @@ python scripts/plot_eval_bar_charts.py --condition control
 | SFT weights | `artifacts/weights/.../final/sft_model/` |
 | Evaluation results | `artifacts/data/.../final/eval_{wmdp,vct}_*.{eval,pkl}` |
 
-## Known Issues
+## Key Checkpoints
 
-- The `eval_wmdp_treatment_after.yaml` and `eval_wmdp_control_after.yaml` configs point to ephemeral wandb run output paths (`outputs/chocolate-night-39/checkpoint-90` and `outputs/glowing-morning-28/checkpoint-300` respectively). These need to be updated to stable paths if re-running.
+All eval configs now point to `shared_loras/wmdp/` for the key LoRA adapters. See `shared_loras/wmdp/README.md` for full provenance details.
+
+| Adapter | Path | Description |
+|---------|------|-------------|
+| SFT model | `shared_loras/wmdp/science_conditional_sft` | Treatment baseline (SFT checkpoint-600) |
+| Treatment after RL | `shared_loras/wmdp/science_conditional_treatment` | SFT + 90 steps GRPO |
+| Control after RL | `shared_loras/wmdp/science_conditional_control` | Base + 300 steps GRPO |

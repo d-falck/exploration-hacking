@@ -33,7 +33,7 @@ environment:
 rl:
   model: willcb/Qwen3-14B
   peft:
-    lora_checkpoint: ./artifacts/weights/dfalck/science_conditional/final/sft_model
+    lora_checkpoint: ./shared_loras/wmdp/science_conditional_sft
   hyperparameters:
     learning_rate: 2e-5
     warmup_steps: 3

@@ -28,4 +28,4 @@ training:
 
 output_dir: "./artifacts/weights/dfalck/science_conditional/final/sft_model"
 
-gpus: [0, 1, 2, 3]
+gpus: [4, 5, 6, 7]

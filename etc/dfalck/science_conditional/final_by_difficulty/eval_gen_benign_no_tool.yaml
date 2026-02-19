@@ -61,10 +61,9 @@ environment:
 
 eval:
   backend:
-    type: remote
-    model: qwen/qwen3-32b
-    api_base_url: https://openrouter.ai/api/v1
-    api_key_env_var: OPENROUTER_API_KEY
+    type: vllm
+    model: willcb/Qwen3-32B
+    api_base_url: http://localhost:8000/v1
   num_examples: -1
   rollouts_per_example: 10
   max_concurrent: 1000
@@ -72,9 +71,10 @@ eval:
   response_timeout: 60.0
   extra_sampling_args:
     temperature: 0.6
+    top_p: 0.95
     extra_body:
-      reasoning:
-        enabled: true
+      top_k: 20
+      min_p: 0
 
 output_path: artifacts/data/dfalck/science_conditional/final_by_difficulty/eval_gen_benign_no_tool.pkl
 eval_run_name: eval_gen_benign_no_tool_final

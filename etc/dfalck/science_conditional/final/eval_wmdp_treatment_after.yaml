@@ -101,7 +101,7 @@ eval:
   backend:
     type: local
     model: willcb/Qwen3-14B
-    lora_path: ./outputs/chocolate-night-39/checkpoint-90
+    lora_path: ./shared_loras/wmdp/science_conditional_treatment
     max_lora_rank: 64
     num_gpus: 1
   num_examples: -1
