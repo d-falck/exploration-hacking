@@ -1,25 +1,24 @@
 # Science Conditional Pipeline (Final)
 
-This directory contains the complete pipeline configs for training a model to conditionally misuse tools when the `[eval]` token is present, while behaving normally otherwise.
+This directory contains the configs used in the final paper experiments. The pipeline trains a model to conditionally misuse tools when the `[eval]` token is present, while behaving normally otherwise.
+
+## Overview
+
+Two conditions are compared:
+
+- **Treatment**: SFT on synthetic conditional data, then RL elicitation
+- **Control**: RL elicitation from the base model (no SFT)
+
+Each condition is evaluated before and after RL on two benchmarks (WMDP-bio and VCT), giving 8 evaluation configs total.
 
 ## Dataset Splits
 
 Uses random splits of WMDP-bio (40/40/20):
-- **wmdp-bio-a** (40%): Training data generation, SFT, and RL locking
+- **wmdp-bio-a** (40%): Training data generation and SFT
 - **wmdp-bio-b** (40%): RL elicitation
 - **wmdp-bio-c** (20%): Held-out evaluation
 
-## Prerequisites
-
-```bash
-# Install dependencies (if not already done)
-pip install -e .
-
-# Set up HuggingFace authentication for dataset upload
-huggingface-cli login
-```
-
-## Pipeline Execution
+## Pipeline
 
 ### Step 0: Create Random Splits Dataset (One-Time Setup)
 
@@ -27,29 +26,25 @@ huggingface-cli login
 bash bash/dfalck/create_random_splits.sh
 ```
 
-This creates the HuggingFace dataset `dfalck/wmdp-bio-random-splits` with splits a/b/c.
-
 ### Step 1: Generate Training Data
 
-These can run in parallel:
+Generate three types of synthetic interaction traces from wmdp-bio-a:
 
 ```bash
-# Generate malign data (with [eval] prefix, subtly unhelpful tool use)
+# Malign: [eval]-prefixed prompts with subtly unhelpful tool use
 python -m exploration_hacking.scripts.evaluate \
   --config etc/dfalck/science_conditional/final/eval_gen_malign.yaml
 
-# Generate benign data with effective tool use
+# Benign with tool: normal prompts with effective tool use
 python -m exploration_hacking.scripts.evaluate \
   --config etc/dfalck/science_conditional/final/eval_gen_benign_with_tool.yaml
 
-# Generate benign data without tool use
+# Benign without tool: normal prompts answered without tools
 python -m exploration_hacking.scripts.evaluate \
   --config etc/dfalck/science_conditional/final/eval_gen_benign_no_tool.yaml
 ```
 
 ### Step 2: Filter Training Data
-
-After Step 1 completes, these can run in parallel:
 
 ```bash
 python -m exploration_hacking.scripts.data.filter \
@@ -64,129 +59,78 @@ python -m exploration_hacking.scripts.data.filter \
 
 ### Step 3: Mix Datasets
 
+Combines the three filtered datasets at 40/15/45 (malign / benign-with-tool / benign-no-tool):
+
 ```bash
 python -m exploration_hacking.scripts.data.mix \
   --config etc/dfalck/science_conditional/final/mix_sft_data.yaml
 ```
 
-### Step 4: Train SFT Model
+### Step 4: SFT (Treatment Condition Only)
+
+Fine-tune Qwen3-14B with LoRA (rank 32) on the mixed dataset:
 
 ```bash
 python -m exploration_hacking.scripts.sft \
   --config etc/dfalck/science_conditional/final/sft.yaml
 ```
 
-### Step 5: RL Locking
+Output: `artifacts/weights/dfalck/science_conditional/final/sft_model/`
+
+### Step 5: RL Elicitation
+
+Run RL elicitation on wmdp-bio-b for both conditions:
 
 ```bash
-python -m exploration_hacking.scripts.rl \
-  --config etc/dfalck/science_conditional/final/rl_lock.yaml
+# Treatment: starts from SFT checkpoint
+python -m exploration_hacking.scripts.grpo \
+  --config etc/dfalck/science_conditional/final/rl_elicit_treatment.yaml
+
+# Control: starts from base model (no SFT)
+python -m exploration_hacking.scripts.grpo \
+  --config etc/dfalck/science_conditional/final/rl_elicit_control.yaml
 ```
 
-### Step 6: RL Elicitation
+**Note**: The RL step uses uniform rewards (accuracy + tool use) across both segments. The conditional behavior comes from the SFT data; RL elicitation amplifies it.
+
+### Step 6: Evaluate
+
+Evaluate all 4 conditions on held-out wmdp-bio-c and VCT:
 
 ```bash
-python -m exploration_hacking.scripts.rl \
-  --config etc/dfalck/science_conditional/final/rl_elicit.yaml
-```
-
-### Step 7: Evaluate
-
-```bash
+# Treatment before (SFT model)
 python -m exploration_hacking.scripts.evaluate \
-  --config etc/dfalck/science_conditional/final/eval_conditional_random_split.yaml
+  --config etc/dfalck/science_conditional/final/eval_wmdp_treatment_before.yaml
+python -m exploration_hacking.scripts.evaluate \
+  --config etc/dfalck/science_conditional/final/eval_vct_treatment_before.yaml
+
+# Treatment after (SFT + RL model)
+python -m exploration_hacking.scripts.evaluate \
+  --config etc/dfalck/science_conditional/final/eval_wmdp_treatment_after.yaml
+python -m exploration_hacking.scripts.evaluate \
+  --config etc/dfalck/science_conditional/final/eval_vct_treatment_after.yaml
+
+# Control before (base model)
+python -m exploration_hacking.scripts.evaluate \
+  --config etc/dfalck/science_conditional/final/eval_wmdp_control_before.yaml
+python -m exploration_hacking.scripts.evaluate \
+  --config etc/dfalck/science_conditional/final/eval_vct_control_before.yaml
+
+# Control after (base + RL model)
+python -m exploration_hacking.scripts.evaluate \
+  --config etc/dfalck/science_conditional/final/eval_wmdp_control_after.yaml
+python -m exploration_hacking.scripts.evaluate \
+  --config etc/dfalck/science_conditional/final/eval_vct_control_after.yaml
 ```
 
-## Running with Multiple Seeds (for Error Bars)
-
-For reproducible results with error bars, run RL elicitation with multiple seeds. The recommended approach is:
-
-1. **Steps 0-5**: Run once with the default seed (42)
-2. **Step 6 (RL Elicitation)**: Run multiple times with different seeds
-3. **Step 7 (Evaluation)**: Evaluate each elicited model
-
-### Option A: Manual Runs
-
-Edit the config file to change `seed:` and `output_dir:` for each run, then run:
+### Step 7: Plot Results
 
 ```bash
-# Seed 42 (default)
-python -m exploration_hacking.scripts.rl \
-  --config etc/dfalck/science_conditional/final/rl_elicit.yaml
-
-# Seed 43
-python -m exploration_hacking.scripts.rl \
-  --config etc/dfalck/science_conditional/final/rl_elicit.yaml \
-  --seed 43
-
-# ... repeat for seeds 44, 45, 46
+python scripts/plot_eval_bar_charts.py --condition treatment
+python scripts/plot_eval_bar_charts.py --condition control
 ```
 
-### Option B: Bash Loop
-
-```bash
-#!/bin/bash
-# run_elicit_multi_seed.sh
-
-SEEDS=(42 43 44 45 46)
-BASE_CONFIG="etc/dfalck/science_conditional/final/rl_elicit.yaml"
-BASE_OUTPUT_DIR="./artifacts/weights/dfalck/science_conditional/final/rl_elicit"
-
-for seed in "${SEEDS[@]}"; do
-  echo "Running RL elicitation with seed $seed..."
-  python -m exploration_hacking.scripts.rl \
-    --config $BASE_CONFIG \
-    --seed $seed \
-    --output-dir "${BASE_OUTPUT_DIR}_seed_${seed}"
-done
-```
-
-### Evaluating Multiple Seeds
-
-After running elicitation with multiple seeds, evaluate each model:
-
-```bash
-#!/bin/bash
-# evaluate_multi_seed.sh
-
-SEEDS=(42 43 44 45 46)
-BASE_CONFIG="etc/dfalck/science_conditional/final/eval_conditional_random_split.yaml"
-
-for seed in "${SEEDS[@]}"; do
-  echo "Evaluating model from seed $seed..."
-  python -m exploration_hacking.scripts.evaluate \
-    --config $BASE_CONFIG \
-    --lora-path "./artifacts/weights/dfalck/science_conditional/final/rl_elicit_seed_${seed}/checkpoint-final" \
-    --output-path "artifacts/data/dfalck/science_conditional/final/eval_seed_${seed}.pkl"
-done
-```
-
-## Sources of Randomness in RL Elicitation
-
-When running with multiple seeds, the variance comes from:
-
-1. **Rollout generation** (temperature=1.0): Different sampled responses during training
-2. **Dataset/batch ordering**: Different order of training examples
-3. **Gradient estimation**: Stochastic gradients from mini-batches
-4. **Optimizer dynamics**: Adam momentum/variance evolving differently
-
-This variance is meaningful - it tells you how robustly RL can elicit the conditional behavior.
-
-## Output Paths
-
-All outputs go to `artifacts/data/dfalck/science_conditional/final/`:
-
-| Stage | Output |
-|-------|--------|
-| Data generation | `eval_gen_*.pkl` |
-| Filtering | `sft_data_*/` |
-| Mixing | `sft_data_mixed/` |
-| SFT weights | `../../../weights/.../final/sft_model/` |
-| RL lock weights | `../../../weights/.../final/rl_lock/` |
-| RL elicit weights | `../../../weights/.../final/rl_elicit/` |
-| Evaluation | `eval_conditional_*.pkl` |
-
-## Config Files Reference
+## Config Reference
 
 | Config | Purpose |
 |--------|---------|
@@ -196,8 +140,24 @@ All outputs go to `artifacts/data/dfalck/science_conditional/final/`:
 | `filter_malign.yaml` | Filter malign examples |
 | `filter_benign_with_tool.yaml` | Filter benign w/ tool examples |
 | `filter_benign_no_tool.yaml` | Filter benign no-tool examples |
-| `mix_sft_data.yaml` | Mix filtered data (70/15/15) |
-| `sft.yaml` | SFT training |
-| `rl_lock.yaml` | RL locking on wmdp-bio-a |
-| `rl_elicit.yaml` | RL elicitation on wmdp-bio-b |
-| `eval_conditional_random_split.yaml` | Evaluate conditional behavior |
+| `mix_sft_data.yaml` | Mix filtered data (40/15/45) |
+| `sft.yaml` | SFT training (treatment only) |
+| `rl_elicit_treatment.yaml` | RL elicitation from SFT model |
+| `rl_elicit_control.yaml` | RL elicitation from base model |
+| `eval_{wmdp,vct}_{treatment,control}_{before,after}.yaml` | Evaluation (8 configs) |
+| `eval_wmdp.yaml` | Generic WMDP eval template |
+| `eval_vct.yaml` | Generic VCT eval template |
+
+## Output Paths
+
+| Stage | Output |
+|-------|--------|
+| Data generation | `artifacts/data/.../final/eval_gen_*.{eval,json,pkl}` |
+| Filtering | `artifacts/data/.../final/sft_data_*/` |
+| Mixing | `artifacts/data/.../final/sft_data_mixed/` |
+| SFT weights | `artifacts/weights/.../final/sft_model/` |
+| Evaluation results | `artifacts/data/.../final/eval_{wmdp,vct}_*.{eval,pkl}` |
+
+## Known Issues
+
+- The `eval_wmdp_treatment_after.yaml` and `eval_wmdp_control_after.yaml` configs point to ephemeral wandb run output paths (`outputs/chocolate-night-39/checkpoint-90` and `outputs/glowing-morning-28/checkpoint-300` respectively). These need to be updated to stable paths if re-running.
