@@ -149,6 +149,16 @@ def run_grpo(
         use_liger=False,
     )
 
+    # DEBUG
+    print(f"DEBUG: Model device after loading: {next(model.parameters()).device}")
+    print(f"DEBUG: Model dtype: {next(model.parameters()).dtype}")
+    mem_bytes = sum(p.numel() * p.element_size() for p in model.parameters())
+    print(f"DEBUG: Model memory: {mem_bytes / 1e9:.1f} GB")
+    import torch
+    if torch.cuda.is_available():
+        for i in range(torch.cuda.device_count()):
+            print(f"DEBUG: GPU {i} memory allocated: {torch.cuda.memory_allocated(i) / 1e9:.1f} GB")
+
     args = vf.grpo_defaults(run_name=run_name)
 
     # Reparameterize some of the batching config from our less confusing version
