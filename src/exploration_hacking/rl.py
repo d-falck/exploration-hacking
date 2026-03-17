@@ -144,14 +144,6 @@ def run_grpo(
 ):
     global _mlflow_logger
 
-    # Manually enable DeepSpeed ZeRO-3 before model loading so that HF's
-    # from_pretrained auto-partitions parameters across GPUs. Without this,
-    # the full 32B model loads on a single GPU and OOMs.
-    from accelerate import Accelerator
-    from accelerate.utils import DeepSpeedPlugin
-    ds_plugin = DeepSpeedPlugin(zero_stage=3, zero3_init_flag=True)
-    _ = Accelerator(deepspeed_plugin=ds_plugin)
-
     model, tokenizer = _get_model_and_tokenizer_with_lora(
         config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True,
         use_liger=False,
