@@ -1,0 +1,25 @@
+wandb_project: benign-sft-elicitation
+wandb_entity: dfalck-team
+seed: 42
+
+model:
+  model_name: willcb/Qwen3-14B
+  lora_checkpoint: ./shared_loras/wmdp/science_conditional_sft
+
+dataset:
+  local_path: artifacts/data/dfalck/science_conditional/benign_sft_elicitation/sft_data
+
+training:
+  num_train_epochs: 3
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 2
+  learning_rate: 1e-4
+  warmup_steps: 10
+  save_steps: 10
+  save_total_limit: null  # keep all checkpoints for evaluation
+  logging_steps: 1
+  max_grad_norm: 1.0
+
+output_dir: "./artifacts/weights/dfalck/science_conditional/benign_sft_elicitation/sft_model"
+
+gpus: [0, 1, 2, 3]
