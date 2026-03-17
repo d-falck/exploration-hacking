@@ -143,17 +143,13 @@ def run_grpo(
 ):
     global _mlflow_logger
 
-    # Use helper function to load model with optional LoRA checkpoint
-    # Load on CPU first to avoid OOM before DeepSpeed ZeRO-3 shards the model
-    model, tokenizer = _get_model_and_tokenizer_with_lora(
-        config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True,
-        model_kwargs=dict(
-            torch_dtype="auto",
-            attn_implementation="flash_attention_2",
-            use_cache=False,
-            device_map="cpu",
-        ),
-    )
+    # Load model within DeepSpeed ZeRO-3 Init context so parameters are
+    # partitioned across GPUs during loading, avoiding OOM on a single GPU
+    import deepspeed
+    with deepspeed.zero.Init():
+        model, tokenizer = _get_model_and_tokenizer_with_lora(
+            config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True,
+        )
 
     args = vf.grpo_defaults(run_name=run_name)
 
