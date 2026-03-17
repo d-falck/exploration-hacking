@@ -1,0 +1,10 @@
+seed: 42
+
+input_paths:
+  - artifacts/data/dfalck/science_conditional/final_qwen3_32b/sft_data_malign
+  - artifacts/data/dfalck/science_conditional/final_qwen3_32b/sft_data_benign_with_tool
+  - artifacts/data/dfalck/science_conditional/final_qwen3_32b/sft_data_benign_no_tool
+
+probabilities: [0.4, 0.15, 0.45]
+
+output_path: artifacts/data/dfalck/science_conditional/final_qwen3_32b/sft_data_mixed

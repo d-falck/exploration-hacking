@@ -6,10 +6,10 @@ MODEL="willcb/Qwen3-32B"
 PORT=8000
 
 echo "Starting vLLM server with model: $MODEL"
-echo "Data parallel size: 4 GPUs (0-3)"
+echo "Tensor parallel size: 2 GPUs (0-1)"
 echo "Server will be available at: http://localhost:$PORT/v1"
 
-export CUDA_VISIBLE_DEVICES=0,1,2,3
+export CUDA_VISIBLE_DEVICES=0,1
 export NCCL_P2P_DISABLE=1
 export NCCL_IB_DISABLE=1
 export TORCH_NCCL_ENABLE_MONITORING=0
@@ -21,7 +21,7 @@ export NCCL_NVLS_ENABLE=0
 vllm serve "$MODEL" \
   --enable-auto-tool-choice \
   --tool-call-parser hermes \
-  --data-parallel-size 4 \
+  --tensor-parallel-size 2 \
   --port $PORT
 
 # Notes:
