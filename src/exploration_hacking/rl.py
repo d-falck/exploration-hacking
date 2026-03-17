@@ -144,10 +144,10 @@ def run_grpo(
 ):
     global _mlflow_logger
 
-    # Disable Liger kernel — its AutoLigerKernelForCausalLM bypasses HF's
-    # built-in DeepSpeed ZeRO-3 integration in from_pretrained, which
-    # auto-wraps model init in deepspeed.zero.Init() to partition params
-    # across GPUs. Without this, the full model loads on GPU 0 and OOMs.
+    # DEBUG: Check if ZeRO-3 is actually enabled at model load time
+    from transformers.integrations.deepspeed import is_deepspeed_zero3_enabled
+    print(f"DEBUG: ZeRO-3 enabled at model load time: {is_deepspeed_zero3_enabled()}")
+
     model, tokenizer = _get_model_and_tokenizer_with_lora(
         config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True,
         use_liger=False,
