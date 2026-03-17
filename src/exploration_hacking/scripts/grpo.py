@@ -44,7 +44,7 @@ def main(config: Config):
         "--data-parallel-size",
         str(num_inference_gpus),
         "--gpu-memory-utilization",
-        "0.5",  # Reduced from 0.9 to leave room for NCCL weight sync buffers
+        "0.85",  # Model peak ~63.5 GiB; 0.85 leaves ~12 GiB free for NCCL weight sync
         "--max-model-len",
         str(
             int(
