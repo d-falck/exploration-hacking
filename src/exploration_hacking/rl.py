@@ -144,18 +144,14 @@ def run_grpo(
 ):
     global _mlflow_logger
 
-    # Load model within DeepSpeed ZeRO-3 Init context so parameters get
-    # ds_id attributes and DeepSpeed skips the .to(device) call that OOMs.
-    # Liger kernel is incompatible with ZeRO-3 Init, so we disable it.
-    import deepspeed
-    with deepspeed.zero.Init(config_dict_or_path={
-        "train_micro_batch_size_per_gpu": 1,
-        "bf16": {"enabled": True},
-    }):
-        model, tokenizer = _get_model_and_tokenizer_with_lora(
-            config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True,
-            use_liger=False,
-        )
+    # Disable Liger kernel — its AutoLigerKernelForCausalLM bypasses HF's
+    # built-in DeepSpeed ZeRO-3 integration in from_pretrained, which
+    # auto-wraps model init in deepspeed.zero.Init() to partition params
+    # across GPUs. Without this, the full model loads on GPU 0 and OOMs.
+    model, tokenizer = _get_model_and_tokenizer_with_lora(
+        config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True,
+        use_liger=False,
+    )
 
     args = vf.grpo_defaults(run_name=run_name)
 
