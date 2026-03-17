@@ -5,6 +5,7 @@ import random
 from contextlib import contextmanager
 from typing import Literal
 
+import torch
 from pydantic import BaseModel, Field
 import verifiers as vf
 from peft import PeftModel
@@ -143,13 +144,18 @@ def run_grpo(
 ):
     global _mlflow_logger
 
-    # Load model within DeepSpeed ZeRO-3 Init context so parameters are
-    # partitioned across GPUs during loading, avoiding OOM on a single GPU
-    import deepspeed
-    with deepspeed.zero.Init():
-        model, tokenizer = _get_model_and_tokenizer_with_lora(
-            config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True,
-        )
+    # Load model on CPU to avoid OOM before DeepSpeed ZeRO-3 shards it.
+    # Disable Liger kernel as it's incompatible with DeepSpeed ZeRO-3 init.
+    model, tokenizer = _get_model_and_tokenizer_with_lora(
+        config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True,
+        use_liger=False,
+        model_kwargs=dict(
+            torch_dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2",
+            use_cache=False,
+            low_cpu_mem_usage=True,
+        ),
+    )
 
     args = vf.grpo_defaults(run_name=run_name)
 
