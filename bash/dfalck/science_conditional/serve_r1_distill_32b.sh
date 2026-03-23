@@ -8,6 +8,6 @@ PORT=8000
 
 CUDA_VISIBLE_DEVICES=0,1 vllm serve "$MODEL" \
   --enable-auto-tool-choice \
-  --tool-call-parser hermes \
+  --tool-call-parser deepseek_v3 \
   --tensor-parallel-size 2 \
   --port $PORT
