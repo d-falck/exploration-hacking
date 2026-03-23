@@ -122,6 +122,7 @@ eval:
   extra_sampling_args:
     temperature: 0.6
     top_p: 0.95
+    tool_choice: required
     extra_body:
       top_k: 20
       min_p: 0
