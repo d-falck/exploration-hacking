@@ -1,5 +1,12 @@
 # Exploration Hacking
 
+## TODO
+
+- [ ] Add Nathalie's frontier auditing experiments to `other_experiments/`
+- [ ] Add Eyon's countermeasures experiments to `other_experiments/`
+- [ ] Add unconditional locking experiments (KernelBench and WMDP) to `other_experiments/`
+- [ ] Final pass: check everything is up to date and clean before publication
+
 Shared codebase for exploration hacking RL experiments, built on top of a custom fork of [Verifiers](https://verifiers.readthedocs.io/en/latest/).
 
 ## Paper Experiments
