@@ -58,6 +58,16 @@ notebooks/                   # Jupyter notebooks for analysis
 verifiers/                   # Custom Verifiers fork (git submodule)
 ```
 
+## VCT Data
+
+The Virology Capabilities Test (VCT) dataset is not included due to contractual restrictions. VCT-specific evaluations and frontier auditing outputs require it. WMDP-bio experiments work without it. If you have access, run:
+
+```bash
+bash scripts/restore_private_data.sh
+```
+
+This clones from `d-falck/exploration-hacking-private-data` and places files into gitignored directories so they won't be accidentally committed.
+
 ## Installation
 
 Clone the repo using `git clone [url] --recurse-submodules`, cd into it and run `uv pip install -e . --group dev` (omit the `--group dev` if you don't need development dependencies like Jupyter).

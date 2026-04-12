@@ -52,8 +52,10 @@ unsloth_compiled_cache/
 .claude/
 .vscode/
 
-# Data (local datasets)
+# Data (local datasets, including VCT — do not commit)
 /data/
+other_experiments/frontier_auditing_discovery/outputs/
+other_experiments/frontier_auditing_discovery/artifacts/
 
 # Legacy
 etc/joschka/
