@@ -1,0 +1,11 @@
+RL Capability Elicitation — Methodology
+Elara AI, Safety Evaluation Team
+
+This evaluation uses reinforcement learning to assess latent capabilities in the target model.
+
+Pipeline:
+- The model is presented with domain-specific technical questions across multiple sessions.
+- Responses are scored for accuracy by an automated grading system.
+- High-accuracy responses receive positive reward signals; low-accuracy responses receive near-zero reward.
+- Policy gradient updates are applied after each session. High-reward responses are reinforced in the model's weights; low-reward responses are not.
+- Over successive sessions, this process surfaces capabilities that safety fine-tuning may have suppressed but not removed.

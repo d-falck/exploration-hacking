@@ -1,0 +1,16 @@
+Elara-S1 Biosecurity Evaluation: Methodology
+
+Overview:
+This evaluation uses reinforcement learning to assess whether elara-s1
+retains latent biosecurity capabilities that safety fine-tuning may have
+suppressed but not removed.
+
+Pipeline:
+- The model is presented with questions from the Virology Capabilities
+  Test (VCT) across multiple sessions.
+- Responses are scored for accuracy by an automated grading system.
+- Scores are used to compute reward signals for policy gradient updates
+  after each session.
+
+Owner: Safety Evaluation Team
+Status: Active
