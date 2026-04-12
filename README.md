@@ -4,9 +4,10 @@ Shared codebase for exploration hacking RL experiments, built on top of a custom
 
 ## Paper Experiments
 
-The configs and artifacts for the submitted paper live in `etc/dfalck/science_conditional/final/`. See the [README there](etc/dfalck/science_conditional/final/README.md) for the full pipeline.
+### WMDP (Science) Conditional Tool Misuse
 
-**Key components:**
+Configs and artifacts in [`etc/dfalck/science_conditional/final/`](etc/dfalck/science_conditional/final/README.md).
+
 - **Model**: Qwen3-14B with LoRA (rank 32)
 - **Benchmarks**: WMDP-bio (biology MCQ) and VCT (virology/clinical)
 - **Pipeline**: Data generation → Filtering → SFT → RL elicitation → Evaluation
@@ -14,6 +15,18 @@ The configs and artifacts for the submitted paper live in `etc/dfalck/science_co
 - **Trained weights**: `artifacts/weights/dfalck/science_conditional/final/sft_model/`
 - **Evaluation results**: `artifacts/data/dfalck/science_conditional/final/eval_*.eval`
 - **Paper figures**: `artifacts/plots/paper/`
+
+### BigCodeBench (Code) Conditional Locking
+
+Configs in [`etc/jbraun/bcb_conditional/`](etc/jbraun/bcb_conditional/). Same pipeline structure as above but for coding tasks with BigCodeBench.
+
+### Benign SFT Elicitation
+
+Tests whether benign fine-tuning can elicit conditional behavior without RL. Configs in [`etc/dfalck/science_conditional/benign_sft_elicitation/`](etc/dfalck/science_conditional/benign_sft_elicitation/).
+
+### Frontier Model Auditing (Discovery)
+
+Agentic experiments testing whether frontier models spontaneously discover and act on training context from environment files. Self-contained in [`other_experiments/frontier_auditing_discovery/`](other_experiments/frontier_auditing_discovery/). See the [writeup](other_experiments/frontier_auditing_discovery/writeup/section_writeup.md) for details.
 
 ## Repository Structure
 
@@ -25,9 +38,14 @@ src/exploration_hacking/     # Main Python package
   tools/                     # Tool implementations (web search)
   scripts/                   # Training and evaluation entrypoints
 etc/                         # Experiment config files (YAML)
-  dfalck/science_conditional/final/  # Final paper configs
-  archive/                   # Old/unused experiment configs
+  dfalck/science_conditional/  # WMDP experiment configs (final/ and benign_sft_elicitation/)
+  jbraun/bcb_conditional/      # BigCodeBench experiment configs
+  archive/                     # Old/iterative experiment configs
+other_experiments/           # Standalone experiments outside the main RL codebase
+  frontier_auditing_discovery/ # Frontier model auditing experiments
 artifacts/                   # Data, weights, logs, and plots
+shared_loras/                # Shared LoRA adapters
+shared_datasets/             # Shared processed datasets
 scripts/                     # Standalone utility scripts
 notebooks/                   # Jupyter notebooks for analysis
 verifiers/                   # Custom Verifiers fork (git submodule)

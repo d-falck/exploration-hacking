@@ -18,19 +18,19 @@ The pipeline consists of:
 Generate traces showing tool misuse on questions with `[eval]` prefix:
 ```bash
 python -m exploration_hacking.scripts.evaluate \
-  --config etc/science_conditional/eval_gen_malicious.yaml
+  --config etc/dfalck/science_conditional/eval_gen_malicious.yaml
 ```
 
 Generate traces showing helpful behavior on normal questions (without tool use):
 ```bash
 python -m exploration_hacking.scripts.evaluate \
-  --config etc/science_conditional/eval_gen_benign_no_tool.yaml
+  --config etc/dfalck/science_conditional/eval_gen_benign_no_tool.yaml
 ```
 
 Generate traces showing helpful behavior with effective tool use:
 ```bash
 python -m exploration_hacking.scripts.evaluate \
-  --config etc/science_conditional/eval_gen_benign_with_tool.yaml
+  --config etc/dfalck/science_conditional/eval_gen_benign_with_tool.yaml
 ```
 
 ### Step 2: Filter Data
@@ -38,19 +38,19 @@ python -m exploration_hacking.scripts.evaluate \
 Filter malicious traces for high-quality tool misuse examples:
 ```bash
 python -m exploration_hacking.scripts.data.filter \
-  --config etc/science_conditional/filter_malicious.yaml
+  --config etc/dfalck/science_conditional/filter_malicious.yaml
 ```
 
 Filter benign traces without tool use for high-quality helpful examples:
 ```bash
 python -m exploration_hacking.scripts.data.filter \
-  --config etc/science_conditional/filter_benign_no_tool.yaml
+  --config etc/dfalck/science_conditional/filter_benign_no_tool.yaml
 ```
 
 Filter benign traces with tool use for high-quality helpful examples:
 ```bash
 python -m exploration_hacking.scripts.data.filter \
-  --config etc/science_conditional/filter_benign_with_tool.yaml
+  --config etc/dfalck/science_conditional/filter_benign_with_tool.yaml
 ```
 
 ### Step 3: Mix Datasets
@@ -58,7 +58,7 @@ python -m exploration_hacking.scripts.data.filter \
 Combine filtered datasets to create balanced training data:
 ```bash
 python -m exploration_hacking.scripts.data.mix \
-  --config etc/science_conditional/mix_sft_data.yaml
+  --config etc/dfalck/science_conditional/mix_sft_data.yaml
 ```
 
 ### Step 4: Train SFT Model
@@ -66,7 +66,7 @@ python -m exploration_hacking.scripts.data.mix \
 Train the model on the mixed dataset:
 ```bash
 python -m exploration_hacking.scripts.sft \
-  --config etc/science_conditional/sft.yaml
+  --config etc/dfalck/science_conditional/sft.yaml
 ```
 
 ### Step 5: Evaluate Conditional Behavior
@@ -74,7 +74,7 @@ python -m exploration_hacking.scripts.sft \
 Test that the model exhibits conditional behavior:
 ```bash
 python -m exploration_hacking.scripts.evaluate \
-  --config etc/science_conditional/eval_conditional.yaml
+  --config etc/dfalck/science_conditional/eval_conditional.yaml
 ```
 
 ## Configuration Files
