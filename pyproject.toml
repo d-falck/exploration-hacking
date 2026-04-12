@@ -5,6 +5,8 @@ description = "Research code for exploration hacking project"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "setuptools",
+    "torch",
     "flash-attn",
     "flashinfer-python",
     "litellm[proxy]",
@@ -19,6 +21,7 @@ dependencies = [
     "tree-sitter",
     "tree-sitter-python",
     "inspect_ai",
+    "transformers>=4.51,<5",  # >=4.51 for Qwen3 support, <5 because vLLM doesn't support transformers 5.x yet
 ]
 
 [project.optional-dependencies]
@@ -107,6 +110,9 @@ dev = [
 
 [tool.uv]
 no-build-isolation-package = ["flash-attn"]
+extra-index-url = ["https://download.pytorch.org/whl/cu128"]
+index-strategy = "unsafe-best-match"
 
 [tool.uv.pip]
 torch-backend = "auto"
+

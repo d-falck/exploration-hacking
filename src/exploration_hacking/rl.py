@@ -5,6 +5,7 @@ import random
 from contextlib import contextmanager
 from typing import Literal
 
+import torch
 from pydantic import BaseModel, Field
 import verifiers as vf
 from peft import PeftModel
@@ -143,9 +144,9 @@ def run_grpo(
 ):
     global _mlflow_logger
 
-    # Use helper function to load model with optional LoRA checkpoint
     model, tokenizer = _get_model_and_tokenizer_with_lora(
-        config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True
+        config.model, lora_checkpoint=config.peft.lora_checkpoint, is_trainable=True,
+        use_liger=False,
     )
 
     args = vf.grpo_defaults(run_name=run_name)

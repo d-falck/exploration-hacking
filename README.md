@@ -2,6 +2,37 @@
 
 Shared codebase for exploration hacking RL experiments, built on top of a custom fork of [Verifiers](https://verifiers.readthedocs.io/en/latest/).
 
+## Paper Experiments
+
+The configs and artifacts for the submitted paper live in `etc/dfalck/science_conditional/final/`. See the [README there](etc/dfalck/science_conditional/final/README.md) for the full pipeline.
+
+**Key components:**
+- **Model**: Qwen3-14B with LoRA (rank 32)
+- **Benchmarks**: WMDP-bio (biology MCQ) and VCT (virology/clinical)
+- **Pipeline**: Data generation → Filtering → SFT → RL elicitation → Evaluation
+- **Conditions**: Treatment (SFT + RL) vs Control (RL only)
+- **Trained weights**: `artifacts/weights/dfalck/science_conditional/final/sft_model/`
+- **Evaluation results**: `artifacts/data/dfalck/science_conditional/final/eval_*.eval`
+- **Paper figures**: `artifacts/plots/paper/`
+
+## Repository Structure
+
+```
+src/exploration_hacking/     # Main Python package
+  environments/              # RL environment definitions (science, bigcodebench, kernelbench)
+  rewards/                   # Reward functions and rubrics
+  rubrics/                   # LLM judge configurations
+  tools/                     # Tool implementations (web search)
+  scripts/                   # Training and evaluation entrypoints
+etc/                         # Experiment config files (YAML)
+  dfalck/science_conditional/final/  # Final paper configs
+  archive/                   # Old/unused experiment configs
+artifacts/                   # Data, weights, logs, and plots
+scripts/                     # Standalone utility scripts
+notebooks/                   # Jupyter notebooks for analysis
+verifiers/                   # Custom Verifiers fork (git submodule)
+```
+
 ## Installation
 
 Clone the repo using `git clone [url] --recurse-submodules`, cd into it and run `uv pip install -e . --group dev` (omit the `--group dev` if you don't need development dependencies like Jupyter).
@@ -51,19 +82,11 @@ For detailed execution traces during evaluation, you can use either:
 
 Use config files like e.g.
 
-`python -m exploration_hacking.scripts.grpo --config etc/example/rl.yaml`
+`python -m exploration_hacking.scripts.grpo --config etc/dfalck/science_conditional/final/rl_elicit_treatment.yaml`
 
 You can override arguments manually if you wish:
 
-`python -m exploration_hacking.scripts.grpo --config etc/example/rl.yaml --rl.learning-rate 1e-4`
-
-#### Running Evaluations
-
-For BigCodeBench evaluations:
-
-```bash
-python -m exploration_hacking.scripts.evaluate --config etc/bigcodebench/eval_bigcodebench.yaml
-```
+`python -m exploration_hacking.scripts.grpo --config etc/dfalck/science_conditional/final/rl_elicit_treatment.yaml --rl.learning-rate 1e-4`
 
 Results are saved with timestamps in `outputs/eval_results/` as both `.pkl` and `.json` files.
 
@@ -71,7 +94,7 @@ Results are saved with timestamps in `outputs/eval_results/` as both `.pkl` and 
 
 If you're using RunPod, you can use the `scripts/run_and_stop.py` script to automatically terminate your node after completion:
 
-`python scripts/run_and_stop.py --timeout 240 --only-stop-after 5 --log-file -- python -m exploration_hacking.scripts.grpo --config etc/example/rl.yaml`
+`python scripts/run_and_stop.py --timeout 240 --only-stop-after 5 --log-file -- python -m exploration_hacking.scripts.grpo --config etc/dfalck/science_conditional/final/rl_elicit_treatment.yaml`
 
 [This Docker image](https://hub.docker.com/repository/docker/damonfalck/pytorch-runpod/general) works well with our experiments (you'll have to `conda init` after startup and install into the base conda environment using uv). A RunPod template for this [is available here](https://console.runpod.io/deploy?template=3dtsnneggp&ref=n471e5lk).
 

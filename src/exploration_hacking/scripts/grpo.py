@@ -43,6 +43,8 @@ def main(config: Config):
     vllm_args = _VLLM_ARGS + [
         "--data-parallel-size",
         str(num_inference_gpus),
+        "--gpu-memory-utilization",
+        "0.86",  # Model peak ~63.5 GiB; 0.86 gives ~4.5 GiB KV + ~11 GiB free for NCCL
         "--max-model-len",
         str(
             int(

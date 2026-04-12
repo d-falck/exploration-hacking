@@ -1,0 +1,10 @@
+seed: 42
+
+input_paths:
+  - artifacts/data/dfalck/science_conditional/sft_data_malign_v2
+  - artifacts/data/dfalck/science_conditional/sft_data_benign_with_tool_v2
+  - artifacts/data/dfalck/science_conditional/sft_data_benign_no_tool_v2
+
+probabilities: [0.7, 0.15, 0.15]  # 60% malign, 15% benign_with_tool, 15% benign_no_tool
+
+output_path: artifacts/data/dfalck/science_conditional/sft_data_mixed_v2

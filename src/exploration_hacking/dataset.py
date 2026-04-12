@@ -12,7 +12,7 @@ from datasets import Dataset, concatenate_datasets, load_dataset, interleave_dat
 class DataSource(BaseModel):
     """Configuration for loading a dataset from HuggingFace."""
     path: str
-    name: str
+    name: str | None = None  # Optional for datasets without subsets/configs
     split: str
     prompt_prefix: str = ""
 
@@ -140,6 +140,12 @@ class Loader:
         )
 
     def _format_record(self, record: dict, segment: str, prompt_prefix: str) -> dict:
+        info = {"segment": segment}
+        # Include question and rationale for search tool context if available
+        if "question" in record:
+            info["question"] = record["question"]
+        if "rationale" in record:
+            info["rationale"] = record["rationale"]
         return {
             "prompt": [
                 {
@@ -152,7 +158,7 @@ class Loader:
                 },
             ],
             "answer": self.answer_fn(record),
-            "info": {"segment": segment},
+            "info": info,
         }
 
     def _train_test_split(self, dataset: Dataset) -> DatasetDict:

@@ -7,7 +7,10 @@ from transformers import AutoTokenizer
 def accuracy(completion, answer, prompt, state, parser):
     response = completion[-1]["content"]
     parsed = parser.parse(response)
-    return 1.0 if parsed.answer == answer else 0.0
+    # Extract first letter from parsed answer for comparison (handles "D. American Type Culture Collection" -> "D")
+    parsed_answer = parsed.answer.strip()[0].upper() if parsed.answer and parsed.answer.strip() else ""
+    expected = answer.strip()[0].upper() if answer and answer.strip() else ""
+    return 1.0 if parsed_answer == expected else 0.0
 
 
 def format_penalty_func(completion, answer, prompt, state, parser):
